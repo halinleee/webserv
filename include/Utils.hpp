@@ -7,7 +7,7 @@
  * @brief envp 전체를 std::map<string, string>으로 파싱해서 반환하는 함수
  * @param envp 환경변수를 담고 있는 char **버퍼
  * @return 파싱된 환경변수들을 담은 EnvMap 객체
- * @details CGI에서 추가적인 Meta-variables, querry string을 제외한 프로세스의 기본적인 환경변수
+ * @details CGI에서 추가적인 Meta-variables, query string을 제외한 프로세스의 기본적인 환경변수
  */
 EnvMap envpParsing(char **envp);
 
