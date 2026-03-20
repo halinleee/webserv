@@ -71,7 +71,7 @@ class Socket
          * @brief 소켓의 파일 디스크립터를 반환하는 함수
          * @return 소켓 파일 디스크립터 (const 참조)
          */
-        const int &getFd(void);
+        const int &getFd(void) const;
 
         /**
          * @brief 소켓의 주소 정보를 반환하는 함수
