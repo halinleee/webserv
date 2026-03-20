@@ -33,7 +33,7 @@ void Server::serverAdd(in_port_t port, Epoll &epoll)
         throw (Server::SocketMakeError());
     tmpSocket = new Socket(socketFd, port);
     serverSetting(tmpSocket);
-    if (epoll.epCtl(EPOLL_CTL_ADD, tmpSocket->getFd(), EPOLLIN))
+    if (!epoll.epCtl(EPOLL_CTL_ADD, tmpSocket->getFd(), EPOLLIN))
         throw (Epoll::EpollCtlError());
     this->serverSocket = tmpSocket;
 }
@@ -47,7 +47,7 @@ void Server::eventProcess(Epoll &epoll)
     int eventCount = 0;
     while(1)
     {
-        if (eventCount = epoll.epWait() < 0)
+        if ((eventCount = epoll.epWait()) < 0)
             return ; // respose로 서버 터진거 알려야함(status code 전송?)
         for (int i = 0; i < eventCount; i++)
         {
@@ -156,7 +156,7 @@ void Server::clientAccept(Epoll &epoll, Socket *socket)
 void Server::clientRequest(Epoll &epoll, Socket *socket)
 {
     char received[4096];
-    int cgiFlag = 0;
+    // int cgiFlag = 0;
     int length = recv(socket->getFd(), received, sizeof(received) -1, 0);
     if (length <= 0)
     {
@@ -170,7 +170,7 @@ void Server::clientRequest(Epoll &epoll, Socket *socket)
         received[length] = '\0';
         std::cout << "클라이언트 연결 : Client["<< socket->getFd() << "]" << std::endl;
         this->client[socket->getFd()]->charVecAppend(length, received);
-        if (!(epoll.epCtl(EPOLL_CTL_ADD, socket->getFd(), EPOLLOUT)))
+        if (!epoll.epCtl(EPOLL_CTL_MOD, socket->getFd(), EPOLLOUT))
         {
             this->client[socket->getFd()]->setStatusCode(500);
             epoll.epCtl(EPOLL_CTL_DEL, socket->getFd(), EPOLLOUT);
@@ -180,16 +180,16 @@ void Server::clientRequest(Epoll &epoll, Socket *socket)
     }
     std::cout << client[socket->getFd()]->getCharVec().size() << std::endl;
     std::cout << received;
-    if (cgiFlag)
-    { // 여기있는 조건문으로 우선 cgi를 킬지 안킬지 하는데 판단하는 조건을 나중에 추가해야함
-        if (cgiRun(epoll, socket->getFd()))
-        {
-            this->client[socket->getFd()]->setStatusCode(500);
-            epoll.epCtl(EPOLL_CTL_DEL, socket->getFd(), EPOLLIN | EPOLLOUT);
-            this->clientDel(socket->getFd());
-            return ;
-        }
-    }
+    // if (cgiFlag)
+    // { // 여기있는 조건문으로 우선 cgi를 킬지 안킬지 하는데 판단하는 조건을 나중에 추가해야함
+    //     if (cgiRun(epoll, socket->getFd()))
+    //     {
+    //         this->client[socket->getFd()]->setStatusCode(500);
+    //         epoll.epCtl(EPOLL_CTL_DEL, socket->getFd(), EPOLLIN | EPOLLOUT);
+    //         this->clientDel(socket->getFd());
+    //         return ;
+    //     }
+    // }
     // HTTP 내용 파싱
 }
 
@@ -201,6 +201,28 @@ void Server::nonblockingSet(int fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+/**
+ * @brief 특정 클라이언트의 연결을 종료하고 자원을 해제하는 함수
+ * @param deleteFd 삭제할 클라이언트의 소켓 FD
+ */
+void Server::clientDel(int deleteFd)
+{
+    // pid_t clientPid = this->client[deleteFd]->getPid();
+    // if (clientPid > 0)
+    // {
+    //     if (waitpid(clientPid, NULL, WNOHANG) == 0)
+    //     {
+    //         kill(clientPid, SIGKILL);
+    //         waitpid(clientPid, NULL, 0);
+    //     }
+    // }
+    // this->pipeToClientMap.erase(this->client[deleteFd]->getPipeFd(InFlag));
+    // this->pipeToClientMap.erase(this->client[deleteFd]->getPipeFd(OutFlag));
+    this->client[deleteFd]->delSocket();
+    delete this->client[deleteFd];
+    this->client.erase(deleteFd);
 }
 
 /**

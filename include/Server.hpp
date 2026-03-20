@@ -5,6 +5,7 @@
 #include "Epoll.hpp"
 #include "Utils.hpp"
 #include "Socket.hpp"
+#include "Client.hpp"
 
 /**
  * @brief 웹 서버의 전반적인 동작과 클라이언트 연결, 이벤트를 관리하는 핵심 클래스
