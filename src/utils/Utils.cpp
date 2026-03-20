@@ -78,7 +78,7 @@ void freeSplit(char **tmp)
         return ;
     while (tmp[i])
     {
-        delete tmp[i];
+        delete [] tmp[i];
         i++;
     }
     delete []tmp;
