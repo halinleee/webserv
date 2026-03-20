@@ -21,6 +21,8 @@ Socket::Socket(int fd)
 
 /**
  * @brief 파일 디스크립터와 포트 번호를 인자로 받는 생성자
+ * 
+ * sin_family = IP주소체계, sin_port = port번호, sin_addr.s_addr = IP주소 sin_zero = 패딩 데이터
  * @param fd 소켓 파일 디스크립터
  * @param port 바인딩한 포트 번호
  * @details 서버소켓을 등록할때 사용
@@ -56,18 +58,10 @@ void Socket::actTimeSet(void)
 }
 
 /**
- * @brief 소켓을 닫고 파일 디스크립터를 정리하는 함수
- */
-void Socket::socketClose(void)
-{
-    close(this->socketFd);
-}
-
-/**
  * @brief 소켓의 파일 디스크립터를 반환하는 함수
  * @return 소켓 파일 디스크립터 (const 참조)
  */
-const int &Socket::getFd(void) {return (this->socketFd);}
+const int &Socket::getFd(void) const {return (this->socketFd);}
 
 /**
  * @brief 소켓의 주소 정보를 반환하는 함수
@@ -85,4 +79,8 @@ const time_t &Socket::getTimeOut(void) const { return (this->timeOut); }
  * @brief 소멸자
  * @details 서버와 클라이언트에서 FD에 대해서 close를 하기 때문에 소멸자에서 close 불피요함
  */
-Socket::~Socket() {}
+Socket::~Socket() 
+{
+    if (this->socketFd != -1)
+        close(this->socketFd);
+}
