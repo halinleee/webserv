@@ -7,6 +7,7 @@
  * @brief envp 전체를 std::map<string, string>으로 파싱해서 반환하는 함수
  * @param envp 환경변수를 담고 있는 char **버퍼
  * @return 파싱된 환경변수들을 담은 EnvMap 객체
+ * @details CGI에서 추가적인 Meta-variables, querry string을 제외한 프로세스의 기본적인 환경변수
  */
 EnvMap envpParsing(char **envp);
 
@@ -27,6 +28,7 @@ void freeSplit(char **tmp);
  * @brief 환경변수 맵에 새로운 환경변수를 파싱하여 추가하는 함수
  * @param env 환경변수가 저장될 EnvMap의 참조자
  * @param envAdd 추가할 환경변수 문자열 ("KEY=VALUE" 형식)
+ * @details envMap안에 PATH=asdf/asdf 일때 key = PATH, value = asdf/asdf 로 저장됨
  */
 void envAdd(EnvMap &env, char *envAdd);
 

@@ -34,7 +34,7 @@ Socket::Socket(int fd, in_port_t port)
 /**
  * @brief 파일 디스크립터와 주소 구조체를 인자로 받는 생성자
  * @param fd 소켓 파일 디스크립터
- * @param addr 소켓 주소 구조체
+ * @param addr 소켓 주소 구조체 
  * @details 클라이언트의 소켓을 등록할때 사용
  */
 Socket::Socket(int fd, struct sockaddr_in addr)

@@ -17,10 +17,16 @@ class Socket
         int socketFd;
         /**
          * @brief 소켓 주소 정보
-         * @details addr 안에는 주소와 port에 대한 정보가 담긴다.
+         * @details sin_family = IP주소, sin_port = 포트번호
          */
         struct sockaddr_in addr;
+        /**
+         * @brief 소켓의 최근 활동 시간
+         */
         time_t timeAct;
+        /**
+         * @brief 소켓의 연결 끊길 시간
+         */
         time_t timeOut;
     
     public:

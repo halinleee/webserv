@@ -9,12 +9,8 @@
 class Socket;
 
 /**
- * @brief 파일 디스크립터(int)를 키로, Socket 객체 포인터를 값으로 가지는 맵
- */
-typedef std::map<int, Socket *> SocketMap;
-
-/**
- * @brief 문자열(std::string)을 키와 값으로 가지는 맵 (주로 환경변수나 HTTP 헤더 저장용)
+ * @brief CGI구동에 필요한 프로세스의 기본적인 환경변수를 가지고 있는 <string, string> 맵
+ * @details PATH=asdf/asdf 일때 key = PATH, value = asdf/asdf
  */
 typedef std::map<std::string, std::string> EnvMap;
 
