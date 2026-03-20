@@ -56,7 +56,7 @@ class Server
         Server(char **envp);
 
         /**
-         * @brief Server 소멸자
+         * @brief Client 맵과 serverSocket으로 할당받은 자원회수
          */
         ~Server();
 
