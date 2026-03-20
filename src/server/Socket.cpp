@@ -5,7 +5,7 @@
  */
 Socket::Socket()
 {
-    this->socketFd = 0;
+    this->socketFd = -1;
 }
 
 /**
