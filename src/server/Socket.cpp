@@ -29,6 +29,7 @@ Socket::Socket(int fd, in_port_t port)
     this->addr.sin_family = AF_INET;
     this->addr.sin_port = htons(port);
     this->addr.sin_addr.s_addr = INADDR_ANY;
+    memset(this->addr.sin_zero, 0, sizeof(this->addr.sin_zero));
 }
 
 /**
