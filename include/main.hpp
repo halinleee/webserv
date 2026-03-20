@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <cstring>
 
-#include <ctime> // time 불러오기 gettimefday
+#include <ctime>// 시간 관련 함수 사용 (std::time 등)
 #include <stdio.h>      // printf, perror 등 표준 입출력
 #include <stdlib.h>     // exit, malloc, free 등 일반 유틸리티
 #include <string.h>     // strerror, memset, strlen 등 문자열 조작
