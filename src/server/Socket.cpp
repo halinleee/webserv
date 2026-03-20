@@ -15,6 +15,8 @@ Socket::Socket()
 Socket::Socket(int fd)
 {
     this->socketFd = fd;
+    this->timeAct = 0;
+    this->timeOut = 0;
 }
 
 /**
