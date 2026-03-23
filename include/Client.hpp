@@ -1,15 +1,15 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
 
-#include "main.hpp"
+#include "main.hpp" // 차후에 main.hpp를 제거하고 필요한 client에 관련된 헤더파일은 hpp에서 직접 include 하도록 수정
 #include "Socket.hpp"
 
 /**
- * @brief inPipe의 쓰기 끝을 반환하는 flag
+ * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 http의 요청에서 body을 전달하는 inPipe의 쓰기 끝을 반환하는 flag
  */
 #define InFlag 0
 /**
- * @brief outPipe의 읽기 끝을 반환하는 flag
+ * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 생성된 http요청을 받는 OutPipe의 읽기 끝을 반환하는 flag
  */
 #define OutFlag 1
 

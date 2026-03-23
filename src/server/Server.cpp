@@ -6,16 +6,22 @@
  */
 Server::Server(char **envp)
 {
+    this->response = "";
+    this->client.clear();
+    this->pipeToClientMap.clear();
     this->env = envpParsing(envp);
 }
 
 /**
- * @brief Server 소멸자
+ * @brief Client 맵과 serverSocket으로 할당받은 자원회수
  */
 Server::~Server()
 {
 	for (ClientMap::iterator it = this->client.begin(); it != this->client.end(); ++it)
-		delete (it->second);
+    {
+        if (it->second != NULL && this->client.count(it->first))
+            it->second->delSocket();
+    }
     delete this->serverSocket;
 	client.clear();
 }
@@ -30,11 +36,17 @@ void Server::serverAdd(in_port_t port, Epoll &epoll)
     int socketFd;
     Socket *tmpSocket;
     if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    {
+        close(socketFd);
         throw (Server::SocketMakeError());
+    }
     tmpSocket = new Socket(socketFd, port);
     serverSetting(tmpSocket);
     if (!epoll.epCtl(EPOLL_CTL_ADD, tmpSocket->getFd(), EPOLLIN))
+    {
+        delete tmpSocket;
         throw (Epoll::EpollCtlError());
+    }
     this->serverSocket = tmpSocket;
 }
 
@@ -81,11 +93,12 @@ void Server::eventProcess(Epoll &epoll)
  */
 void Server::clientResponse(Epoll &epoll, Socket *socket)
 {
-    std::string recive((this->client[socket->getFd()]->getCharVec().begin()), (this->client[socket->getFd()]->getCharVec().end()));
+    // recv로 내용을 다 담기 전까지 return하는 로직을 추가해야함
+    std::string reciveVecRequest((this->client[socket->getFd()]->getCharVec().begin()), (this->client[socket->getFd()]->getCharVec().end()));
 
     std::string html_body = "<html><body>";
     html_body += "<h1>Received HTTP Request:</h1>";
-    html_body += "<pre>" + recive + "</pre>";
+    html_body += "<pre>" + reciveVecRequest + "</pre>";
     html_body += "</body></html>";
     
     std::stringstream ss;
@@ -112,9 +125,15 @@ void Server::serverSetting(Socket *serverSocket)
     int flag = 1;
     setsockopt(serverSocket->getFd(), SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
     if (bind(serverSocket->getFd(), reinterpret_cast<const sockaddr *>(&serverSocket->getAddr()), sizeof(serverSocket->getAddr())) < 0)
+    {
+        delete serverSocket;
         throw (Server::SocketMakeError());
+    }
     if (listen(serverSocket->getFd(), MAX_INPUT) < 0)
+    {
+        delete serverSocket;
         throw (Server::SocketMakeError());
+    }
     nonblockingSet(serverSocket->getFd());
 }
 
@@ -128,7 +147,7 @@ void Server::clientAccept(Epoll &epoll, Socket *socket)
     int tmpFd = 0;
     Socket *tmpSocket;
     struct sockaddr_in clientAddr;
-    socklen_t clientLen = sizeof(socket->getAddr());
+    socklen_t clientLen = sizeof(clientAddr);
     
     tmpFd = accept(socket->getFd(), (sockaddr *)&clientAddr, &clientLen);
     if (tmpFd < 0)
@@ -142,9 +161,8 @@ void Server::clientAccept(Epoll &epoll, Socket *socket)
     this->client[tmpFd] = new Client(tmpSocket, this->env);
     if (!(epoll.epCtl(EPOLL_CTL_ADD, tmpFd, EPOLLIN)))
     {
-        this->client[tmpFd]->setStatusCode(500);
-        epoll.epCtl(EPOLL_CTL_DEL, tmpFd, EPOLLIN);
-        epoll.epCtl(EPOLL_CTL_ADD, tmpFd, EPOLLOUT);
+        std::cerr << "epoll ADD failed for FD: " << tmpFd << std::endl;
+        this->clientDel(tmpFd);
     }
 }
 
@@ -160,7 +178,10 @@ void Server::clientRequest(Epoll &epoll, Socket *socket)
     int length = recv(socket->getFd(), received, sizeof(received) -1, 0);
     if (length <= 0)
     {
-        std::cout << "클라이언트 연결 종료 : Client["<< socket->getFd() << "]" << std::endl;
+        if (length == 0)
+            std::cout << "클라이언트 정상 종료 : Client["<< socket->getFd() << "]" << std::endl;
+        else
+            std::cout << "클라이언트 비정상 종료 (에러) : Client["<< socket->getFd() << "]" << std::endl;
         epoll.epCtl(EPOLL_CTL_DEL, socket->getFd(), EPOLLIN | EPOLLOUT);
         this->clientDel(socket->getFd());
         return;
@@ -200,7 +221,10 @@ void Server::clientRequest(Epoll &epoll, Socket *socket)
 void Server::nonblockingSet(int fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
-    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if (flags == -1)
+        std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+        std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
 }
 
 /**

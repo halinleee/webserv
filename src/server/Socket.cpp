@@ -77,7 +77,7 @@ const time_t &Socket::getTimeOut(void) const { return (this->timeOut); }
 
 /**
  * @brief 소멸자
- * @details 서버와 클라이언트에서 FD에 대해서 close를 하기 때문에 소멸자에서 close 불피요함
+ * @details 서버와 클라이언트에서 FD에 대해서 close를 하기 때문에 소멸자에서 close 불필요함
  */
 Socket::~Socket() 
 {
