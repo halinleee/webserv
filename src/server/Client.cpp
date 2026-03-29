@@ -23,14 +23,14 @@ Client::Client(Socket *socket, EnvMap env)
     this->pid = -1;
 }
 
-void Client::charVecAppend(int length, char *received)
+void Client::charQueAppend(int length, char *received)
 {
-    this->recVec.insert(this->recVec.end(), received, received + length);
+    this->recQue.insert(this->recQue.end(), received, received + length);
 }
 
-CharVec &Client::getCharVec(void)
+CharQue &Client::getCharQue(void)
 {
-    return (this->recVec);
+    return (this->recQue);
 }
 
 Socket &Client::getSocket()
@@ -55,7 +55,27 @@ void Client::delSocket()
     delete this->clientSocket;
 }
 
-// Client::~Client()
+// int Client::getPipeFd(int index)
 // {
-//     delete this->clientSocket;
+//     if (index == InFlag)
+//         return (this->inPipe[1]);
+//     else
+//         return (this->outPipe[0]);
 // }
+
+// void Client::pipeClose(int *pipe)
+// {
+//     if (pipe[0] > -1)
+//         close(pipe[0]);
+//     if (pipe[1] > -1)
+//         close(pipe[1]);
+//     pipe[0] = -1;
+//     pipe[1] = -1;
+// }
+
+Client::~Client()
+{
+    // this->pipeClose(this->inPipe);
+    // this->pipeClose(this->outPipe);
+    delete this->clientSocket;
+}

@@ -1,5 +1,4 @@
 #include "Utils.hpp"
-#include "type.hpp"
 
 /**
  * @fn EnvMap envpParsing(char **envp)

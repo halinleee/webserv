@@ -1,24 +1,14 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   Epoll.cpp                                          :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: seungsch <seungsch@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/02/21 19:57:21 by seungsch          #+#    #+#             */
-/*   Updated: 2026/03/20 01:25:38 by seungsch         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
 
 #include "Epoll.hpp"
 
 /**
  * @brief Epoll 객체 생성자. epoll 인스턴스를 생성합니다.
+ * @return Error 발생시 epollFd를 -1로 초기화함
  */
 Epoll::Epoll() 
 {
     if ((epollFd = epoll_create1(0)) == -1)
-        throw (EpollMakeError());
+        epollFd = -1;
 }
 
 /**
@@ -28,13 +18,13 @@ Epoll::Epoll()
  * @param events 감시할 이벤트 플래그 (EPOLLIN, EPOLLOUT 등)
  * @return 성공 실패 여부
  */
-bool Epoll::epCtl(int option, int appendFd, u_int64_t events)
+bool Epoll::epollControl(int option, int appendFd, u_int64_t events)
 {
     event.data.fd = appendFd;
     event.events = events;
     if (epoll_ctl(this->epollFd, option, appendFd, &event) < 0)
-        return (false);
-    return (true);
+        return (errorOccurs);
+    return (normalOperation);
 }
 
 /**
@@ -74,20 +64,4 @@ int Epoll::epWait(void)
     if (eventCount < 0)
         return (-1);
     return (eventCount);
-}
-
-/**
- * @brief epoll_create 실패 시 발생하는 예외 메시지를 반환합니다.
- */
-const char *Epoll::EpollMakeError::what() const throw()
-{
-    return "epoll Make error!!";
-}
-
-/**
- * @brief epoll_ctl 실패 시 발생하는 예외 메시지를 반환합니다.
- */
-const char *Epoll::EpollCtlError::what() const throw()
-{
-    return "epoll Ctl error!!";
 }

@@ -7,8 +7,8 @@ int main(int ac, char **av, char **envp)
 {
     Server server(envp);
     Epoll epoll;
-
-    server.serverAdd(8080, epoll);
+    if (!server.serverAdd(8080, epoll))
+        std::cerr << "서버 시작 실패" << std::endl;
     server.eventProcess(epoll);
     (void) ac;
     (void) av;
