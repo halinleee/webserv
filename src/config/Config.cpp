@@ -1,67 +1,64 @@
-//#include "Config.hpp"
-#include <fstream> //ifstream
-#include <iostream>
-#include <string>
+#include "../../include/Config.hpp"
 
-/**
- * @struct countIndent
- * @brief 탭 개수 세어주는 함수
- * 
- * '/t'는 탭 1개로 본다
- * 
- * 공백 4개는 탭 1개로 보는 방식
- * 
- * 공백 4의 배수가 아닐 경우 에러처리(공백 8개 = 탭 2개)
- * 
- * 반환값: 탭 개수
- */
-int countIndent(const std::string& line)
+// bool Config::locationValidate(const std::vector<std::string>& token)
+// {
+
+// }
+
+bool Config::errorPageValidate(unsigned int key, const std::vector<std::string>& token)
 {
-	std::string::const_iterator it  = line.begin();
-	int indent = 0;
-    int spaceCount = 0;
-	while (it != line.end())
-	{
-		if (*it == '\t')
-		{
-			indent += spaceCount / 4;
-			if (spaceCount % 4 != 0)
-				return (-1);
-			spaceCount = 0;
-			++indent;
-			++it;
-		}
-		else if (*it == ' ')
-		{
-			++spaceCount;
-			++it;
-		}
-		else
-			break;
-	}
-	indent += spaceCount / 4;
-	if (spaceCount % 4 != 0)
-		return (-1);
-	return (indent);
+	if (token.size() != 3)
+		return (false);
+
+	unsigned int num = 0;
+	if (!toInt(token[1], num))
+		return (false);
 	
+	//하륀스와 얘기할것
+	//에러코드 처리 1. 없는 에러코드에 대해서 config 쪽에서는 그냥 숫자면 담고 요청부분에서 에러코드 거를것인지
+	//에러코드 처리 2. 에러코드를 한정적으로 가능한것만 정리해서 config에서 거를것인지
+	//에러페이지 경로 처리
+	//실제로 존재하는 경로인지는 config 파싱쪽에서는 실질적으로 확인하기 불가
+	//1. config쪽에서는 문자열이 존재하는지 확인만 하고 담고 요청에서 실질적으로 존재하는지 유효성 검사로 거를 것인지
+	//2. config에서 / 단위로 토큰이 존재하는지 정도 확인할 수 있을듯 
+	//우짜면 좋을까나~~
+	servers[key].setErrorPages(num, token[2]);
+	return (true);
 }
 
-/**
- * @struct isVBlankLine
- * @brief 문자열이 공백인지 판단하는 함수
- * 
- * 반환값 참(true): 공백인 줄
- * 
- * 반환값 거짓(false): 공백이 아닌 줄(문자열이 있는 줄)
- */
-bool isBlankLine(const std::string &line)
+
+bool Config::listenBodyValidate(unsigned int key, const std::vector<std::string>& token, size_t max)
 {
-	for(std::string::const_iterator it = line.begin(); it != line.end(); ++it)
-	{
-		if (!std::isspace(static_cast<unsigned char>(*it)))
-			return (false); //공백이 아닌 줄
-	}
-	return (true);//공백인 줄
+	if (token.size() != 2)
+		return (false);
+
+	unsigned int num = 0;
+	if (!toInt(token[1], num))
+		return (false);
+
+	if (num == 0 || num > max)
+		return (false);
+
+	if (token[0] == "client_max_body_size")
+		servers[key].setClientMaxBodySize(static_cast<size_t>(num));
+	return (true);
+}
+
+
+
+/**
+ * @struct serverDirectiveValidate
+ * @brief 서버 설정 지시어들의 유효 검사를 진입하는 함수
+ */
+bool Config::serverDirectiveValidate(unsigned int key, const std::vector<std::string>& token)
+{	
+	if (token[0] == "client_max_body_size")
+		return (listenBodyValidate(key, token, 10000000));
+	else if (token[0] == "error_page")
+		return (errorPageValidate(key, token));
+	// else if (token[0] == "location")//로케이션 검사 다끝내기
+	// 	return (locationValidate(token));
+	return (false);
 }
 
 /**
@@ -72,62 +69,61 @@ bool isBlankLine(const std::string &line)
  * 유효한 configfile이면 true
  * 오류있는 configfile이면 false를 반환한다
  */
-int validateConfig(std::ifstream& configFile)
+int Config::validateConfig(std::ifstream& configFile)
 {
-	//1. sever가 들어오면 그 다음 토큰에서는 무조건 탭이 1개 이상 들어가야 함
-	//1개 이상 탭이 없으면 에러 or 다음서버
-
-	//3.25할일: 빈줄 검사 할때 그 다음줄로 밀리는 문제 해결
-	// 구조 전체적으로 다시 보기
-
 	std::string configLine;
 
 	while (std::getline(configFile, configLine))
 	{
-		if (!isBlankLine(configLine))
+		if (isBlankLine(configLine))
+			continue;
+		else
 			break;
 	}
+	if (configFile.eof())//정상적으로 더읽을 데이터 없음
+		return (1);
+	
+	std::vector<std::string> token = ftSplit(configLine, ' ');
 
-	std::getline(configFile, configLine);
-	int indentCount = countIndent(configLine);
-	if (configLine == "server" && indentCount == 0)
+	if (token[0] != "server" || !listenBodyValidate(0, token, 9999))
 	{
-		while (std::getline(configFile, configLine) && configLine != "end")
-		{
-			if (!isBlankLine(configLine))
-			{
-				
-			}
-		}
-		if (configFile.eof())
-			return (1);
-		return (0);
-		
+		std::cout << "Config error: server or port error" << std::endl;
+		std::cout << "error line: " << configLine << std::endl;
+		return (-1);
 	}
-	return (-1); //에러
+
+	unsigned int key = 0;
+	toInt(token[1], key);
+	servers[key]; //port번호 key값 등록
+		
+	while (std::getline(configFile, configLine))
+	{
+		if (isBlankLine(configLine))
+			continue;
+
+		int indent = countIndent(configLine);
+		
+		if (indent == 0 && configLine == "end")//server가 나왔을때만 end허용하게
+			return (0);
+		
+		if (indent != 1)
+		{
+			std::cout << "Config error: indent error" << std::endl;
+			std::cout << "error line: " << configLine << std::endl;
+			return (-1);
+		}
+
+		removeChar(configLine, '\t');
+		token = ftSplit(configLine, ' ');
+		if (!serverDirectiveValidate(key, token)) //라인 끝에 공백 많을때 공백 처리(toInt에서 공백을 어떻게 처리하는가)
+			return (-1);
+	}
+	return (-1);
+	// return (1); //모든 서버 검사를 마쳤을때
+	// return (0); //한개의 서버 검사를 마쳤을때
+	// return (-1); //에러
 }
 
 
 // configFile.clear();
 // configFile.seekg(0, std::ios::beg);
-
-
-int main()
-{
-	std::ifstream configFile("config/webserv.conf");
-	if (!configFile.is_open())
-		return (-1);
-
-	//유효성 검사
-	while (true)
-	{
-		int res = validateConfig(configFile);
-		if (res == -1)//에러
-			return (-1);
-		if (res == 1)//모든 서버 검사를 마쳤을 때
-			break;
-	}
-
-	
-	return (0);
-}
