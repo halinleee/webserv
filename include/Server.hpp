@@ -35,11 +35,11 @@ class Server
         std::string response;
         /**
          * @var client 
-         * @brief 현재 서버에 접속 중인 모든 클라이언트의 정보를 관리하는 맵 (key: Client FD, value: Client 객체 포인터)
+         * @brief 현재 서버에 접속 중인 모든 클라이언트의 FD를 인덱스로 클라이언트 객체의 포인터를 가지고 있는 vector
          * 
          * epoll 이벤트가 발생했을 때 발생한 FD가 어떤 클라이언트의 것인지 식별하고, 해당 클라이언트의 수신 버퍼나 상태를 즉각적으로 조회/수정하기 위해 사용됩니다.
         */
-        ClientMap client;
+        ClientVec client;
         /**
          * @var pipeToClientMap
          * @brief 파이프의 FD와 클라이언트의 FD를 매핑해서 가지고 있는 <int, int>맵
@@ -90,7 +90,7 @@ class Server
          * 판단하고 각각 clientAccept, clientRequest, clientResponse 등으로 라우팅하는 서버의 심장부 역할을 합니다.
          * @param epoll 이벤트를 관리할 Epoll 객체
          */
-        void eventProcess(Epoll &epoll);
+        bool eventProcess(Epoll &epoll);
 
         /**
          * @brief 서버 소켓의 바인딩 및 리슨을 설정하는 함수
@@ -108,7 +108,16 @@ class Server
          * @param epoll 이벤트를 관리할 Epoll 객체
          * @param socket 연결 요청을 받은 서버 Socket 객체
          */
-        void clientAccept(Epoll &epoll, Socket *socket); //차후에 서버에 접속하는 클라이언트 정보를 가공할 일이 있으면 수정 필요
+        bool clientAccept(Epoll &epoll, Socket *socket); //차후에 서버에 접속하는 클라이언트 정보를 가공할 일이 있으면 수정 필요
+
+        /**
+         * @brief eventProcess에서 client에 대한 동작(request, response, cgi)에 대한 동작을 수행하는 함수
+         * @param epoll I/O 이벤트를 관리하는 epoll 객체(오류 발생 및 respose를 보낸 후에 등록했던 이벤트 삭제를 위해 매개변수로 지정)
+         * @param currentFd 현재 이벤트가 감지된 FD
+         * @param currentEvent 현재 이벤트의 내용
+         * @return loop 동작 중 error발생 여부(발생시 errorOccurs = 0, 아닐 시 normalOpration = 1)
+         */
+        bool clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent);
 
         /**
          * @brief 클라이언트의 데이터를 읽어들이고 요청을 파싱하는 함수
@@ -117,7 +126,7 @@ class Server
          * @param epoll 이벤트를 관리할 Epoll 객체
          * @param client 데이터를 전송한 클라이언트 객체
          */
-        void clientRequest(Epoll &epoll, Client *client); // 차후에 클라이언트 요청이 들어오는걸 파싱하는 로직이 들어가야함(현재 프린트만 하도록 동작)
+        bool clientRequest(Epoll &epoll, Client *client); // 차후에 클라이언트 요청이 들어오는걸 파싱하는 로직이 들어가야함(현재 프린트만 하도록 동작)
 
         /**
          * @brief 클라이언트에게 응답 데이터를 전송하는 함수
@@ -126,7 +135,14 @@ class Server
          * @param epoll 이벤트를 관리할 Epoll 객체
          * @param client 응답을 보낼 클라이언트 객체
          */
-        void clientResponse(Epoll &epoll, Client *client);
+        bool clientResponse(Epoll &epoll, Client *client);
+
+        /**
+        * @brief 특정 FD에 해당하는 클라이언트 객체의 포인터가 존재하는지 확인하는 함수
+        * @param fd 확인할 파일 디스크립터(인덱스로 사용)
+        * @return 클라이언트 존재 여부(존재 시 true, 미 존재 시 false)
+        */
+        bool clientExist(int fd);
 
         /**
          * @brief 특정 파일 디스크립터를 논블로킹(Non-blocking) 모드로 설정하는 함수

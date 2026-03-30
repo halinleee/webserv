@@ -48,13 +48,6 @@ void Client::setStatusCode(int statusCode)
     this->statusCode = statusCode;
 }
 
-void Client::delSocket()
-{
-    // this->pipeClose(this->inPipe);
-    // this->pipeClose(this->outPipe);
-    delete this->clientSocket;
-}
-
 // int Client::getPipeFd(int index)
 // {
 //     if (index == InFlag)

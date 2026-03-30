@@ -164,12 +164,7 @@ class Client
          * @details Server에서 epoll 이벤트를 통해 파이프 I/O가 가능한지 확인하고 read/write를 수행할 때 해당 FD를 얻기 위해 사용됩니다.
          */
         int getPipeFd(int index);
-        /**
-         * @brief Socket클래스의 자원을 회수하는 함수
-         * @details 클라이언트 연결이 종료(정상, 에러, 타임아웃)될 때 호출되며,
-         * 소켓 객체 delete, 열려있는 파이프 닫기 등을 일괄적으로 수행하여 메모리/FD 누수를 방지합니다.
-         */
-        void delSocket();
+
         /**
          * @brief pipe를 close하는 함수
          * @param pipe pipeFD를 담고 있는 size 2인 int 배열

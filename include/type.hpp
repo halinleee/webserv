@@ -2,6 +2,7 @@
 # define TYPE_HPP
 
 #include <map>
+#include <vector>
 #include <deque>
 #include <string>
 
@@ -38,11 +39,18 @@ typedef std::deque<unsigned char> CharQue;
 typedef std::map<int, int> IntMap;
 
 /**
- * @brief 클라이언트의 소켓 FD(key)와 동적 할당된 Client 객체 포인터(value)를 매핑하는 타입
+ * @brief FD를 인덱스로 동적 할당된 Client 객체 포인터를 가지고 있는 vector 컨테이너
  * 
- * 현재 서버에 접속되어 세션을 유지 중인 모든 클라이언트들의 목록입니다. 특정 클라이언트 소켓에 이벤트 발생 시 해당 클라이언트의 컨텍스트(데이터, 상태)를 즉시 불러오기 위해 사용됩니다.
+ * 현재 서버에 접속되어 세션을 유지 너중인 모든 클라이언트들의 목록입니다. 특정 클라이언트 소켓에 이벤트 발생 시 해당 클라이언트의 컨텍스트(데이터, 상태)를 즉시 불러오기 위해 사용됩니다.
  */
-typedef std::map<int, Client *> ClientMap;
+typedef std::vector<Client *> ClientVec;
+
+/**
+ * @brief 파일디스크립터
+ * 
+ * 가독성을 위해 파일디스크립터와 int의 차이를 만들기 위해 사용
+ */
+typedef int FD;
 
 /**
  * @brief 환경변수의 KEY(string)와 VALUE(string) 쌍을 관리하는 맵 타입
