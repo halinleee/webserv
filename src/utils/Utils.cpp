@@ -27,23 +27,6 @@ EnvMap envpParsing(char **envp)
 }
 
 /**
- * @brief 환경변수 맵에 새로운 환경변수를 파싱하여 추가하는 함수
- * @param env 환경변수가 저장될 EnvMap의 참조자
- * @param envAdd 추가할 환경변수 문자열 ("KEY=VALUE" 형식)
- */
-void envAdd(EnvMap &env, char *envAdd)
-{
-    std::string envbuffer(envAdd);
-    size_t pos = envbuffer.find('=');
-    if (pos != std::string::npos)
-    {
-        std::string key = envbuffer.substr(0, pos);
-        std::string value = envbuffer.substr(pos + 1);
-        env[key] = value;
-    }
-}
-
-/**
  * @brief EnvMap 형식의 환경변수 컨테이너를 환경변수 char** 배열로 변환하는 함수 (주로 CGI 프로그램의 envp로 사용)
  * @param env 변환할 환경변수 맵 (const 참조자)
  * @return 동적 할당된 환경변수 char** 배열 (사용 후 freeSplit으로 메모리 해제 필요, 마지막 요소는 NULL)

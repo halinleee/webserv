@@ -115,7 +115,7 @@ class Server
          * @param epoll I/O 이벤트를 관리하는 epoll 객체(오류 발생 및 respose를 보낸 후에 등록했던 이벤트 삭제를 위해 매개변수로 지정)
          * @param currentFd 현재 이벤트가 감지된 FD
          * @param currentEvent 현재 이벤트의 내용
-         * @return loop 동작 중 error발생 여부(발생시 errorOccurs = 0, 아닐 시 normalOpration = 1)
+         * @return loop 동작 중 error발생 여부(발생시 STATUS_ERROR = 0, 아닐 시 STATUS_OK = 1)
          */
         bool clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent);
 

@@ -125,7 +125,7 @@ class Client
          * @param length 수신된 데이터의 길이
          * @param received 수신된 데이터 배열
          */
-        void CharDqAppend(int length, char *received);
+        void CharDqAppend(int length, unsigned char *received);
 
         /**
          * @brief 클라이언트의 수신 버퍼를 반환하는 함수

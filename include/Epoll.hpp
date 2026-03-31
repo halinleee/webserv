@@ -83,7 +83,7 @@ class Epoll
         /**
          * @brief epoll_wait을 호출하여 이벤트가 발생할 때까지 대기하는 함수
          *          
-         * * Server::eventProcess()의 무한 루프 첫 부분에서 호출되어, 등록된 FD들 중 하나라도 I/O 이벤트가 발생할 때까지(또는 타임아웃) 스레드를 블로킹 상태로 대기시킵니다.
+         * * Server::eventProcess()의 무한 루프 첫 부분에서 호출되어, 등록된 FD들 중 하나라도 I/O 이벤트가 발생할 때까지(또는 타임아웃) 스레드를 논블로킹 상태로 대기시킵니다.
          * @return 발생한 이벤트의 개수, 실패 시 -1
          */
         int epWait(void);
