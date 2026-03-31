@@ -36,7 +36,7 @@ class Client
          * 
          * 논블로킹 I/O 특성상 한 번에 전체 요청이 오지 않을 수 있으므로, 데이터가 완전히 수신될 때까지 이곳에 복사합니다.
          */
-        CharQue recQue;
+        CharDq recDq;
         /**
          * @var env
          * @brief 프로세스 기본 환경변수에 HTTP 요청(헤더, 쿼리 스트링 등)에서 추출한 CGI Meta-variable을 병합한 map 컨테이너
@@ -119,21 +119,21 @@ class Client
         void setStatusCode(int statusCode);
 
         /**
-         * @brief recv로 수신된 데이터를 버퍼(recQue<char> 디큐)에 추가하는 함수
+         * @brief recv로 수신된 데이터를 버퍼(recDq<char> 디큐)에 추가하는 함수
          * 
          * 논블로킹 소켓에서 조각나서 도착하는 데이터를 recVec 뒤에 계속 덧붙여 온전한 HTTP 메세지를 구성하기 위해 사용합니다.
          * @param length 수신된 데이터의 길이
          * @param received 수신된 데이터 배열
          */
-        void charQueAppend(int length, char *received);
+        void CharDqAppend(int length, char *received);
 
         /**
          * @brief 클라이언트의 수신 버퍼를 반환하는 함수
          * 
          * 버퍼에 담긴 데이터를 파싱 엔진에 넘겨주거나, HTTP 본문을 분석할 때 외부에서 접근하기 위해 사용합니다.
-         * @return CharQue 참조
+         * @return CharDq 참조
          */
-        CharQue &getCharQue(void);
+        CharDq &getCharDq(void);
 
         /**
          * @brief 클라이언트의 소켓 객체를 반환하는 함수

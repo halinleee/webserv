@@ -122,7 +122,7 @@ class Server
         /**
          * @brief 클라이언트의 데이터를 읽어들이고 요청을 파싱하는 함수
          * 
-         * 클라이언트 소켓에 EPOLLIN 이벤트가 떴을 때 호출됩니다. recv()로 데이터를 읽어 Client의 recQue에 쌓고, 요청이 모두 도착했는지 확인합니다.
+         * 클라이언트 소켓에 EPOLLIN 이벤트가 떴을 때 호출됩니다. recv()로 데이터를 읽어 Client의 recDq에 쌓고, 요청이 모두 도착했는지 확인합니다.
          * @param epoll 이벤트를 관리할 Epoll 객체
          * @param client 데이터를 전송한 클라이언트 객체
          */

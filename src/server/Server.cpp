@@ -6,13 +6,9 @@
 * 서버 초기화 단계에서 메모리를 확보하고 envp를 맵 형태로 변환하여 보관합니다.
 * @param envp 메인 함수에서 전달받은 환경변수
 */
-Server::Server(char **envp)
+Server::Server(char **envp) : serverSocket(NULL), response(""), client(8192, NULL), env(envpParsing(envp))
 {
-    this->response = "";
-    this->client.assign(8192, NULL);
     this->pipeToClientMap.clear();
-    this->env = envpParsing(envp);
-    this->serverSocket = NULL;
 }
 
 /**
@@ -92,7 +88,7 @@ bool Server::eventProcess(Epoll &epoll)
                 if (!clientAccept(epoll, this->serverSocket))
                     return (errorOccurs);
             }
-            else if (clientExist(currentFd))
+            else
             {
                 if (!clientLoop(epoll, currentFd, currentEvent))
                     return (errorOccurs);
@@ -117,7 +113,7 @@ bool Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
         clientDel(currentFd);
         return (errorOccurs);
     }
-    if (currentEvent & EPOLLIN) 
+    if (clientExist(currentFd) && currentEvent & EPOLLIN) 
     {
         std::cout << currentFd << "EPOLL_IN" << std::endl;
         if (!clientRequest(epoll, this->client[currentFd]))
@@ -145,7 +141,7 @@ bool Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
  */
 bool Server::clientResponse(Epoll &epoll, Client *client)
 {
-    std::string reciveVecRequest((client->getCharQue().begin()), (client->getCharQue().end()));
+    std::string reciveVecRequest((client->getCharDq().begin()), (client->getCharDq().end()));
     ssize_t length = 0;
     std::string html_body = "<html><body>";
     html_body += "<h1>Received HTTP Request:</h1>";
@@ -264,7 +260,7 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
     {
         received[length] = '\0';
         std::cout << "클라이언트 연결 : Client["<< client->getSocket().getFd() << "]" << std::endl;
-        client->charQueAppend(length, received);
+        client->CharDqAppend(length, received);
         if (!epoll.epollControl(EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT))
         {
             client->setStatusCode(500);
@@ -273,7 +269,7 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
             return (errorOccurs);
         }
     }
-    std::cout << client->getCharQue().size() << std::endl;
+    std::cout << client->getCharDq().size() << std::endl;
     std::cout << received;
     // if (cgiFlag)
     // { // 여기있는 조건문으로 우선 cgi를 킬지 안킬지 하는데 판단하는 조건을 나중에 추가해야함
@@ -333,7 +329,6 @@ void Server::clientDel(int deleteFd)
     // this->pipeToClientMap.erase(this->client[deleteFd]->getPipeFd(OutFlag));
     if (!clientExist(deleteFd))
         return;
-
     delete this->client[deleteFd];
     this->client[deleteFd] = NULL;
 }

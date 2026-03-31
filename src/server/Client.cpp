@@ -23,14 +23,14 @@ Client::Client(Socket *socket, EnvMap env)
     this->pid = -1;
 }
 
-void Client::charQueAppend(int length, char *received)
+void Client::CharDqAppend(int length, char *received)
 {
-    this->recQue.insert(this->recQue.end(), received, received + length);
+    this->recDq.insert(this->recDq.end(), received, received + length);
 }
 
-CharQue &Client::getCharQue(void)
+CharDq &Client::getCharDq(void)
 {
-    return (this->recQue);
+    return (this->recDq);
 }
 
 Socket &Client::getSocket()

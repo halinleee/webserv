@@ -29,7 +29,7 @@ enum
  * 
  * Client 클래스 내부에서 버퍼 역할을 수행하며, 파서(Parser)에서 내용을 전달하기 위한 공간으로 사용하고 있습니다.
  */
-typedef std::deque<unsigned char> CharQue;
+typedef std::deque<unsigned char> CharDq;
 
 /**
  * @brief 이벤트가 발생한 CGI 파이프 FD(key)를 통해 해당 요청을 소유한 클라이언트의 FD(value)를 역추적하기 위한 맵 타입
