@@ -36,17 +36,17 @@ bool Server::serverAdd(in_port_t port, Epoll &epoll)
     int socketFd;
     Socket *tmpSocket;
     if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     tmpSocket = new Socket(socketFd, port);
     if (!serverSetting(tmpSocket))
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     if (!epoll.epollControl(EPOLL_CTL_ADD, tmpSocket->getFd(), EPOLLIN))
     {
         delete tmpSocket;
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     }
     this->serverSocket = tmpSocket;
-    return (statuscode::STATUS_OK);
+    return (STATUS_OK);
 }
 
 /**
@@ -68,12 +68,12 @@ bool Server::serverAdd(in_port_t port, Epoll &epoll)
 bool Server::eventProcess(Epoll &epoll)
 {
     FD currentFd;
-    u_int32_t currentEvent;
+    u_int64_t currentEvent;
     int eventCount = 0;
     while(1)
     {
         if ((eventCount = epoll.epWait()) < 0)
-            return (statuscode::STATUS_ERROR); 
+            return (STATUS_ERROR); 
         for (int i = 0; i < eventCount; i++)
         {
             currentFd = epoll[i].data.fd;
@@ -81,16 +81,16 @@ bool Server::eventProcess(Epoll &epoll)
             if ((this->serverSocket->getFd() == currentFd) && (currentEvent & EPOLLIN))
             {
                 if (!clientAccept(epoll, this->serverSocket))
-                    return (statuscode::STATUS_ERROR);
+                    return (STATUS_ERROR);
             }
             else
             {
                 if (!clientLoop(epoll, currentFd, currentEvent))
-                    return (statuscode::STATUS_ERROR);
+                    return (STATUS_ERROR);
             }
         }
     }
-    return (statuscode::STATUS_OK);
+    return (STATUS_OK);
 }
 
 /**
@@ -98,7 +98,7 @@ bool Server::eventProcess(Epoll &epoll)
 * @param epoll I/O 이벤트를 관리하는 epoll 객체(오류 발생 및 respose를 보낸 후에 등록했던 이벤트 삭제를 위해 매개변수로 지정)
 * @param currentFd 현재 이벤트가 감지된 FD
 * @param currentEvent 현재 이벤트의 내용
-* @return loop 동작 중 error발생 여부(발생시 statuscode::STATUS_ERROR = 0, 아닐 시 normalOpration = 1)
+* @return loop 동작 중 error발생 여부(발생시 STATUS_ERROR = 0, 아닐 시 normalOpration = 1)
 */
 bool Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
 {
@@ -106,20 +106,20 @@ bool Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
     {
         epoll.epollControl(EPOLL_CTL_DEL, currentFd, 0);
         clientDel(currentFd);
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     }
     if (clientExist(currentFd) && currentEvent & EPOLLIN) 
     {
         std::cout << currentFd << "EPOLL_IN" << std::endl;
         if (!clientRequest(epoll, this->client[currentFd]))
-            return (statuscode::STATUS_ERROR);
+            return (STATUS_ERROR);
     }
     if (clientExist(currentFd) && (currentEvent & EPOLLOUT)) {
         std::cout << currentFd << "EPOLL_OUT" << std::endl;
         if (!clientResponse(epoll, this->client[currentFd]))
-            return (statuscode::STATUS_ERROR);
+            return (STATUS_ERROR);
     }
-    return (statuscode::STATUS_OK);
+    return (STATUS_OK);
 }
 
 /**
@@ -154,15 +154,15 @@ bool Server::clientResponse(Epoll &epoll, Client *client)
 
     length = send(client->getSocket().getFd(), response.c_str(), response.size(), 0);
     if (length < 0)
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     if (static_cast<size_t>(length) == response.size())
     {
         epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0);
         this->clientDel(client->getSocket().getFd());
-        return (statuscode::STATUS_OK);
+        return (STATUS_OK);
     }
     else
-        return (statuscode::STATUS_OK);
+        return (STATUS_OK);
 }
 
 /**
@@ -179,15 +179,15 @@ bool Server::serverSetting(Socket *serverSocket)
     if (bind(serverSocket->getFd(), reinterpret_cast<const sockaddr *>(&serverSocket->getAddr()), sizeof(serverSocket->getAddr())) < 0)
     {
         delete serverSocket;
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     }
     if (listen(serverSocket->getFd(), SOMAXCONN) < 0)
     {
         delete serverSocket;
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     }
     nonblockingSet(serverSocket->getFd());
-    return (statuscode::STATUS_OK);
+    return (STATUS_OK);
 }
 
 /**
@@ -209,14 +209,14 @@ bool Server::clientAccept(Epoll &epoll, Socket *socket)
     if (tmpFd < 0)
     {
         std::cerr << "Client Accept Failed" << std::endl;
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     }
     if (!nonblockingSet(tmpFd))
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     if (!(tmpSocket = new Socket(tmpFd, clientAddr)))
     {
         std::cerr << "Client Accept Failed" << std::endl;
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     }
     std::cout << "Client " << tmpFd <<"(" << tmpSocket->getAddr().sin_addr.s_addr << ") 포트 " << tmpSocket->getAddr().sin_port << " 를 통해서 접속" << std::endl;
     this->client[tmpFd] = new Client(tmpSocket, this->env);
@@ -224,9 +224,9 @@ bool Server::clientAccept(Epoll &epoll, Socket *socket)
     {
         std::cerr << "epoll ADD failed for FD: " << tmpFd << std::endl;
         this->clientDel(tmpFd);
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     }
-    return (statuscode::STATUS_OK);
+    return (STATUS_OK);
 }
 
 /**
@@ -243,13 +243,13 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
     // int cgiFlag = 0;
     int length = recv(client->getSocket().getFd(), received, sizeof(received) -1, 0);
     if (length < 0)
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     else if (length == 0)
     {
         std::cout << "클라이언트 정상 종료 : Client["<< client->getSocket().getFd() << "]" << std::endl;
         epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0);
         this->clientDel(client->getSocket().getFd());
-        return (statuscode::STATUS_OK);
+        return (STATUS_OK);
     }
     else 
     {
@@ -261,7 +261,7 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
             client->setStatusCode(500);
             epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), EPOLLOUT);
             this->clientDel(client->getSocket().getFd());
-            return (statuscode::STATUS_ERROR);
+            return (STATUS_ERROR);
         }
     }
     std::cout << client->getCharDq().size() << std::endl;
@@ -277,7 +277,7 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
     //     }
     // }
     // HTTP 내용 파싱
-    return (statuscode::STATUS_OK);
+    return (STATUS_OK);
 }
 
 /**
@@ -293,14 +293,14 @@ bool Server::nonblockingSet(int fd)
     if (flags == -1)
     {
         std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     }
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
     {
         std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
-        return (statuscode::STATUS_ERROR);
+        return (STATUS_ERROR);
     }
-    return (statuscode::STATUS_OK);
+    return (STATUS_OK);
 }
 
 /**

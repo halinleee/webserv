@@ -16,12 +16,11 @@ class Client;
  * 
  * @todo 나중에 각 status code에 대해서 확인한 후 status code의 숫자로 지정해 넘겨주도록 변경필요
  */
-namespace statuscode {
-    enum  Status {
-        STATUS_ERROR = 0,
-        STATUS_OK = 1
-    };
-}
+enum  Status 
+{
+    STATUS_ERROR = 0,
+    STATUS_OK = 1
+};
 
 /**
  * @brief recv로 수신한 원본 HTTP 요청 데이터를 바이트 단위로 누적 저장하는 deque 컨테이너

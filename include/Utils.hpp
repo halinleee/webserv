@@ -28,12 +28,4 @@ char **mapToEnvp(const EnvMap &env);
  */
 void freeSplit(char **tmp);
 
-/**
- * @brief 환경변수 맵에 새로운 환경변수를 파싱하여 추가하는 함수
- * @param env 환경변수가 저장될 EnvMap의 참조자
- * @param envAdd 추가할 환경변수 문자열 ("KEY=VALUE" 형식)
- * @details 입력받은 "KEY=VALUE" 문자열을 '=' 기준으로 잘라 map에 삽입합니다. 클라이언트 요청 분석 시 추출된 헤더나 설정값들을 동적으로 환경변수에 밀어넣을 때 유용하게 사용됩니다.
- */
-void envAdd(EnvMap &env, char *envAdd);
-
 #endif
