@@ -1,5 +1,4 @@
 #include "Utils.hpp"
-#include "type.hpp"
 
 /**
  * @fn EnvMap envpParsing(char **envp)
@@ -25,23 +24,6 @@ EnvMap envpParsing(char **envp)
         i++;
     }
     return (env);
-}
-
-/**
- * @brief 환경변수 맵에 새로운 환경변수를 파싱하여 추가하는 함수
- * @param env 환경변수가 저장될 EnvMap의 참조자
- * @param envAdd 추가할 환경변수 문자열 ("KEY=VALUE" 형식)
- */
-void envAdd(EnvMap &env, char *envAdd)
-{
-    std::string envbuffer(envAdd);
-    size_t pos = envbuffer.find('=');
-    if (pos != std::string::npos)
-    {
-        std::string key = envbuffer.substr(0, pos);
-        std::string value = envbuffer.substr(pos + 1);
-        env[key] = value;
-    }
 }
 
 /**
