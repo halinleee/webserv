@@ -49,8 +49,8 @@ int countIndent(const std::string& line)
 	}
 	indent += spaceCount / 4;
 	if (spaceCount % 4 != 0)
-		return (-1);
-	return (indent);
+		return -1;
+	return indent;
 	
 }
 
@@ -67,9 +67,9 @@ bool isBlankLine(const std::string &line)
 	for(std::string::const_iterator it = line.begin(); it != line.end(); ++it)
 	{
 		if (!std::isspace(static_cast<unsigned char>(*it)))
-			return (false); //공백이 아닌 줄
+			return false; //공백이 아닌 줄
 	}
-	return (true);//공백인 줄
+	return true;//공백인 줄
 }
 
 //구분자 단위로 잘라담는 split
@@ -90,32 +90,32 @@ std::vector<std::string> ftSplit(const std::string& line, char delim)
 			token.push_back(line.substr(start, pos - start));
 		start = pos + 1;
 	}
-	return (token);
+	return token;
 }
 
 //숫자인지 판별해주는 함수
 bool isNumber(const std::string &s)
 {
 	if (s.empty())
-		return (false);
+		return false;
 	std::string::const_iterator it = s.begin();
 	for (; it != s.end(); ++it)
 	{
 		if (!std::isdigit(static_cast<unsigned char>(*it)))
-			return (false);
+			return false;
 	}
-	return (true);
+	return true;
 }
 
 //string을 int형(정수)로 변환해주는 함수
 bool toInt (const std::string &s, unsigned int &value)
 {
 	if (!isNumber(s))
-		return (false);
+		return false;
 
 	std::stringstream ss(s);
 	ss >> value;
 	if (!ss || !ss.eof())
-		return (false);
-	return (true);
+		return false;
+	return true;
 }
