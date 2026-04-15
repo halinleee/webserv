@@ -20,19 +20,17 @@ bool parseHttpMethod(const  std::string &s, HttpMethod &out)
 	return false;
 }
 
-int Config::locationValidate(unsigned int key, const std::vector<std::string>& token, std::ifstream& configFile)
+bool Config::locationValidate(unsigned int key, const std::vector<std::string>& locationToken, std::ifstream& configFile)
 {
-	if (token.size() != 2)
-		return -1;
+	if (locationToken.size() != 2)
+		return false;
 
-	const std::string &prefix = token[1];
+	const std::string &prefix = locationToken[1];
 	servers[key].locations[prefix];
 
 	std::string line;
 	while (true)
 	{
-		//tellg: 현재 읽기 위치를 반환하는 함수
-		//streampos: 파일 안에서 지금 몇 번째 위치에 있는지”를 저장하는 변수
 		std::streampos pos = configFile.tellg();
 		if (!std::getline(configFile, line))
 			break;
@@ -42,50 +40,45 @@ int Config::locationValidate(unsigned int key, const std::vector<std::string>& t
 		
 		int indent = countIndent(line);
 		if (indent == -1)
-			return -1;
+			return false;
 		
-		if (indent == 0 && line == "end")
-		{
-			//clear: 스트림 에러 상태(eof/fail 등) 초기화
-			//seekg: 읽기 위치를 이전에 저장한 pos로 되돌림
-			configFile.clear();
-			configFile.seekg(pos);
-			return 3;
-		}
-		if (indent == 1)
+		if (indent == 0 || indent == 1)
 		{
 			configFile.clear();
 			configFile.seekg(pos);
-			return 2;
+			return true;
 		}
 		if (indent != 2)
-			return -1;
+			return false;
 		
 		removeChar(line, '\t');
 		std::vector<std::string> token = ftSplit(line, ' ');
+		if (token.empty())
+			return false;
 	
 		if (token[0] == "root")
 		{
 			if (token.size() != 2)
-				return -1;
+				return false;
 			servers[key].locations[prefix].setRoot(token[1]);
 		}
 		else if (token[0] == "index")
 		{
 			if (token.size() != 2)
-				return -1;
+				return false;
 			servers[key].locations[prefix].setIndex(token[1]);
 		}
+		
 		else if (token[0] == "methods")
 		{
 			if (token.size() < 2)
-				return -1;
+				return false;
 			servers[key].locations[prefix].clearMethods();
 			for (size_t i = 1; i < token.size(); ++i)
 			{
 				HttpMethod method;
 				if (!parseHttpMethod(token[i], method))
-					return -1;
+					return false;
 				servers[key].locations[prefix].setMethod(method);
 			}
 		}
@@ -95,32 +88,34 @@ int Config::locationValidate(unsigned int key, const std::vector<std::string>& t
 				servers[key].locations[prefix].setAutoIndex(true);
 			else if (token[1] == "off")
 				servers[key].locations[prefix].setAutoIndex(false);
+			else
+				return false;
 		}
 		else if (token[0] == "upload_dir")
 		{
 			if (token.size() != 2)
-				return -1;
+				return false;
 			servers[key].locations[prefix].setUploadDir(token[1]);
 		}
 		else if (token[0] == "return")
 		{
 			if (token.size() != 3)
-				return -1;
+				return false;
 			unsigned int num = 0;
 			if (!toInt(token[1], num))
-				return -1;
+				return false;
 			servers[key].locations[prefix].setRedirect(num, token[2]);
 		}
 		else if (token[0] == "cgi_ext")
 		{
 			if (token.size() != 3)
-				return -1;
+				return false;
 			servers[key].locations[prefix].setCgi(token[1], token[2]);
 		}
 		else
-			break;
+			return false;
 	}
-	return -1;
+	return false;
 }
 
 bool Config::errorPageValidate(unsigned int key, const std::vector<std::string>& token)
@@ -164,14 +159,36 @@ bool Config::serverDirectiveValidate(unsigned int key, const std::vector<std::st
 		return listenBodyValidate(key, token, 10000000);
 	else if (token[0] == "error_page")
 		return (errorPageValidate(key, token));
-	else if (token[0] == "location")//로케이션 검사 다끝내기
-	{
-		int i = locationValidate(key, token, configFile);
-		//반환값마다 어떤 결과보낼지 생각하기
-		return i;
-	}
+	else if (token[0] == "location")
+		return (locationValidate(key, token, configFile));
 	
+	std::cout << "Config error: Invalid server block format(serverDirectiveValidate)" << std::endl;
 	return false;
+}
+
+//end 연속성 검사 함수
+int Config::isEndSequenceValid(std::ifstream &configFile)
+{
+	std::string nextLine;
+	while (true)
+	{
+		std::streampos nextPos = configFile.tellg();
+		if (!std::getline(configFile, nextLine))
+			return 1;
+		if (isBlankLine(nextLine))
+			continue;
+		std::string tmp = nextLine;
+		removeChar(tmp, '\t');
+		std::vector<std::string> nextToken = ftSplit(tmp, ' ');
+		if (!nextToken.empty() && nextToken[0] == "server")
+		{
+			configFile.clear();
+			configFile.seekg(nextPos);
+			return 0;
+		}
+		std::cout << "Config error: Invalid server block format" << std::endl;
+		return -1;
+	}
 }
 
 /**
@@ -182,7 +199,7 @@ bool Config::serverDirectiveValidate(unsigned int key, const std::vector<std::st
  * 유효한 configfile이면 true
  * 오류있는 configfile이면 false를 반환한다
  */
-int Config::validateConfig(std::ifstream& configFile)
+int Config::validateConfig(std::ifstream &configFile)
 {
 	std::string configLine;
 
@@ -199,17 +216,18 @@ int Config::validateConfig(std::ifstream& configFile)
 		return -1;
 	}
 	else if (configFile.eof())
-	{
 		return 1;
-	}
-		
 	
 	std::vector<std::string> token = ftSplit(configLine, ' ');
+	if (token.empty())
+	{
+		std::cout << "Config error: token is empty" << std::endl;
+		return -1;
+	}
 
 	if (token[0] != "server" || !listenBodyValidate(0, token, 9999))
 	{
 		std::cout << "Config error: server or port error" << std::endl;
-		std::cout << "error line: " << configLine << std::endl;
 		return -1;
 	}
 
@@ -217,10 +235,8 @@ int Config::validateConfig(std::ifstream& configFile)
 	if (!toInt(token[1], key))
 	{
 		std::cout << "Config error: port config error" << std::endl;
-		std::cout << "error line: " << configLine << std::endl;
 		return (-1);
 	}
-	servers[key];
 		
 	while (std::getline(configFile, configLine))
 	{
@@ -229,31 +245,48 @@ int Config::validateConfig(std::ifstream& configFile)
 
 		int indent = countIndent(configLine);
 		
-		if (indent == 0 && configLine == "end")//server가 나왔을때만 end허용하게
-			return 0;
 		
 		if (indent != 1)
 		{
 			std::cout << "Config error: indent error" << std::endl;
-			std::cout << "error line: " << configLine << std::endl;
 			return -1;
 		}
 
-		removeChar(configLine, '\t');
-		token = ftSplit(configLine, ' ');
-		if (!serverDirectiveValidate(key, token, configFile)) //라인 끝에 공백 많을때 공백 처리(toInt에서 공백을 어떻게 처리하는가)
+		if (indent == 1)
 		{
-			std::cout << "error line: " << configLine << std::endl;
-			return -1;
+			removeChar(configLine, '\t');
+			token = ftSplit(configLine, ' ');
+			if (token.empty())
+			{
+				std::cout << "Config error: token is empty" << std::endl;
+				return -1;
+			}
+			if (!serverDirectiveValidate(key, token, configFile))
+			{
+				std::cout << "Config error: Invalid server block format(serverDirectiveValidate)" << std::endl;
+				return -1;
+			}
 		}
-		
+
+		if (indent == 0)
+		{
+			if (configLine == "end")
+				return (isEndSequenceValid(configFile));
+			else
+			{
+				std::cout << "Config error: Invalid server block format" << std::endl;
+				return -1;
+			}
+		}
 	}
+	std::cout << "Config error: Invalid server block format(validateConfig)" << std::endl;
 	return -1;
 	// return (1); //모든 서버 검사를 마쳤을때
 	// return (0); //한개의 서버 검사를 마쳤을때
 	// return (-1); //에러
 }
 
-
-// configFile.clear();
-// configFile.seekg(0, std::ios::beg);
+//location 부분 / 유효성 검사
+//location이 한개 이상있어야 한다
+//validateConfig에서도 location이 한번 이상 있는지 확인
+//지시어에 tab 넣었을때 왜 되냐(split 탭 들어갔을때 무시하는거 검사)

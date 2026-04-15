@@ -108,13 +108,12 @@ class LocationConfig
 	public:
 		LocationConfig()
 		{
-			root = "./www/site1";
-			index = "index.html";
+			root = 
 			autoIndex = false;
 			methods.insert(METHOD_GET); //메서드 추가할때 clear로 꼭 초기화
     		methods.insert(METHOD_POST);
     		methods.insert(METHOD_DELETE);
-			uploadDir = "/files";
+			redirectStatusCode = 301;
 		}
 		void setRoot(std::string value) { root = value; }
 		void setIndex(std::string value) { index = value; }
@@ -186,10 +185,11 @@ class Config
 		std::map<int, ServerConfig> servers;
 		
 		int validateConfig(std::ifstream& configFile);
+		int isEndSequenceValid(std::ifstream &configFile);
 		bool serverDirectiveValidate(unsigned int key, const std::vector<std::string>& token, std::ifstream& configFile);
 		bool listenBodyValidate(unsigned int key, const std::vector<std::string>& token, size_t max);
 		bool errorPageValidate(unsigned int key, const std::vector<std::string>& token);
-		int locationValidate(unsigned int key, const std::vector<std::string>& token, std::ifstream& configFile);
+		bool locationValidate(unsigned int key, const std::vector<std::string>& locationToken, std::ifstream& configFile);
 };
 
 
