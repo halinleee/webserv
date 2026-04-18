@@ -2,7 +2,13 @@ CC = c++
 CFLAGS = -std=c++98 -Wall -Wextra -Werror
 
 NAME = webserv
-SRCS = main.cpp ./src/config/Config.cpp ./src/utils/ConfigParsUtil.cpp
+
+SRCS = main.cpp \
+       src/config/Config.cpp \
+       src/config/ServerConfig.cpp \
+       src/config/LocationConfig.cpp \
+       src/utils/ConfigParsUtil.cpp
+
 OBJS = $(SRCS:.cpp=.o)
 
 %.o: %.cpp

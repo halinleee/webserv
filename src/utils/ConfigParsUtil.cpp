@@ -1,13 +1,34 @@
-#include "../../include/Config.hpp"
+#include "../../include/Util.hpp"
 
-bool removeChar (std::string &value, char delim)
+
+bool isValidPrefix(const std::string &prefix)
+{
+	if (prefix.empty())// '/'로 시작해야 통과시킬지 말지 결정
+		return false;
+	
+	for (size_t i = 0; i < prefix.size(); ++i)
+	{
+		if (std::isspace(static_cast<unsigned char>(prefix[i])))
+			return false;
+	}
+	return true;
+}
+
+/**
+ * @struct removeIndent
+ * @brief 들여쓰기 제거해주는 함수
+ * 
+ * 구분자가 아닌 문자를 만나면 그 위치부터 반환
+ * 즉 문자열 앞부분 들여쓰기 지울때 사용한다
+ */
+bool removeIndent(std::string &value, char delim)
 {
     size_t pos = 0;
 
-    while ((pos = value.find(delim, pos)) != std::string::npos)
-    {
-        value.erase(pos, 1);
-    }
+    while (pos < value.size() && value[pos] == delim)
+        ++pos;
+
+    value.erase(0, pos);
     return true;
 }
 
@@ -93,7 +114,7 @@ std::vector<std::string> ftSplit(const std::string& line, char delim)
 	return token;
 }
 
-//숫자인지 판별해주는 함수
+//문자열을 숫자인지 판별해주는 함수
 bool isNumber(const std::string &s)
 {
 	if (s.empty())
