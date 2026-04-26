@@ -53,23 +53,21 @@ int Config::parseServerBlock(std::ifstream &configFile)
 		statusMessage = "Config error: config file is empty";
 		return -1;
 	}
-	else if (configFile.eof())
+	else if (configFile.eof() && configLine.empty())
 		return 1;
 	
 	//server port 검사
 	std::vector<std::string> serverToken = ftSplit(configLine, ' ');
 	if (serverToken.empty())
 	{
-		statusMessage = "Config error: token is empty";
+		statusMessage = "Config error: server token is empty";
 		return -1;
 	}
-
-	if (serverToken[0] != "server" || !parseListen(serverToken, 9999))
+	if (serverToken[0] != "server" || !parseListen(serverToken, 65530))
 	{
 		statusMessage = "Config error: server or port error\nerror line: " + configLine;
 		return -1;
 	}
-
 	unsigned int key = 0;
 	if (!toInt(serverToken[1], key))
 	{
@@ -92,17 +90,15 @@ int Config::parseServerBlock(std::ifstream &configFile)
 		return -1;
 }
 
-//매개변수로 config file받음
-//얘 자체로 생성자로 만들기
 Config::Config()
 {
 	std::ifstream configFile("./config/webserv.conf");
 	if (!configFile.is_open())
 	{
-		statusMessage = "파일 열기 실풰";
+		statusMessage = "Failed to open file";
 		return ;
 	}
-		
+
 	//.conf 확장자가 맞는지 확인하는 거 추가
 	while (true)
 	{

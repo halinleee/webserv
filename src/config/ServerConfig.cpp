@@ -5,7 +5,7 @@
  * @brief 에러페이지 유효성 검사 및 값 세팅
  * 
  */
-bool ServerConfig::parseErrorPage(const std::vector<std::string>& token)
+bool ServerConfig::parseErrorPage(std::vector<std::string> &token)
 {
 	if (token.size() != 3)
 		return false;
@@ -14,7 +14,7 @@ bool ServerConfig::parseErrorPage(const std::vector<std::string>& token)
 	if (!toInt(token[1], num))
 		return false;
 	
-	if (!isValidPrefix(token[2]))
+	if (!isValidUriPath(token[2]))
 		return false;
 	errorPages[num] = token[2];
 	return true;
@@ -25,7 +25,7 @@ bool ServerConfig::parseErrorPage(const std::vector<std::string>& token)
  * @brief 서버 포트번호와 body size 유효성 검사 및 값 세팅
  * 
  */
-bool ServerConfig::parseBody(const std::vector<std::string>& token, size_t max)
+bool ServerConfig::parseBody(const std::vector<std::string> &token, size_t max)
 {
 	if (token.size() != 2)
 		return false;
@@ -47,7 +47,7 @@ bool ServerConfig::parseBody(const std::vector<std::string>& token, size_t max)
  * @brief indent 1라인 진입함수
  * 
  */
-bool ServerConfig::parseServerDirective(const std::vector<std::string>& token, std::ifstream& configFile)
+bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::ifstream &configFile)
 {	
 	if (token[0] == "client_max_body_size")
 		return parseBody(token, 10000000);
@@ -58,6 +58,8 @@ bool ServerConfig::parseServerDirective(const std::vector<std::string>& token, s
 		if (token.size() != 2 || !isValidPrefix(token[1]))
 			return false;
 		LocationConfig locConfig(configFile);
+		if (!locConfig.isOk())
+			return false;
 		locations[token[1]] = locConfig;
 		return true;
 	}
@@ -102,7 +104,6 @@ void ServerConfig::EndSequenceValid(std::ifstream &configFile)
 ServerConfig::ServerConfig(std::ifstream &configFile, std::string configLine)
 {
 	statusMessage = "Default Error";
-
 	while (std::getline(configFile, configLine))
 	{
 		if (isBlankLine(configLine))
@@ -121,7 +122,7 @@ ServerConfig::ServerConfig(std::ifstream &configFile, std::string configLine)
 			std::vector<std::string> DirectiveToken = ftSplit(configLine, ' ');
 			if (DirectiveToken.empty())
 			{
-				statusMessage = "Config error: token is empty";
+				statusMessage = "Config error: Directive token is empty";
 				return ;
 			}
 			

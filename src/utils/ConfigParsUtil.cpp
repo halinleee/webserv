@@ -1,16 +1,59 @@
 #include "../../include/Util.hpp"
 
 
-bool isValidPrefix(const std::string &prefix)
+bool isValidUriPath(std::string &path)
 {
-	if (prefix.empty())// '/'로 시작해야 통과시킬지 말지 결정
+	if (path.empty())// nginx는 지시어의 경로가 '/'로 시작하지 않아도 url로 해석해서 '/'를 붙여서 처리함
 		return false;
 	
-	for (size_t i = 0; i < prefix.size(); ++i)
+	std::string str;
+	bool prevSlash = false;
+	for (size_t i = 0; i < path.size(); ++i)
 	{
-		if (std::isspace(static_cast<unsigned char>(prefix[i])))
+		const unsigned char ch = static_cast<unsigned char>(path[i]);
+
+		if (std::isspace(ch)) 
 			return false;
+
+		if (path[i] == '/')
+		{
+			if (prevSlash)
+				continue;
+			prevSlash = true;
+		}
+		else
+			prevSlash = false;
+		str.push_back(path[i]);
 	}
+	path.swap(str);
+	return true;
+}
+
+bool isValidPrefix(std::string &path)
+{
+	if (path.empty() || path[0] != '/')// nginx는 location의 prefix 경로가 '/'로 시작하지 않으면 에러로 처리함
+		return false;
+	
+	std::string str;
+	bool prevSlash = false;
+	for (size_t i = 0; i < path.size(); ++i)
+	{
+		const unsigned char ch = static_cast<unsigned char>(path[i]);
+
+		if (std::isspace(ch)) 
+			return false;
+
+		if (path[i] == '/')
+		{
+			if (prevSlash)
+				continue;
+			prevSlash = true;
+		}
+		else
+			prevSlash = false;
+		str.push_back(path[i]);
+	}
+	path.swap(str);
 	return true;
 }
 
@@ -37,10 +80,7 @@ bool removeIndent(std::string &value, char delim)
  * @brief 탭 개수 세어주는 함수
  * 
  * '/t'는 탭 1개로 본다
- * 
- * 공백 4개는 탭 1개로 보는 방식
- * 
- * 공백 4의 배수가 아닐 경우 에러처리(공백 8개 = 탭 2개)
+ * 공백은 들여쓰기로 안본다
  * 
  * 반환값: 탭 개수
  */
@@ -48,31 +88,19 @@ int countIndent(const std::string& line)
 {
 	std::string::const_iterator it  = line.begin();
 	int indent = 0;
-    int spaceCount = 0;
 	while (it != line.end())
 	{
 		if (*it == '\t')
 		{
-			indent += spaceCount / 4;
-			if (spaceCount % 4 != 0)
-				return (-1);
-			spaceCount = 0;
 			++indent;
 			++it;
 		}
 		else if (*it == ' ')
-		{
-			++spaceCount;
-			++it;
-		}
+			return -1;
 		else
 			break;
 	}
-	indent += spaceCount / 4;
-	if (spaceCount % 4 != 0)
-		return -1;
 	return indent;
-	
 }
 
 /**

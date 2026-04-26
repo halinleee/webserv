@@ -7,12 +7,12 @@ static bool parseHttpMethod(const std::string &s, HttpMethod &out)
 		out = METHOD_GET;
 		return true;
 	}
-	if (s == "POST")
+	else if (s == "POST")
 	{
 		out = METHOD_POST;
 		return true;
 	}
-	if (s == "DELETE")
+	else if (s == "DELETE")
 	{
 		out = METHOD_DELETE;
 		return true;
@@ -32,7 +32,7 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 		if (token.size() != 2)
 			return false;
 		
-		if (!isValidPrefix(token[1]))
+		if (!isValidUriPath(token[1]))
 			return false;
 		root = token[1];
 	}
@@ -41,14 +41,16 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 		if (token.size() != 2)
 			return false;
 		
-		if (!isValidPrefix(token[1]))
+		if (!isValidUriPath(token[1]))
 			return false;
 		index = token[1];
 	}
 	else if (token[0] == "methods")
 	{
+
 		if (token.size() < 2)
 			return false;
+		
 		methods.clear();
 		for (size_t i = 1; i < token.size(); ++i)
 		{
@@ -60,6 +62,9 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 	}
 	else if (token[0] == "autoindex")
 	{
+		if (token.size() != 2)
+			return false;
+
 		if (token[1] == "on")
 			autoIndex = true;
 		else if (token[1] == "off")
@@ -72,7 +77,7 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 		if (token.size() != 2)
 			return false;
 
-		if (!isValidPrefix(token[1]))
+		if (!isValidUriPath(token[1]))
 			return false;
 		uploadDir = token[1];
 	}
@@ -85,7 +90,7 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 		if (!toInt(token[1], num))
 			return false;
 
-		if (!isValidPrefix(token[2]))
+		if (!isValidUriPath(token[2]))
 			return false;
 		redirectStatusCode = num; 
 		redirectPath = token[2];
@@ -95,7 +100,7 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 		if (token.size() != 3)
 			return false;
 
-		if (!isValidPrefix(token[2]))
+		if (!isValidUriPath(token[2]))
 			return false;
 		cgiExtension = token[1];
 		cgiPath = token[2];
@@ -107,12 +112,13 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 }
 
 /**
- * @struct parselocation
- * @brief location 유효성 검사 및 값 세팅
+ * @struct LocationConfig
+ * @brief locationconfig의 일반생성자이자 location 블록 안에 지시어들의 들여쓰기를 검사하고 값을 담는 함수를 부른다.
  * 
  */
 LocationConfig::LocationConfig(std::ifstream &configFile)
 {
+	redirectStatusCode = 0;
 	std::string line;
 	while (true)
 	{
@@ -132,7 +138,7 @@ LocationConfig::LocationConfig(std::ifstream &configFile)
 			status = true;
 			return ;
 		}
-		if (indent == -1 || indent != 2)
+		if (indent == -1 || indent != 2) //indent -1은 countIndent의 에러처리
 		{
 			status = false;
 			return ;

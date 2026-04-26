@@ -11,6 +11,8 @@ bool removeIndent (std::string &value, char delim);
 std::vector<std::string> ftSplit(const std::string &line, char delim);
 bool isNumber(const std::string &s);
 bool toInt (const std::string &s, unsigned int &value);
-bool isValidPrefix(const std::string &prefix);
+bool isValidUriPath(std::string &path);
+bool isValidPrefix(std::string &path);
+
 
 # endif

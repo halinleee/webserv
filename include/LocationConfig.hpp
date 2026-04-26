@@ -105,6 +105,7 @@ class LocationConfig
 		std::string redirectPath;
 		std::string cgiExtension;
 		std::string cgiPath;
+
 		bool status;
 
 	private:
@@ -116,18 +117,15 @@ class LocationConfig
 			root = "./www/site1";
 			index = "index.html";
 			autoIndex = false;
+			redirectStatusCode = 0;
 			methods.insert(METHOD_GET); //메서드 추가할때 clear로 꼭 초기화
-    		methods.insert(METHOD_POST);
-    		methods.insert(METHOD_DELETE);
-			uploadDir = "./uploads";
-			redirectStatusCode = 301;
-			redirectPath = "/files";
-			cgiExtension = ".py";
-			cgiPath = "/file";
+			methods.insert(METHOD_POST);
+			methods.insert(METHOD_DELETE);
 		}
 		LocationConfig(std::ifstream &configFile);
 
-
+		bool isOk() const { return status; }
+		
 		const std::string& getRoot() const { return root; }
         const std::string& getIndex() const { return index; }
         bool getAutoIndex() const { return autoIndex; }

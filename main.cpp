@@ -1,5 +1,6 @@
 #include "./include/Config.hpp"
 #include <iostream>
+#include <sstream>
 
 static const char* methodToStr(HttpMethod m)
 {
@@ -14,7 +15,7 @@ static const char* methodToStr(HttpMethod m)
 
 static void dumpLocation(const std::string& prefix, const LocationConfig& loc)
 {
-    std::cout << "    location: " << prefix << "\n";
+    std::cout << "    location " << prefix << "\n";
     std::cout << "      root: " << loc.getRoot() << "\n";
     std::cout << "      index: " << loc.getIndex() << "\n";
     std::cout << "      autoindex: " << (loc.getAutoIndex() ? "on" : "off") << "\n";
@@ -32,20 +33,19 @@ static void dumpLocation(const std::string& prefix, const LocationConfig& loc)
 
 static void dumpServer(unsigned int port, const ServerConfig& srv)
 {
-    std::cout << "== server " << port << " ==\n";
+    std::cout << "server " << port << "\n";
+    std::cout << "  statusMessage: " << srv.getStatusMessage() << "\n";
     std::cout << "  client_max_body_size: " << srv.getClientMaxBodySize() << "\n";
 
-    // error_pages
     std::cout << "  error_pages:\n";
-    std::map<unsigned int, std::string> eps = srv.getErrorPages(); // getter가 value 반환이라 복사해서 사용
+    std::map<unsigned int, std::string> eps = srv.getErrorPages();
     if (eps.empty())
         std::cout << "    (none)\n";
     for (std::map<unsigned int, std::string>::const_iterator it = eps.begin(); it != eps.end(); ++it)
         std::cout << "    " << it->first << " -> " << it->second << "\n";
 
-    // locations
     std::cout << "  locations:\n";
-    std::map<std::string, LocationConfig> locs = srv.getLocations(); // value 반환
+    std::map<std::string, LocationConfig> locs = srv.getLocations();
     if (locs.empty())
         std::cout << "    (none)\n";
     for (std::map<std::string, LocationConfig>::const_iterator it = locs.begin(); it != locs.end(); ++it)
@@ -54,25 +54,70 @@ static void dumpServer(unsigned int port, const ServerConfig& srv)
     std::cout << "\n";
 }
 
+static bool parseUint(const std::string& s, unsigned int& out)
+{
+    std::stringstream ss(s);
+    unsigned long v = 0;
+    char extra = 0;
+
+    ss >> v;
+    if (ss.fail())
+        return false;
+
+    // 남는 문자 있으면 실패(공백은 허용)
+    if (ss >> extra)
+        return false;
+
+    if (v > 65535)
+        return false;
+
+    out = static_cast<unsigned int>(v);
+    return true;
+}
+
 int main()
 {
-    // Config 생성자에서 ./config/webserv.conf 를 열고 파싱합니다.
-    // (에러/상태 메시지는 Config 생성자 내부에서 출력 중)
     Config config;
 
-    // 전체 데이터 덤프
-    std::map<unsigned int, ServerConfig> servers = config.getConfig(); // 현재 getter가 by-value라 복사됨
+    std::cout << "[Config status] " << config.getStatusMessage() << "\n";
+
+    std::map<unsigned int, ServerConfig> servers = config.getConfig();
     if (servers.empty())
     {
-        std::cout << "No servers parsed.\n";
+        std::cout << "(no servers)\n";
         return 0;
     }
 
-    if (config.getStatusMessage() != "ok")
-        return 0;
-    std::cout << "\n==== Parsed Config Dump ====\n";
-    for (std::map<unsigned int, ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it)
-        dumpServer(it->first, it->second);
+    // 1) 포트 목록만 출력
+    std::cout << "Available ports:";
+    for (std::map<unsigned int, ServerConfig>::const_iterator it = servers.begin();
+         it != servers.end(); ++it)
+    {
+        std::cout << " " << it->first;
+    }
+    std::cout << "\n";
 
+    // 2) 사용자 입력 받기
+    std::cout << "Enter port: ";
+    std::string line;
+    if (!std::getline(std::cin, line))
+        return 0;
+
+    unsigned int port = 0;
+    if (!parseUint(line, port))
+    {
+        std::cout << "Invalid port input.\n";
+        return 0;
+    }
+
+    // 3) 해당 포트 서버만 출력
+    std::map<unsigned int, ServerConfig>::const_iterator it = servers.find(port);
+    if (it == servers.end())
+    {
+        std::cout << "No server for port " << port << ".\n";
+        return 0;
+    }
+
+    dumpServer(it->first, it->second);
     return 0;
 }

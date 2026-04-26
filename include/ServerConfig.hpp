@@ -27,9 +27,9 @@ class ServerConfig
 		std::string statusMessage;
 
 	private:
-		bool parseErrorPage(const std::vector<std::string> &token);
+		bool parseErrorPage(std::vector<std::string> &token);
 		bool parseBody(const std::vector<std::string> &token, size_t max);
-		bool parseServerDirective(const std::vector<std::string> &token, std::ifstream& configFile); 
+		bool parseServerDirective(std::vector<std::string> &token, std::ifstream& configFile); 
 		void  EndSequenceValid(std::ifstream &configFile);
 
 	public:
