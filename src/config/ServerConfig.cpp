@@ -8,17 +8,17 @@ void ServerConfig::setPrefixes(void)
 		std::cout << it->first << std::endl;
 		prefixes.push_back(it->first);
 	}
-
 	return ;
 }
-// string url : /files/*/babo
-// prefix :    /files
+// string url : /files/*/babo /files/stella/steel.jpg
+// prefixes :    /files -> /upload -> /redir
 // 토큰단위로 비교하기(한글자씩 비교 안해도 됨)
 LocationConfig ServerConfig::Matching(std::string url)
 {
+	std::vector<std::string> urlToken = ftSplit(url, '/');
 	for (size_t i = 0; prefixes.size() > i; ++i)
 	{
-		
+		if (prefixes[i] == urlToken[1])
 	}
 }
 
