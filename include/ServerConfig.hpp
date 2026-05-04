@@ -25,22 +25,29 @@ class ServerConfig
 		std::map<unsigned int, std::string> errorPages;
 		std::map<std::string, LocationConfig> locations;
 		std::string statusMessage;
+		std::vector<std::string> prefixes;
 
 	private:
 		bool parseErrorPage(std::vector<std::string> &token);
 		bool parseBody(const std::vector<std::string> &token, size_t max);
 		bool parseServerDirective(std::vector<std::string> &token, std::ifstream& configFile); 
-		void  EndSequenceValid(std::ifstream &configFile);
+		void endSequenceValid(std::ifstream &configFile); 
+		void setPrefixes(void);
 
 	public:
-		ServerConfig() {};
+		ServerConfig()
+		{
+			clientMaxBodySize = 1000000;
+		};
 		ServerConfig(std::ifstream &configFile, std::string configLine);
 		size_t getClientMaxBodySize() const { return clientMaxBodySize; }
 		std::map<unsigned int, std::string> getErrorPages() const { return errorPages; }
 		std::map<std::string, LocationConfig> getLocations() const { return locations; }
 		std::string getStatusMessage() const { return statusMessage; }
+
+	public:
+		LocationConfig Matching(std::string url);
 	
 };
-
 
 # endif

@@ -27,7 +27,7 @@ static void dumpLocation(const std::string& prefix, const LocationConfig& loc)
     std::cout << "\n";
 
     std::cout << "      upload_dir: " << loc.getUploadDir() << "\n";
-    std::cout << "      return: " << loc.getRedirectStatusCode() << " " << loc.getRedirectPath() << "\n";
+    std::cout << "      return: " << " " << loc.getRedirectPath() << "\n";
     std::cout << "      cgi_ext: " << loc.getCgiExtension() << " " << loc.getCgiPath() << "\n";
 }
 

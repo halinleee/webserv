@@ -1,8 +1,9 @@
 #include "../../include/Config.hpp"
 /**
- * @struct parselistenBody
- * @brief 서버 포트번호와 body size 유효성 검사 및 값 세팅
- * 
+ * @brief `server <port>` 헤더의 포트 번호 형식을 검증한다.
+ * @param token 공백 기준으로 분리된 토큰. 예: {"server", "8080"}
+ * @param max 허용할 최대 포트 번호 (보통 65535)
+ * @return 포트가 유효하면 true, 아니면 false
  */
 bool Config::parseListen(const std::vector<std::string>& token, size_t max)
 {
@@ -20,21 +21,15 @@ bool Config::parseListen(const std::vector<std::string>& token, size_t max)
 
 
 /**
- * @struct parseServerBlock
- * @brief server port 설정과 indent 1번 라인에 속해있는 라인 설정 함수(유효성 검사)
- * 
- * server에 포트번호가 맞게 왔는지 확인 뒤 map형태인 servers에 key값 등록
- * 
- * 들여쓰기(indent)가 맞게 적용되었는지 확인 뒤 indent 1번 라인을 검사 및 값 넣는 함수 적용(serverDirectiveValidate)
- * indent 1번 라인 예시 : client_max_body_size 10000000, error_page 404 /errors/404.html, location /files 등
- * 
- * server 포트로 열고 end로 잘 닫혔는지 검사함
- * 
- * return (1); //모든 서버 검사를 마쳤을때
- * 
- * return (0); //한개의 서버 검사를 마쳤을때
- * 
- * return (-1); //에러
+ * @brief config 파일에서 server 블록 1개를 파싱하여 서버 맵에 등록한다.
+ * @details
+ * - server 헤더(`server <port>`)를 읽고 포트를 검증한다.
+ * - 이후 블록 본문은 ServerConfig 파서에 위임한다.
+ * @param configFile 열린 config 파일 스트림
+ * @retval  1 더 이상 읽을 server가 없어서 전체 파싱이 끝난 경우
+ * @retval  0 server 1개를 정상 처리했고 다음 server를 계속 파싱해야 하는 경우
+ * @retval -1 파싱 오류가 발생한 경우
+ * @note 오류 상세는 statusMessage에 저장된다.
  */
 int Config::parseServerBlock(std::ifstream &configFile)
 {
@@ -89,9 +84,27 @@ int Config::parseServerBlock(std::ifstream &configFile)
 	else
 		return -1;
 }
-
+/**
+ * @brief 기본 설정 파일(`./config/webserv.conf`)을 열고 전체 server 블록을 파싱한다.
+ * @details 파일 오픈 실패 또는 파싱 실패 시 statusMessage에 오류 상태를 저장하고 종료한다.
+ * @note 이 생성자는 예외를 던지지 않고 statusMessage로 상태를 전달한다.
+ */
 Config::Config()
 {
+	// std::string configPath;
+
+    // if (argc == 2)
+    //     configPath = argv[1];
+    // else
+    //     configPath = "./config/webserv.conf"; // default
+
+    // std::ifstream configFile(configPath.c_str());
+    // if (!configFile.is_open())
+    // {
+    //     std::cerr << "Failed to open config file: " << configPath << std::endl;
+    //     return 1;
+    // }
+
 	std::ifstream configFile("./config/webserv.conf");
 	if (!configFile.is_open())
 	{
@@ -100,6 +113,7 @@ Config::Config()
 	}
 
 	//.conf 확장자가 맞는지 확인하는 거 추가
+	//parseServerBlock의 반환값이 1이면 모든 서버 검증 완료. -1이면 에러. 나머지는 서버 한개 검증 완료.
 	while (true)
 	{
 		int res = parseServerBlock(configFile);

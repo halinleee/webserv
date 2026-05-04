@@ -101,7 +101,6 @@ class LocationConfig
 		bool autoIndex;
 		std::set<HttpMethod> methods;
 		std::string uploadDir;
-		unsigned int redirectStatusCode;
 		std::string redirectPath;
 		std::string cgiExtension;
 		std::string cgiPath;
@@ -114,10 +113,7 @@ class LocationConfig
 	public:
 		LocationConfig()
 		{
-			root = "./www/site1";
-			index = "index.html";
 			autoIndex = false;
-			redirectStatusCode = 0;
 			methods.insert(METHOD_GET); //메서드 추가할때 clear로 꼭 초기화
 			methods.insert(METHOD_POST);
 			methods.insert(METHOD_DELETE);
@@ -131,7 +127,6 @@ class LocationConfig
         bool getAutoIndex() const { return autoIndex; }
         const std::set<HttpMethod>& getMethods() const { return methods; }
         const std::string& getUploadDir() const { return uploadDir; }
-        int getRedirectStatusCode() const { return redirectStatusCode; }
         const std::string& getRedirectPath() const { return redirectPath; }
         const std::string& getCgiExtension() const { return cgiExtension; }
         const std::string& getCgiPath() const { return cgiPath; }

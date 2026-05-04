@@ -18,7 +18,7 @@
  * @brief 여러 서버 설정을 관리하는 최상위 구조체
  */
 class Config
-{
+{ 
 	private:
 		/**
 		 * @var servers
