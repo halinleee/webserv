@@ -6,7 +6,7 @@
 * 서버 초기화 단계에서 메모리를 확보하고 envp를 맵 형태로 변환하여 보관합니다.
 * @param envp 메인 함수에서 전달받은 환경변수
 */
-Server::Server(char **envp) : serverSocket(NULL), client(8192, NULL), env(envpParsing(envp))
+Server::Server(char **envp) : serverActive(true), serverSocket(NULL), client(8192, NULL), env(envpParsing(envp))
 {
 }
 
@@ -70,7 +70,8 @@ bool Server::eventProcess(Epoll &epoll)
     FD currentFd;
     u_int64_t currentEvent;
     int eventCount = 0;
-    while(1)
+    int index = 0;
+    while(serverActive)
     {
         if ((eventCount = epoll.epWait()) < 0)
             return (STATUS_ERROR); 
@@ -89,6 +90,8 @@ bool Server::eventProcess(Epoll &epoll)
                     return (STATUS_ERROR);
             }
         }
+        if (this->inClientVec.size() > 0)
+            checkKeepAliveClient(index);
     }
     return (STATUS_OK);
 }
@@ -102,22 +105,53 @@ bool Server::eventProcess(Epoll &epoll)
 */
 bool Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
 {
-    if (currentEvent & EPOLLERR || currentEvent & EPOLLHUP)
+    if (this->pipeToClientMap.count(currentFd) > 0)
     {
-        epoll.epollControl(EPOLL_CTL_DEL, currentFd, 0);
-        clientDel(currentFd);
-        return (STATUS_ERROR);
+        Client *pipeClient = this->client[this->pipeToClientMap[currentFd]];
+        if (currentEvent & EPOLLERR || currentEvent & EPOLLHUP)
+        {
+            epoll.epollControl(EPOLL_CTL_DEL, currentFd, 0);
+            deleteClient(pipeClient->getSocket().getFd());
+            return (STATUS_ERROR);
+        }
+        if (currentEvent & EPOLLIN)
+        {
+            std::cout << "pipe Read in" << std::endl;
+            cgiPipeRead(epoll, pipeClient);
+        }
+        if (currentEvent & EPOLLOUT)
+        {
+            std::cout << "pipe Write in" << std::endl;
+            cgiPipeWrite(epoll, pipeClient);
+        }
+        return (STATUS_OK);
     }
-    if (clientExist(currentFd) && currentEvent & EPOLLIN) 
+    if (clientExist(currentFd))
     {
-        std::cout << currentFd << "EPOLL_IN" << std::endl;
-        if (!clientRequest(epoll, this->client[currentFd]))
+        if (currentEvent & EPOLLERR || currentEvent & EPOLLHUP)
+        {
+            epoll.epollControl(EPOLL_CTL_DEL, currentFd, 0);
+            deleteClient(currentFd);
             return (STATUS_ERROR);
-    }
-    if (clientExist(currentFd) && (currentEvent & EPOLLOUT)) {
-        std::cout << currentFd << "EPOLL_OUT" << std::endl;
-        if (!clientResponse(epoll, this->client[currentFd]))
-            return (STATUS_ERROR);
+        }
+        if (currentEvent & EPOLLIN) 
+        {
+            std::cout << currentFd << "EPOLL_IN" << std::endl;
+            if (!clientRequest(epoll, this->client[currentFd]))
+            {
+                std::cerr << "clientRequest Error" << std::endl;
+                return (STATUS_ERROR);
+            }
+        }
+        if (currentEvent & EPOLLOUT) 
+        {
+            std::cout << currentFd << "EPOLL_OUT" << std::endl;
+            if (!clientResponse(epoll, this->client[currentFd]))
+            {
+                std::cerr << "clientResponse Error" << std::endl;
+                return (STATUS_ERROR);
+            }
+        }
     }
     return (STATUS_OK);
 }
@@ -132,12 +166,10 @@ bool Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
  * @todo recv로 내용을 다 담기 전까지 response를 보내지 않고 return하는 로직을 추가해야함
  * @todo keep-alive에 대한 timeAct, timeOut관련해서 로직 추가
  * @todo send한 내용의 길이를 response의 총 길이와 비교하는 로직 추가(if문 분기는 작성완료, length를 더하는 로직 작성)
- * @todo send및 epoll에 대한 실패 로직 추가
  */
 bool Server::clientResponse(Epoll &epoll, Client *client)
 {
     std::string reciveVecRequest((client->getCharDq().begin()), (client->getCharDq().end()));
-    ssize_t length = 0;
     std::string html_body = "<html><body>";
     html_body += "<h1>Received HTTP Request:</h1>";
     html_body += "<pre>" + reciveVecRequest + "</pre>";
@@ -152,17 +184,46 @@ bool Server::clientResponse(Epoll &epoll, Client *client)
     response += "\r\n";
     response += html_body;
 
-    length = send(client->getSocket().getFd(), response.c_str(), response.size(), 0);
-    if (length < 0)
-        return (STATUS_ERROR);
-    if (static_cast<size_t>(length) == response.size())
+    if (client->response.empty())    
     {
-        epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0);
-        this->clientDel(client->getSocket().getFd());
-        return (STATUS_OK);
+        std::cout << "normal response send" << std::endl;
+        client->response = response;
     }
     else
+        std::cout << "cgi response send" << std::endl;
+    if (!serverSend(client))
         return (STATUS_OK);
+    epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0);
+    return (STATUS_OK);
+}
+
+/**
+ * @brief 서버에서 client에게 내용을 보내는 함수
+ * 
+ * client의 response 변수에 있는 response 내용을 보냄(error의 경우 그 상황에 맞춰서 http메세지로 바꿔서 전송하면 됨)
+ * @param client 보낼 clinet 객체
+ * @return 함수의 성공 여부
+ * @todo 나중에 response가 vector로 변경되면 erase를 하는 로직 추가
+ */
+int Server::serverSend(Client *client)
+{
+    ssize_t targetSize = 0;
+    ssize_t length = 0;
+
+    targetSize = client->response.size();
+    length = send(client->getSocket().getFd(), client->response.c_str(), targetSize, 0);
+    std::cout << "response print" << std::endl;
+    std::cout << client->response << std::endl;
+    client->response.clear();
+    if (length < 0)
+        return (STATUS_ERROR);
+    if (static_cast<ssize_t>(length) == targetSize)
+        return (STATUS_OK);
+    else
+    {
+        client->response = client->response.substr(length);
+        return (STATUS_RE);
+    }
 }
 
 /**
@@ -220,10 +281,11 @@ bool Server::clientAccept(Epoll &epoll, Socket *socket)
     }
     std::cout << "Client " << tmpFd <<"(" << tmpSocket->getAddr().sin_addr.s_addr << ") 포트 " << tmpSocket->getAddr().sin_port << " 를 통해서 접속" << std::endl;
     this->client[tmpFd] = new Client(tmpSocket, this->env);
+    this->inClientVec.push_back(tmpFd);
     if (!(epoll.epollControl(EPOLL_CTL_ADD, tmpFd, EPOLLIN)))
     {
         std::cerr << "epoll ADD failed for FD: " << tmpFd << std::endl;
-        this->clientDel(tmpFd);
+        this->deleteClient(tmpFd);
         return (STATUS_ERROR);
     }
     return (STATUS_OK);
@@ -240,15 +302,16 @@ bool Server::clientAccept(Epoll &epoll, Socket *socket)
 bool Server::clientRequest(Epoll &epoll, Client *client)
 {
     unsigned char received[4096];
-    // int cgiFlag = 0;
+    int cgiFlag = 0;
     int length = recv(client->getSocket().getFd(), received, sizeof(received) -1, 0);
+    client->timeSet();
     if (length < 0)
         return (STATUS_ERROR);
     else if (length == 0)
     {
         std::cout << "클라이언트 정상 종료 : Client["<< client->getSocket().getFd() << "]" << std::endl;
         epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0);
-        this->clientDel(client->getSocket().getFd());
+        this->deleteClient(client->getSocket().getFd());
         return (STATUS_OK);
     }
     else 
@@ -260,47 +323,149 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
         {
             client->setStatusCode(500);
             epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), EPOLLOUT);
-            this->clientDel(client->getSocket().getFd());
+            this->deleteClient(client->getSocket().getFd());
             return (STATUS_ERROR);
         }
     }
-    std::cout << client->getCharDq().size() << std::endl;
-    std::cout << received;
-    // if (cgiFlag)
-    // { // 여기있는 조건문으로 우선 cgi를 킬지 안킬지 하는데 판단하는 조건을 나중에 추가해야함
-    //     if (cgiRun(epoll, socket->getFd()))
-    //     {
-    //         this->client[socket->getFd()]->setStatusCode(500);
-    //         epoll.epollControl(EPOLL_CTL_DEL, socket->getFd(), EPOLLIN | EPOLLOUT);
-    //         this->clientDel(socket->getFd());
-    //         return ;
-    //     }
-    // }
+    // std::cout << client->getCharDq().size() << std::endl;
+    // std::cout << received;
+    if (cgiFlag)
+    { // 여기있는 조건문으로 우선 cgi를 킬지 안킬지 하는데 판단하는 조건을 나중에 추가해야함
+        if (!cgiRun(epoll, client))
+        {
+            client->setStatusCode(500);
+            epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), EPOLLOUT);
+            this->deleteClient(client->getSocket().getFd());
+            return (STATUS_ERROR);
+        }
+    }
     // HTTP 내용 파싱
     return (STATUS_OK);
 }
 
 /**
- * @brief 특정 파일 디스크립터를 논블로킹(Non-blocking) 모드로 설정하는 함수
- * 
- * fcntl 함수를 통해 기존 플래그를 읽어온 후, O_NONBLOCK 플래그를 비트 연산으로 추가하여 커널 I/O 작업(recv, send 등) 시 대기(Block) 상태에 빠지지 않도록 처리합니다.
- * @param fd 설정할 파일 디스크립터
- * @return Error 발생시 0, 정상 동작시 1반환 (현재 enum을 통해서 type.hpp에 정의)
+ * @brief CGI 프로그램을 실행하고 파이프를 설정하는 함수
+ * @param epoll 이벤트를 관리할 Epoll 객체
+ * @param eventSocket 클라이언트 소켓의 FD
  */
-bool Server::nonblockingSet(int fd)
+bool Server::cgiRun(Epoll &epoll, Client *client)
 {
-    int flags = fcntl(fd, F_GETFL, 0);
-    if (flags == -1)
-    {
-        std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
+    Cgi cgi;
+    pid_t tmpPid;
+    int pipeInFd[2], pipeOutFd[2];
+    int eventSocket = client->getSocket().getFd();
+    
+    if (pipe(pipeInFd) < 0)
         return (STATUS_ERROR);
-    }
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
-    {
-        std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
+    if (pipe(pipeOutFd) < 0)
         return (STATUS_ERROR);
+    
+    fcntl(pipeInFd[0], F_SETFD, FD_CLOEXEC);
+    fcntl(pipeInFd[1], F_SETFD, FD_CLOEXEC);
+    fcntl(pipeOutFd[0], F_SETFD, FD_CLOEXEC);
+    fcntl(pipeOutFd[1], F_SETFD, FD_CLOEXEC);
+    this->pipeToClientMap[pipeInFd[1]] = eventSocket;
+    this->pipeToClientMap[pipeOutFd[0]] = eventSocket;
+    nonblockingSet(pipeInFd[1]);
+    nonblockingSet(pipeOutFd[0]);
+    if (!(epoll.epollControl(EPOLL_CTL_DEL, eventSocket, EPOLLOUT)))
+        return (STATUS_ERROR);
+    if (!(epoll.epollControl(EPOLL_CTL_ADD, pipeInFd[1], EPOLLOUT)))
+        return (STATUS_ERROR);
+    if (!(epoll.epollControl(EPOLL_CTL_ADD, pipeOutFd[0], EPOLLIN)))
+        return (STATUS_ERROR);
+    if (static_cast<int>(tmpPid = cgi.excute(this->env, pipeInFd, pipeOutFd)) < 0)
+        return (STATUS_ERROR);
+    else
+    {
+        client->setPid(tmpPid);
+        client->setPipeFd(pipeInFd, pipeOutFd);
     }
     return (STATUS_OK);
+}
+
+/**
+ * @brief CGI 프로세스로부터 데이터를 읽어들이는 함수
+ * @param epoll 이벤트를 관리할 Epoll 객체
+ * @param socket 이벤트가 감지된 pipe의 FD를 가지고 있는 client객체의 주소
+ */
+bool Server::cgiPipeRead(Epoll &epoll, Client *client)
+{
+    
+    std::cout << "Pipe Read : Client[" << client->getSocket().getFd() << "]" << std::endl;
+    
+    int status = client->readCgiPipe();
+    if (status == STATUS_ERROR)
+    {
+        epoll.epollControl(EPOLL_CTL_DEL, client->getPipeFd(OutFlag), EPOLLIN);
+        this->pipeToClientMap.erase(client->getPipeFd(OutFlag));
+        client->pipeClose(OutFlag);
+        return (STATUS_ERROR);
+    }
+    else if (status == STATUS_RE)
+        return (STATUS_OK);
+    else if (status == STATUS_OK)
+    {
+        epoll.epollControl(EPOLL_CTL_DEL, client->getPipeFd(OutFlag), EPOLLIN);
+        this->pipeToClientMap.erase(client->getPipeFd(OutFlag));
+        client->pipeClose(OutFlag);
+        if (!epoll.epollControl(EPOLL_CTL_ADD, client->getSocket().getFd(), EPOLLOUT))
+        {
+            std::cout << "EPOLL ERROR!!" << std::endl;
+            return (STATUS_ERROR);
+        }
+        return (STATUS_OK);
+    }
+    return (STATUS_OK);
+}
+
+/**
+ * @brief CGI 프로세스로 데이터를 전송(쓰기)하는 함수
+ * @param epoll 이벤트를 관리할 Epoll 객체
+ * @param client 데이터를 송신할 클라이언트의 Socket 객체
+ */
+bool Server::cgiPipeWrite(Epoll &epoll, Client *client)
+{
+    std::cout << "Pipe Write : Client[" << client->getSocket().getFd() << "]" << std::endl;
+    int status = client->writeCgiPipe();
+    if (status == STATUS_ERROR) // response 빌더 완성되면 에러 발생시 바로 response 보내기
+    {
+        epoll.epollControl(EPOLL_CTL_DEL, client->getPipeFd(InFlag), EPOLLOUT);
+        this->pipeToClientMap.erase(client->getPipeFd(InFlag));
+        client->pipeClose(InFlag);
+        return (STATUS_ERROR);
+    }
+    else if (status == STATUS_RE)
+        return (STATUS_OK);
+    else
+    {
+        epoll.epollControl(EPOLL_CTL_DEL, client->getPipeFd(InFlag), EPOLLOUT);
+        this->pipeToClientMap.erase(client->getPipeFd(InFlag));
+        client->pipeClose(InFlag);
+        return (STATUS_OK);
+    }
+}
+
+void Server::checkKeepAliveClient(int &index)
+{
+    int i = 0;
+    int numClient = static_cast<int>(this->inClientVec.size()); 
+    while (i < 16)
+    {
+        if (index >= numClient)
+            break;
+        if (!(this->client[this->inClientVec[index]]->checkAlive()))
+        {
+            std::cout << "delete [" << this->inClientVec[index] <<"]" << std::endl;
+            deleteClient(this->inClientVec[index]);
+            this->inClientVec.erase(this->inClientVec.begin() + index);
+        }
+        index++;
+        i++;
+    }
+    if (index >= numClient)
+        index = 0;
+    return ;
 }
 
 /**
@@ -309,19 +474,21 @@ bool Server::nonblockingSet(int fd)
  * 클라이언트의 요청이 완료되거나 에러로 인해 연결이 끊겼을 때 호출됩니다. (현재 주석 처리되어 있으나) CGI 파이프 맵 제거 및 프로세스 종료 처리, Client 객체 delete와 컨테이너에서의 제거를 수행합니다.
  * @param deleteFd 삭제할 클라이언트의 소켓 FD
  */
-void Server::clientDel(int deleteFd)
+void Server::deleteClient(int deleteFd)
 {
-    // pid_t clientPid = this->client[deleteFd]->getPid();
-    // if (clientPid > 0)
-    // {
-    //     if (waitpid(clientPid, NULL, WNOHANG) == 0)
-    //     {
-    //         kill(clientPid, SIGKILL);
-    //         waitpid(clientPid, NULL, 0);
-    //     }
-    // }
-    // this->pipeToClientMap.erase(this->client[deleteFd]->getPipeFd(InFlag));
-    // this->pipeToClientMap.erase(this->client[deleteFd]->getPipeFd(OutFlag));
+    pid_t clientPid = this->client[deleteFd]->getPid();
+    if (clientPid > 0)
+    {
+        if (waitpid(clientPid, NULL, WNOHANG) == 0)
+        {
+            kill(clientPid, SIGKILL);
+            waitpid(clientPid, NULL, 0);
+        }
+    }
+    if (this->client[deleteFd]->getPipeFd(InFlag) != -1)
+        this->pipeToClientMap.erase(this->client[deleteFd]->getPipeFd(InFlag));
+    if (this->client[deleteFd]->getPipeFd(OutFlag) != -1)
+        this->pipeToClientMap.erase(this->client[deleteFd]->getPipeFd(OutFlag));
     if (!clientExist(deleteFd))
         return;
     delete this->client[deleteFd];
@@ -338,4 +505,9 @@ bool Server::clientExist(int fd)
     if (fd < 0 || static_cast<size_t>(fd) >= this->client.size())
         return (false);
     return (this->client[fd] != NULL);
+}
+
+void Server::serverClose()
+{
+    this->serverActive = false;
 }

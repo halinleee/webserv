@@ -13,14 +13,23 @@ class Client;
  * @brief 각 status에 대해서 키워드로 관리하기 위해서 enum을 설정 후 사용
  * @var STATUS_ERROR 에러가 발생했을때 status로 숫자로는 0을 가지고 있음
  * @var STATUS_OK 정상 동작했을때 status로 숫자로는 1을 가지고 있음
+ * @var STATUS_RE 정상 동작은 했지만 pipe의 총길이 제한, send수 제한 등 한번에 다 보내지 못했을 경우 status로 숫자로는 2를 가지고 있음
  * 
  * @todo 나중에 각 status code에 대해서 확인한 후 status code의 숫자로 지정해 넘겨주도록 변경필요
  */
 enum  Status 
 {
     STATUS_ERROR = 0,
-    STATUS_OK = 1
+    STATUS_OK = 1,
+    STATUS_RE = 2
 };
+
+/**
+ * @brief 파일디스크립터
+ * 
+ * 가독성을 위해 파일디스크립터와 int의 차이를 만들기 위해 사용
+ */
+typedef int FD;
 
 /**
  * @brief recv로 수신한 원본 HTTP 요청 데이터를 바이트 단위로 누적 저장하는 deque 컨테이너
@@ -46,11 +55,18 @@ typedef std::map<int, int> IntMap;
 typedef std::vector<Client *> ClientVec;
 
 /**
- * @brief 파일디스크립터
+ * @brief body의 내용을 char로 가지고 있는 Vector 컨테이너
  * 
- * 가독성을 위해 파일디스크립터와 int의 차이를 만들기 위해 사용
+ * body의 내용을 pipe에 write쓰기 위해 pipeWrite함수로 가야하는데 들고 있는 공간 
  */
-typedef int FD;
+typedef std::vector<char> bodyVec;
+
+/**
+ * @brief FD의 내용을 담고 있는 Vector 컨테이너
+ * 
+ * pipe의 FD를 가지고 자식 프로세스에서 FD를 close하기 위해서 가지고 있음(여러 개의 클라이언트가 동시에 들어와서 Fork할때 다른 pipe도 가지고 들어갈 경우)
+ */
+typedef std::vector<FD> FdVec;
 
 /**
  * @brief 환경변수의 KEY(string)와 VALUE(string) 쌍을 관리하는 맵 타입

@@ -26,6 +26,8 @@ Socket::Socket(int fd, in_port_t port)
     this->addr.sin_family = AF_INET;
     this->addr.sin_port = htons(port);
     this->addr.sin_addr.s_addr = INADDR_ANY;
+    this->timeAct = std::time(NULL);
+    this->timeOut = this->timeAct + DEFAULT_TIMEOUT;
     memset(this->addr.sin_zero, 0, sizeof(this->addr.sin_zero));
 }
 
@@ -41,6 +43,8 @@ Socket::Socket(int fd, struct sockaddr_in addr)
 {
     this->socketFd = fd;
     this->addr = addr;
+    this->timeAct = std::time(NULL);
+    this->timeOut = this->timeAct + DEFAULT_TIMEOUT;
 }
 
 /**

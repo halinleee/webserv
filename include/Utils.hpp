@@ -4,6 +4,14 @@
 #include "main.hpp"
 
 /**
+ * @brief 특정 파일 디스크립터를 논블로킹(Non-blocking) 모드로 설정하는 함수
+ * 
+ * fcntl() 함수와 O_NONBLOCK 플래그를 사용하여 I/O 작업(recv, send, accept 등)이 블로킹되지 않고 즉시 반환되도록 만들어 줍니다. epoll과 함께 비동기 I/O를 구현하기 위한 필수 작업입니다.
+ * @param fd 설정할 파일 디스크립터
+ */
+bool nonblockingSet(int fd);
+
+/**
  * @brief envp 전체를 std::map<string, string>으로 파싱해서 반환하는 함수
  * @param envp 환경변수를 담고 있는 char **버퍼
  * @return 파싱된 환경변수들을 담은 EnvMap 객체

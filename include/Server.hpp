@@ -6,6 +6,9 @@
 #include "Utils.hpp"
 #include "Socket.hpp"
 #include "Client.hpp"
+#include "Cgi.hpp"
+
+#include <sys/wait.h>
 
 /**
  * @brief 웹 서버의 전반적인 동작과 클라이언트 연결, 이벤트를 관리하는 핵심 클래스
@@ -17,6 +20,11 @@ class Server
 {
     private:
         /**
+         * @var serverActive
+         * @brief server의 메인 loop에서 사용되며 signal을 받아서 서버를 종료하기 위해 사용
+         */
+        bool serverActive;
+        /**
          * @var serverSocket 
          * @brief 서버가 연결을 대기하는 리스닝 소켓을 관리하는 객체 포인터
          * 
@@ -25,21 +33,20 @@ class Server
          */
         Socket *serverSocket;
         /**
-         * @var response 
-         * @brief 클라이언트에게 전송할 최종 HTTP 응답 메세지를 담는 임시 문자열
-         * 
-         * CGI 프로세스의 실행 결과(파이프 출력을 통해 읽어온 데이터)를 조립하여 저장하는 데 사용됩니다.
-         * 
-         * 차후에 response 빌더가 완성이 되면 수정해야함
-        */
-        std::string response;
-        /**
          * @var client 
          * @brief 현재 서버에 접속 중인 모든 클라이언트의 FD를 인덱스로 클라이언트 객체의 포인터를 가지고 있는 vector
          * 
          * epoll 이벤트가 발생했을 때 발생한 FD가 어떤 클라이언트의 것인지 식별하고, 해당 클라이언트의 수신 버퍼나 상태를 즉각적으로 조회/수정하기 위해 사용됩니다.
         */
         ClientVec client;
+
+        /**
+         * @var inClientVec
+         * @brief 현재 서버에 어떤 클라이언트의 FD가 있는지에 대한 정보를 가지고 있는 Vector
+         * 
+         * keep-alive를 구현하기 위해서 사용(pipeFd와 clinet socketFD가 섞이기 떄문에 해결하기 위해서 사용)
+         */
+        FdVec inClientVec;
         /**
          * @var pipeToClientMap
          * @brief 파이프의 FD와 클라이언트의 FD를 매핑해서 가지고 있는 <int, int>맵
@@ -82,6 +89,15 @@ class Server
          * @return Error 발생시 1, 정상 동작 0
          */
         bool serverAdd (in_port_t port, Epoll &epoll);
+
+        /**
+         * @brief 서버가 client에게 데이터를 송신하는 함수
+         * 
+         * client의 response 변수에 있는 response 내용을 보냄(error의 경우 그 상황에 맞춰서 http메세지로 바꿔서 전송하면 됨)
+         * @param client 보낼 clinet 객체
+         * @return 함수의 성공 여부
+         */
+        int serverSend(Client *client);
 
         /**
          * @brief Epoll 이벤트를 감지하고 종류에 따라 분기 처리하는 메인 이벤트 루프 함수
@@ -145,21 +161,13 @@ class Server
         bool clientExist(int fd);
 
         /**
-         * @brief 특정 파일 디스크립터를 논블로킹(Non-blocking) 모드로 설정하는 함수
-         * 
-         * fcntl() 함수와 O_NONBLOCK 플래그를 사용하여 I/O 작업(recv, send, accept 등)이 블로킹되지 않고 즉시 반환되도록 만들어 줍니다. epoll과 함께 비동기 I/O를 구현하기 위한 필수 작업입니다.
-         * @param fd 설정할 파일 디스크립터
-         */
-        bool nonblockingSet(int fd);
-
-        /**
          * @brief CGI 프로그램을 실행하고 파이프를 설정하는 함수
          * 
          * 정적 파일이 아닌 동적 처리가 필요할 때 호출됩니다. cgi의 excute 함수를 실행하여 fork()로 자식 프로세스를 생성하고 execve()로 지정된 CGI 스크립트를 실행하며, 통신을 위한 두 쌍의 파이프를 연결 및 epoll에 등록합니다.
-         * @param eventSocket 클라이언트 소켓의 FD
          * @param epoll 이벤트를 관리할 Epoll 객체
+         * @param client 이벤트가 발생한 클라이언트 객체
          */
-        bool cgiRun(Epoll &epoll, int eventSocket);
+        bool cgiRun(Epoll &epoll, Client *client);
 
         /**
          * @brief CGI 프로세스로부터 데이터를 읽어들이는 함수
@@ -168,9 +176,9 @@ class Server
          * 
          * CGI 스크립트가 표준 출력으로 내보낸 데이터를 outPipe의 읽기 끝단에서 read()하여 응답(response) 버퍼로 구성할 때 사용됩니다.
          * @param epoll 이벤트를 관리하는 Epoll 객체
-         * @param socket 이벤트가 감지된 pipe의 FD를 가지고 있는 client의 소켓
+         * @param socket 이벤트가 감지된 pipe의 FD를 가지고 있는 client객체의 주소
          */
-        void cgiPipeRead(Epoll &epoll, Socket *socket);
+        bool cgiPipeRead(Epoll &epoll, Client *client);
 
         /**
          * @brief CGI 프로세스로 데이터를 전송(쓰기)하는 함수
@@ -179,17 +187,40 @@ class Server
          * 
          * HTTP POST 요청 등으로 들어온 Body 데이터를 inPipe의 쓰기 끝단을 통해 CGI 프로세스의 표준 입력으로 밀어넣을 때 호출됩니다.
          * @param epoll 이벤트를 관리하는 Epoll 객체
-         * @param socket 이벤트가 감지된 pipe의 FD를 가지고 있는 client의 소켓
+         * @param client 이벤트가 감지된 pipe의 FD를 가지고 있는 client객체의 주소
          */
-        void cgiPipeWrite(Epoll &epoll, Socket *socket);
+        bool cgiPipeWrite(Epoll &epoll, Client *client);
 
+        /**
+         * @brief 클라이언트가 동작을 언제 했고 
+         */
+        bool checkKeepAlive();
+
+        /**
+         * @brief 클라이언트의 요청을 보낸 시간이 keep-alive 시간을 지났는지 확인하고 지났을 경우 해제하는 함수
+         */
+        void checkKeepAliveClient(int &index);
+        
+        
         /**
          * @brief 특정 클라이언트의 연결을 종료하고 자원을 해제하는 함수
          * 
          * 요청 처리가 완료되었거나, 타임아웃/에러 발생 시 호출되어 Client 객체를 map에서 제거하고 메모리를 해제합니다.
          * @param deleteFd 삭제할 클라이언트의 소켓 FD
          */
-        void clientDel(int deleteFd);
+        void deleteClient(int deleteFd);
+
+        /**
+         * @brief 빌드된 클라이언트의 response의 내용을 반환하는 함수
+         * 
+         * request로 날라온 http를 해석하고 동작 후 나온 response의 주소를 반환
+         */
+        std::string getResponse(void);
+
+        /**
+         * @brief signal handler에서 서버를 close하기 위해서 호출되는 함수
+         */
+        void serverClose();
 };
 
 #endif

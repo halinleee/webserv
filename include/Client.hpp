@@ -3,6 +3,8 @@
 
 #include "main.hpp" // 차후에 main.hpp를 제거하고 필요한 client에 관련된 헤더파일은 hpp에서 직접 include 하도록 수정
 #include "Socket.hpp"
+#include "Utils.hpp"
+#include <sys/wait.h>
 
 /**
  * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 http의 요청에서 body을 전달하는 inPipe의 쓰기 끝을 반환하는 flag
@@ -68,6 +70,14 @@ class Client
          * CGI 실행 완료 후 waitpid()를 통해 좀비 프로세스 방지 및 정상 종료 확인, 타임아웃 시 강제 종료(kill) 목적으로 사용합니다.
          */
         pid_t pid;
+
+        /**
+         * @var body 
+         * @brief 클라이언트가 보낸 http메세지에서 CGI에 넘길 body내용을 담은 vector
+         * 
+         * 현재 임시로 만들어뒀는데 나중에 http파싱이 끝나서 구조체가 넘어오게 되면 그떄 수정필요
+        */
+        bodyVec body;
     
     public:
         /**
@@ -94,6 +104,43 @@ class Client
          */
         ~Client();
 
+        /**
+         * @var response 
+         * @brief 클라이언트에게 전송할 최종 HTTP 응답 메세지를 담는 임시 문자열
+         * 
+         * CGI 프로세스의 실행 결과(파이프 출력을 통해 읽어온 데이터)를 조립하여 저장하는 데 사용됩니다.
+         * 
+         * 차후에 response 빌더가 완성이 되면 수정해야함
+        */
+        std::string response;
+
+        /**
+         * @brief 이 클라이언트의 keep-alive가 유지를 하는지 확인하는 함수
+        */
+        bool checkAlive(void);
+
+        /**
+         * @brief 클라이언트의 keepAlive시간을 초기화하는 함수
+        */
+        void timeSet(void);
+
+        /**
+         * @brief Cgi프로그램에게 넘길 body내용을 Cgi프로그램과 연결되어 있는 파이프에 적는 함수
+         * 
+         * @return 0(STATUS_ERROR) 에러 발생
+         * @return 1(STATUS_OK) 정상 동작
+         * @return 1(STATUS_RE) 정상 동작은 했으나 pipe의 크기 제한으로 다시 이 함수를 와야할 경우
+        */
+        int writeCgiPipe();
+
+        /**
+         * @brief Cgi프로그램이 보낸 결과를 파이프에서 읽어오는 함수
+         * 
+         * @return 0(STATUS_ERROR) 에러 발생
+         * @return 1(STATUS_OK) EOF (모든 데이터를 다 읽음)
+         * @return 2(STATUS_RE) 아직 읽을 데이터가 남아있음
+         */
+        int readCgiPipe();
         /**
          * @brief CGI 실행 시 할당된 자식 프로세스의 PID를 설정하는 함수
          * 
@@ -167,10 +214,19 @@ class Client
 
         /**
          * @brief pipe를 close하는 함수
+         * 
+         * CGI 실행이 강제 종료되거나 에러가 발생하여 더 이상 필요 없는 파이프의 읽기/쓰기 끝단을 모두 닫을 때 사용합니다.
          * @param pipe pipeFD를 담고 있는 size 2인 int 배열
-         * @details CGI 실행이 종료되거나 에러가 발생하여 더 이상 필요 없는 파이프의 읽기/쓰기 끝단을 모두 닫을 때 사용합니다.
          */
         void pipeClose(int *pipe);
+
+        /**
+         * @brief pipe를 close하는 함수
+         * 
+         * CGI프로그램에 넘길 파이프에 내용을 작성하거나 읽고 정리하는 용도로 사용합니다.
+         * @param flag pipeFD를 담고 있는 size 2인 int 배열
+         */
+        void pipeClose(int flag);
 };
 
 

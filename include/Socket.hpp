@@ -1,6 +1,6 @@
 #ifndef SOCKET_HPP
 # define SOCKET_HPP
-# define DEFAULT_TIMEOUT 60
+# define DEFAULT_TIMEOUT 50
 
 #include "main.hpp"
 
