@@ -10,16 +10,41 @@ void ServerConfig::setPrefixes(void)
 	}
 	return ;
 }
-// string url : /files/*/babo /files/stella/steel.jpg
+// string url : /files/img/img.jpg
 // prefixes :    /files -> /upload -> /redir
+// /files/img
+
 // 토큰단위로 비교하기(한글자씩 비교 안해도 됨)
-LocationConfig ServerConfig::Matching(std::string url)
+// 1. location prefix 길이만큼 비교
+// 2. 전부 같으면 match
+// 3. 가장 긴 match 선택
+bool ServerConfig::Matching(std::string url)
 {
 	std::vector<std::string> urlToken = ftSplit(url, '/');
-	for (size_t i = 0; prefixes.size() > i; ++i)
+	size_t prefixesSize = prefixes.size();
+	size_t highScore = 0;
+	size_t tmpScore = 0;
+	size_t k = 0;
+
+	for (size_t i = 0; prefixesSize > i; ++i)
 	{
-		if (prefixes[i] == urlToken[1])
+		std::vector<std::string> prefixesToken = ftSplit(prefixes[i], '/');
+		if (prefixesToken[0] == urlToken[0])
+		{
+			if (prefixesToken.size() > urlToken.size())
+				continue;
+			
+			for (size_t j = 1; prefixesToken[j] == urlToken[j]; ++j)
+				tmpScore++;
+			if (tmpScore > highScore)
+			{
+				highScore = tmpScore;
+				matchLocation = locations[prefixes[i]];
+			}
+		}
+		tmpScore = 0;
 	}
+	return false;
 }
 
 
@@ -140,6 +165,7 @@ void ServerConfig::endSequenceValid(std::ifstream &configFile)
 			configFile.seekg(nextPos);
 			statusMessage = "server end";
 			setPrefixes();
+			Matching("/files");
 			return ;
 		}
 		statusMessage = "Config error: Invalid server block format";
