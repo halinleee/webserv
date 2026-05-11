@@ -265,6 +265,11 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
         }
     }
     std::cout << client->getCharDq().size() << std::endl;
+
+    client->onReceive();
+    // 헤더까지 다 들어왔는지 확인 1. 다 안 들어오면 return; 2. 다 들어오면 상태 기반 파싱
+    // 바디까지 다 들어왔는지 확인 2. 다 안 들어오면 return; 2. 다 들어오면 파싱 및 EPOLLOUT 감지하도록 세팅
+
     std::cout << received;
     // if (cgiFlag)
     // { // 여기있는 조건문으로 우선 cgi를 킬지 안킬지 하는데 판단하는 조건을 나중에 추가해야함

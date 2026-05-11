@@ -3,6 +3,7 @@
 
 #include "main.hpp" // 차후에 main.hpp를 제거하고 필요한 client에 관련된 헤더파일은 hpp에서 직접 include 하도록 수정
 #include "Socket.hpp"
+#include "RequestParser.hpp"
 
 /**
  * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 http의 요청에서 body을 전달하는 inPipe의 쓰기 끝을 반환하는 flag
@@ -68,6 +69,9 @@ class Client
          * CGI 실행 완료 후 waitpid()를 통해 좀비 프로세스 방지 및 정상 종료 확인, 타임아웃 시 강제 종료(kill) 목적으로 사용합니다.
          */
         pid_t pid;
+
+        RequestParser parser;
+        //
     
     public:
         /**
@@ -171,6 +175,8 @@ class Client
          * @details CGI 실행이 종료되거나 에러가 발생하여 더 이상 필요 없는 파이프의 읽기/쓰기 끝단을 모두 닫을 때 사용합니다.
          */
         void pipeClose(int *pipe);
+
+        void onReceive();
 };
 
 

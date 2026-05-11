@@ -16,7 +16,7 @@ enum parseStatus
     PARSE_ERROR
 };
 
-enum RetStatus 
+enum RetStatus
 {
     STATUS_ERROR = 0,
     STATUS_OK = 1,

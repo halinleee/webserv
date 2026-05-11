@@ -72,3 +72,9 @@ Client::~Client()
     // this->pipeClose(this->outPipe);
     delete this->clientSocket;
 }
+
+void Client::onReceive()
+{
+    parser.parse(recDq);
+    
+}
