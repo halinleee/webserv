@@ -80,11 +80,15 @@ bool ServerConfig::Matching(const std::string& url)
     for (size_t i = 0; i < prefixes.size(); ++i)
     {
         const std::string& prefix = prefixes[i];
+		std::cout << "뭐가 있나: " << prefix << std::endl;
         size_t prefixLen = prefix.size();
         size_t urlLen = url.size();
 
         if (urlLen < prefixLen)
             continue;
+		
+		//substr은 새 문자열 생성 가능하고 메모리 복사 발생해서 compare사용
+		//compare는 직접 비교만 하고 빠르고 메모리 효율적
         if (url.compare(0, prefixLen, prefix) != 0)
             continue;
 
@@ -199,6 +203,7 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 	return false;
 }
 
+// location /files/img/a/b이 b가 디렉인지 파일인지 어케 구분할건데
 /**
  * @brief `end` 이후에 올 수 있는 다음 블록을 검증하고 파싱 상태를 설정한다.
  * @details
@@ -236,7 +241,7 @@ void ServerConfig::endSequenceValid(std::ifstream &configFile)
 			configFile.seekg(nextPos);
 			statusMessage = "server end";
 			setPrefixes();
-			if (!Matching("/files/img/a"))
+			if (!Matching("/files/img/a/"))
 				statusMessage = "url error";
 			std::cout << "최종매칭된거: " << matchLocation.getRoot() << std::endl;
 			return ;
