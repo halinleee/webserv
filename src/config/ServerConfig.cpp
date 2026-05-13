@@ -5,47 +5,118 @@ void ServerConfig::setPrefixes(void)
 	for(std::map<std::string, LocationConfig>::const_iterator it = locations.begin();
 		it != locations.end(); ++it)
 	{
-		std::cout << it->first << std::endl;
+		std::cout << "prefix담긴거: " << it->first << std::endl;
 		prefixes.push_back(it->first);
 	}
 	return ;
 }
-// string url : /files/img/img.jpg
-// prefixes :    /files -> /upload -> /redir
-// /files/img
 
-// 토큰단위로 비교하기(한글자씩 비교 안해도 됨)
-// 1. location prefix 길이만큼 비교
-// 2. 전부 같으면 match
-// 3. 가장 긴 match 선택
-bool ServerConfig::Matching(std::string url)
+
+// 수정 전 코드
+/*
+bool ServerConfig::Matching(const std::string &url)
 {
-	std::vector<std::string> urlToken = ftSplit(url, '/');
-	size_t prefixesSize = prefixes.size();
-	size_t highScore = 0;
-	size_t tmpScore = 0;
-	size_t k = 0;
+    //'/'로 시작하지 않으면 에러
+    if (url.empty() || url[0] != '/')
+        return false;
 
-	for (size_t i = 0; prefixesSize > i; ++i)
-	{
-		std::vector<std::string> prefixesToken = ftSplit(prefixes[i], '/');
-		if (prefixesToken[0] == urlToken[0])
-		{
-			if (prefixesToken.size() > urlToken.size())
-				continue;
-			
-			for (size_t j = 1; prefixesToken[j] == urlToken[j]; ++j)
-				tmpScore++;
-			if (tmpScore > highScore)
-			{
-				highScore = tmpScore;
-				matchLocation = locations[prefixes[i]];
-			}
-		}
-		tmpScore = 0;
-	}
-	return false;
+    std::vector<std::string> urlTokens = ftSplit(url, '/');
+    size_t highScore = 0;
+    bool matched = false;
+
+    for (size_t i = 0; i < prefixes.size(); ++i)
+    {
+        std::vector<std::string> prefixTokens = ftSplit(prefixes[i], '/');
+
+        // prefix 토큰이 url 토큰보다 많으면 매칭 불가
+        if (prefixTokens.size() > urlTokens.size())
+            continue;
+
+        // prefix의 모든 토큰이 url 앞부분과 일치해야 함
+        bool isMatch = true;
+        for (size_t j = 0; j < prefixTokens.size(); ++j)
+        {
+            if (prefixTokens[j] != urlTokens[j])
+            {
+                isMatch = false;
+                break;
+            }
+        }
+        if (!isMatch)
+            continue;
+
+        // 요구사항 2: 가장 긴 매칭 선택 (토큰 개수 기준)
+        size_t score = prefixTokens.size();
+        if (!matched || score > highScore)
+        {
+            highScore = score;
+            matchLocation = locations[prefixes[i]];
+            matched = true;
+        }
+    }
+
+    // 요구사항 1: 매칭 없으면 '/' 기본 경로로
+    if (!matched)
+    {
+        std::map<std::string, LocationConfig>::iterator it = locations.find("/");
+        if (it == locations.end())
+            return false;
+        matchLocation = it->second;
+    }
+    return true;
 }
+*/
+
+
+// 수정 후 코드
+bool ServerConfig::Matching(const std::string& url)
+{
+    if (url.empty() || url[0] != '/')
+        return false;
+
+    size_t highScore = 0;
+    bool match = false;
+
+    for (size_t i = 0; i < prefixes.size(); ++i)
+    {
+        const std::string& prefix = prefixes[i];
+        size_t prefixLen = prefix.size();
+        size_t urlLen = url.size();
+
+        if (urlLen < prefixLen)
+            continue;
+        if (url.compare(0, prefixLen, prefix) != 0)
+            continue;
+
+        // prefix가 '/'로 끝나지 않으면 토큰 경계 확인
+        if (prefix[prefixLen - 1] != '/' && urlLen > prefixLen && url[prefixLen] != '/')
+            continue;
+
+        if (prefixLen > highScore)
+        {
+            highScore = prefixLen;
+            matchLocation = locations[prefix];
+            match = true;
+        }
+    }
+
+    if (!match)
+    {
+        std::map<std::string, LocationConfig>::iterator it = locations.find("/");
+        if (it == locations.end())
+            return false;
+        matchLocation = it->second;
+    }
+    return true;
+}
+
+
+
+
+
+
+
+
 
 
 /**
@@ -165,7 +236,9 @@ void ServerConfig::endSequenceValid(std::ifstream &configFile)
 			configFile.seekg(nextPos);
 			statusMessage = "server end";
 			setPrefixes();
-			Matching("/files");
+			if (!Matching("/files/img/a"))
+				statusMessage = "url error";
+			std::cout << "최종매칭된거: " << matchLocation.getRoot() << std::endl;
 			return ;
 		}
 		statusMessage = "Config error: Invalid server block format";

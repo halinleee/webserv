@@ -46,7 +46,7 @@ class ServerConfig
 		std::string getStatusMessage() const { return statusMessage; }
 
 	public:
-		bool Matching(std::string url);
+		bool Matching(const std::string &url);
 		LocationConfig matchLocation;
 	
 };
