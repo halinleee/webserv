@@ -1,5 +1,12 @@
 #include "../../include/Util.hpp"
 
+bool isValidRoot(const std::string &path)
+{
+	//CWD로 절대경로 + path 이어 붙이기
+	//stat() 사용해서 실제 있는 경로인지 확인하기
+	char buf[]
+}
+
 /**
  * @brief URI/경로 문자열을 검증하고 연속된 '/'를 1개로 정규화한다.
  *

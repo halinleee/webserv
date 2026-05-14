@@ -13,6 +13,6 @@ bool isNumber(const std::string &s);
 bool toInt (const std::string &s, unsigned int &value);
 bool isValidUriPath(std::string &path);
 bool isValidPrefix(std::string &path);
-
+bool isValidRoot(const std::string &path);
 
 # endif

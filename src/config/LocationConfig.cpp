@@ -60,6 +60,9 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 		
 		if (!isValidUriPath(token[1]))
 			return false;
+		if (!isValidRoot(token[1]))
+			return false;
+
 		root = token[1];
 	}
 	else if (token[0] == "index")

@@ -11,64 +11,6 @@ void ServerConfig::setPrefixes(void)
 	return ;
 }
 
-
-// 수정 전 코드
-/*
-bool ServerConfig::Matching(const std::string &url)
-{
-    //'/'로 시작하지 않으면 에러
-    if (url.empty() || url[0] != '/')
-        return false;
-
-    std::vector<std::string> urlTokens = ftSplit(url, '/');
-    size_t highScore = 0;
-    bool matched = false;
-
-    for (size_t i = 0; i < prefixes.size(); ++i)
-    {
-        std::vector<std::string> prefixTokens = ftSplit(prefixes[i], '/');
-
-        // prefix 토큰이 url 토큰보다 많으면 매칭 불가
-        if (prefixTokens.size() > urlTokens.size())
-            continue;
-
-        // prefix의 모든 토큰이 url 앞부분과 일치해야 함
-        bool isMatch = true;
-        for (size_t j = 0; j < prefixTokens.size(); ++j)
-        {
-            if (prefixTokens[j] != urlTokens[j])
-            {
-                isMatch = false;
-                break;
-            }
-        }
-        if (!isMatch)
-            continue;
-
-        // 요구사항 2: 가장 긴 매칭 선택 (토큰 개수 기준)
-        size_t score = prefixTokens.size();
-        if (!matched || score > highScore)
-        {
-            highScore = score;
-            matchLocation = locations[prefixes[i]];
-            matched = true;
-        }
-    }
-
-    // 요구사항 1: 매칭 없으면 '/' 기본 경로로
-    if (!matched)
-    {
-        std::map<std::string, LocationConfig>::iterator it = locations.find("/");
-        if (it == locations.end())
-            return false;
-        matchLocation = it->second;
-    }
-    return true;
-}
-*/
-
-
-// 수정 후 코드
 bool ServerConfig::Matching(const std::string& url)
 {
     if (url.empty() || url[0] != '/')
@@ -203,7 +145,6 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 	return false;
 }
 
-// location /files/img/a/b이 b가 디렉인지 파일인지 어케 구분할건데
 /**
  * @brief `end` 이후에 올 수 있는 다음 블록을 검증하고 파싱 상태를 설정한다.
  * @details
@@ -292,7 +233,6 @@ ServerConfig::ServerConfig(std::ifstream &configFile, std::string configLine)
 				statusMessage = "Config error: Directive token is empty";
 				return ;
 			}
-			
 			if (!parseServerDirective(DirectiveToken, configFile))
 			{
 				statusMessage = "Config error: Invalid server block format\nerror line: " + configLine;
