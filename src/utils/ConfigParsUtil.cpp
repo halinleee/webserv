@@ -1,10 +1,39 @@
 #include "../../include/Util.hpp"
+#include <sys/stat.h>
+#include <unistd.h>
 
-bool isValidRoot(const std::string &path)
+std::string makeAbsolutePath(const std::string &base, const std::string &path)
 {
-	//CWD로 절대경로 + path 이어 붙이기
-	//stat() 사용해서 실제 있는 경로인지 확인하기
-	char buf[]
+	if (path[0] == '/')
+		return path;
+
+	if (base.empty())
+		return path;
+	if (base[base.size() - 1] == '/')
+		return base + path;
+	return base + "/" + path;
+}
+
+bool isValidRoot(const std::string &base, std::string &path)
+{
+	path = makeAbsolutePath(base, path);
+	//파일 정보를 저장할 변수 st
+	struct stat st;
+	//stat이 성공하면 0 반환 실패하면 -1(보통 파일이나 권한이 없거나 경로 이상할때)
+	//성공하면 st에 파일 정보가 채워짐
+	if (stat(path.c_str(), &st) != 0)
+		return false;
+	
+	//F_OK  존재 여부
+	//R_OK  읽기 권한
+	//W_OK  쓰기 권한
+	//X_OK  실행 권한
+	// 정적파일은 읽기 가능
+	// 업로드 폴더는 쓰기 가능
+	// cgi는 실행 가능
+	if (access(path.c_str(), R_OK) != 0)
+		return false;
+	return true;
 }
 
 /**
