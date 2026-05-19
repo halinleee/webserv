@@ -14,14 +14,14 @@ std::string makeAbsolutePath(const std::string &base, const std::string &path)
 	return base + "/" + path;
 }
 
-bool isValidRoot(const std::string &base, std::string &path)
+bool isValidRoot(const std::string &base, const std::string &path, const std::string &prefixPath)
 {
-	path = makeAbsolutePath(base, path);
+	std::string absolutePath = makeAbsolutePath(base, path);
 	//파일 정보를 저장할 변수 st
 	struct stat st;
 	//stat이 성공하면 0 반환 실패하면 -1(보통 파일이나 권한이 없거나 경로 이상할때)
 	//성공하면 st에 파일 정보가 채워짐
-	if (stat(path.c_str(), &st) != 0)
+	if (stat(absolutePath.c_str(), &st) != 0)
 		return false;
 	
 	//F_OK  존재 여부
@@ -31,8 +31,16 @@ bool isValidRoot(const std::string &base, std::string &path)
 	// 정적파일은 읽기 가능
 	// 업로드 폴더는 쓰기 가능
 	// cgi는 실행 가능
-	if (access(path.c_str(), R_OK) != 0)
+	if (access(absolutePath.c_str(), R_OK) != 0)
 		return false;
+	std::vector<std::string> token = ftSplit(prefixPath, '/');
+	//흐무흐무흐무
+	if (token[0] == "/upload")
+		if (access(absolutePath.c_str(), W_OK) != 0)
+			return false;
+	else if (token[0] == "/cgi_bin")
+		if (access(absolutePath.c_str(), X_OK) != 0)
+			return false;
 	return true;
 }
 

@@ -135,6 +135,7 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 	{
 		if (token.size() != 2 || !isValidPrefix(token[1]))
 			return false;
+		prefixPath = token[1];
 		LocationConfig locConfig(configFile);
 		if (!locConfig.isOk())
 			return false;

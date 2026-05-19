@@ -60,7 +60,9 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 		
 		if (!isValidUriPath(token[1]))
 			return false;
-		if (!isValidRoot(token[1]))
+		
+		std::string prefixPath = getPrefixPath();
+		if (!isValidRoot(basePath, token[1], prefixPath))
 			return false;
 
 		root = token[1];

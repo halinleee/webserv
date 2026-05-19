@@ -108,7 +108,7 @@ class LocationConfig
 		bool status;
 
 	private:
-		bool parseLocDir(std::vector<std::string> token);
+		bool parseLocDir(std::vector<std::string> token, std::string prefixPath);
 
 	public:
 		LocationConfig()
@@ -118,7 +118,7 @@ class LocationConfig
 			methods.insert(METHOD_POST);
 			methods.insert(METHOD_DELETE);
 		}
-		LocationConfig(std::ifstream &configFile);
+		LocationConfig(std::ifstream &configFile, std::string prefixPath);
 
 		bool isOk() const { return status; }
 		
