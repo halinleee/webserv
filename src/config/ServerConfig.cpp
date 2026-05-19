@@ -21,7 +21,6 @@ bool ServerConfig::Matching(const std::string& url)
     for (size_t i = 0; i < prefixes.size(); ++i)
     {
         const std::string& prefix = prefixes[i];
-		std::cout << "뭐가 있나: " << prefix << std::endl;
         size_t prefixLen = prefix.size();
         size_t urlLen = url.size();
 
