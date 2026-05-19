@@ -108,7 +108,7 @@ class LocationConfig
 		bool status;
 
 	private:
-		bool parseLocDir(std::vector<std::string> token, std::string prefixPath);
+		bool parseLocDir(std::vector<std::string> token);
 
 	public:
 		LocationConfig()
@@ -118,18 +118,18 @@ class LocationConfig
 			methods.insert(METHOD_POST);
 			methods.insert(METHOD_DELETE);
 		}
-		LocationConfig(std::ifstream &configFile, std::string prefixPath);
+		LocationConfig(std::ifstream &configFile);
 
 		bool isOk() const { return status; }
 		
-		const std::string& getRoot() const { return root; }
-        const std::string& getIndex() const { return index; }
-        bool getAutoIndex() const { return autoIndex; }
-        const std::set<HttpMethod>& getMethods() const { return methods; }
-        const std::string& getUploadDir() const { return uploadDir; }
-        const std::string& getRedirectPath() const { return redirectPath; }
-        const std::string& getCgiExtension() const { return cgiExtension; }
-        const std::string& getCgiPath() const { return cgiPath; }
+		const std::string &getRoot() const { return root; }
+        const std::string &getIndex() const { return index; }
+        const bool &getAutoIndex() const { return autoIndex; }
+        const std::set<HttpMethod> &getMethods() const { return methods; }
+        const std::string &getUploadDir() const { return uploadDir; }
+        const std::string &getRedirectPath() const { return redirectPath; }
+        const std::string &getCgiExtension() const { return cgiExtension; }
+        const std::string &getCgiPath() const { return cgiPath; }
 
 };
 

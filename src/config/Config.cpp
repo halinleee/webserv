@@ -1,4 +1,8 @@
 #include "../../include/Config.hpp"
+#include "../../include/Util.hpp"
+
+std::string basePath = "";
+
 /**
  * @brief `server <port>` 헤더의 포트 번호 형식을 검증한다.
  * @param token 공백 기준으로 분리된 토큰. 예: {"server", "8080"}
@@ -92,12 +96,10 @@ int Config::parseServerBlock(std::ifstream &configFile)
 Config::Config()
 {
 	// std::string configPath;
-
     // if (argc == 2)
     //     configPath = argv[1];
     // else
     //     configPath = "./config/webserv.conf"; // default
-
     // std::ifstream configFile(configPath.c_str());
     // if (!configFile.is_open())
     // {
@@ -105,15 +107,16 @@ Config::Config()
     //     return 1;
     // }
 
-	std::ifstream configFile("./config/webserv.conf");
+	//main 연결할때까지 인자값 받았다 치고 임시로 이 코드 돌려유
+	std::ifstream configFile("./webserv.conf");
 	if (!configFile.is_open())
 	{
 		statusMessage = "Failed to open file";
 		return ;
 	}
 
-	//.conf 확장자가 맞는지 확인하는 거 추가
-	//parseServerBlock의 반환값이 1이면 모든 서버 검증 완료. -1이면 에러. 나머지는 서버 한개 검증 완료.
+	//main 연결되면 문자열을 av로 변환
+	basePath = "/home/gajeon/webserv";
 	while (true)
 	{
 		int res = parseServerBlock(configFile);

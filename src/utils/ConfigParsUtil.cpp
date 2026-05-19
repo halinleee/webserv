@@ -2,7 +2,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-std::string makeAbsolutePath(const std::string &base, const std::string &path)
+static std::string makeAbsolutePath(const std::string &base, const std::string &path)
 {
 	if (path[0] == '/')
 		return path;
@@ -14,33 +14,17 @@ std::string makeAbsolutePath(const std::string &base, const std::string &path)
 	return base + "/" + path;
 }
 
-bool isValidRoot(const std::string &base, const std::string &path, const std::string &prefixPath)
+bool isValidRoot(const std::string &path)
 {
-	std::string absolutePath = makeAbsolutePath(base, path);
-	//파일 정보를 저장할 변수 st
+	std::string absolutePath = makeAbsolutePath(basePath, path);
 	struct stat st;
 	//stat이 성공하면 0 반환 실패하면 -1(보통 파일이나 권한이 없거나 경로 이상할때)
 	//성공하면 st에 파일 정보가 채워짐
 	if (stat(absolutePath.c_str(), &st) != 0)
 		return false;
-	
-	//F_OK  존재 여부
-	//R_OK  읽기 권한
-	//W_OK  쓰기 권한
-	//X_OK  실행 권한
-	// 정적파일은 읽기 가능
-	// 업로드 폴더는 쓰기 가능
-	// cgi는 실행 가능
+	//여기서는 읽기 권한만 검사함
 	if (access(absolutePath.c_str(), R_OK) != 0)
 		return false;
-	std::vector<std::string> token = ftSplit(prefixPath, '/');
-	//흐무흐무흐무
-	if (token[0] == "/upload")
-		if (access(absolutePath.c_str(), W_OK) != 0)
-			return false;
-	else if (token[0] == "/cgi_bin")
-		if (access(absolutePath.c_str(), X_OK) != 0)
-			return false;
 	return true;
 }
 

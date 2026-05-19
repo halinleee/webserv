@@ -5,6 +5,8 @@
 #include <vector>
 #include <sstream>
 
+extern std::string basePath;
+
 bool isBlankLine(const std::string &line);
 int countIndent(const std::string &line);
 bool removeIndent (std::string &value, char delim);
@@ -13,6 +15,6 @@ bool isNumber(const std::string &s);
 bool toInt (const std::string &s, unsigned int &value);
 bool isValidUriPath(std::string &path);
 bool isValidPrefix(std::string &path);
-bool isValidRoot(const std::string &base, const std::string &path, const std::string &prefixPath);
+bool isValidRoot(const std::string &path);
 
 # endif

@@ -49,6 +49,7 @@ class Config
 		Config();
 		std::map<unsigned int, ServerConfig> getConfig() { return servers; }
 		std::string getStatusMessage() const { return statusMessage; }
+		std::string basePath;
 	
 };
 

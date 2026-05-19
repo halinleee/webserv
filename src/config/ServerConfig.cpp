@@ -5,7 +5,6 @@ void ServerConfig::setPrefixes(void)
 	for(std::map<std::string, LocationConfig>::const_iterator it = locations.begin();
 		it != locations.end(); ++it)
 	{
-		std::cout << "prefix담긴거: " << it->first << std::endl;
 		prefixes.push_back(it->first);
 	}
 	return ;
@@ -55,15 +54,6 @@ bool ServerConfig::Matching(const std::string& url)
     }
     return true;
 }
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief `error_page` 지시어를 검증하고 errorPages에 저장한다.
@@ -135,11 +125,10 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 	{
 		if (token.size() != 2 || !isValidPrefix(token[1]))
 			return false;
-		prefixPath = token[1];
 		LocationConfig locConfig(configFile);
 		if (!locConfig.isOk())
 			return false;
-		locations[token[1]] = locConfig; //prefix key값에 value대입
+		locations[token[1]] = locConfig; //prefix key값에 value 대입
 		return true;
 	}
 	

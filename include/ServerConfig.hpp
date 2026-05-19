@@ -26,7 +26,6 @@ class ServerConfig
 		std::map<std::string, LocationConfig> locations;
 		std::string statusMessage;
 		std::vector<std::string> prefixes;
-		std::string prefixPath;
 
 	private:
 		bool parseErrorPage(std::vector<std::string> &token);
@@ -41,11 +40,10 @@ class ServerConfig
 			clientMaxBodySize = 1000000;
 		};
 		ServerConfig(std::ifstream &configFile, std::string configLine);
-		const size_t getClientMaxBodySize() const { return clientMaxBodySize; }
-		const std::map<unsigned int, std::string> getErrorPages() const { return errorPages; }
-		const std::map<std::string, LocationConfig> getLocations() const { return locations; }
-		const std::string getStatusMessage() const { return statusMessage; }
-		const std::string getPrefixPath() const { return prefixPath; }
+		const size_t &getClientMaxBodySize() const { return clientMaxBodySize; }
+		const std::map<unsigned int, std::string> &getErrorPages() const { return errorPages; }
+		const std::map<std::string, LocationConfig> &getLocations() const { return locations; }
+		const std::string &getStatusMessage() const { return statusMessage; }
 
 	public:
 		bool Matching(const std::string &url);
