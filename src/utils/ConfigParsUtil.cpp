@@ -22,7 +22,6 @@ bool isValidRoot(const std::string &path)
 	//성공하면 st에 파일 정보가 채워짐
 	if (stat(absolutePath.c_str(), &st) != 0)
 		return false;
-	//여기서는 읽기 권한만 검사함
 	if (access(absolutePath.c_str(), R_OK) != 0)
 		return false;
 	return true;
