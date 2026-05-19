@@ -215,6 +215,7 @@ int Server::serverSend(Client *client)
     std::cout << "response print" << std::endl;
     std::cout << client->response << std::endl;
     client->response.clear();
+    client->getCharDq().clear();
     if (length < 0)
         return (STATUS_ERROR);
     if (static_cast<ssize_t>(length) == targetSize)
@@ -304,7 +305,6 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
     unsigned char received[4096];
     int cgiFlag = 0;
     int length = recv(client->getSocket().getFd(), received, sizeof(received) -1, 0);
-    client->timeSet();
     if (length < 0)
         return (STATUS_ERROR);
     else if (length == 0)
@@ -318,6 +318,7 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
     {
         received[length] = '\0';
         std::cout << "클라이언트 연결 : Client["<< client->getSocket().getFd() << "]" << std::endl;
+        client->timeSet();
         client->CharDqAppend(length, received);
         if (!epoll.epollControl(EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT))
         {
@@ -456,11 +457,14 @@ void Server::checkKeepAliveClient(int &index)
             break;
         if (!(this->client[this->inClientVec[index]]->checkAlive()))
         {
-            std::cout << "delete [" << this->inClientVec[index] <<"]" << std::endl;
-            deleteClient(this->inClientVec[index]);
-            this->inClientVec.erase(this->inClientVec.begin() + index);
+            FD tmpFd = this->inClientVec[index];
+            std::cout << "delete [" << tmpFd <<"]" << std::endl;
+            deleteClient(tmpFd);
+            this->inClientVec.erase(this->inClientVec.begin() + (index));
+            numClient = static_cast<int>(this->inClientVec.size());
         }
-        index++;
+        else
+            index++;
         i++;
     }
     if (index >= numClient)
