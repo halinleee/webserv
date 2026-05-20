@@ -10,7 +10,7 @@ void ServerConfig::setPrefixes(void)
 	return ;
 }
 
-bool ServerConfig::Matching(const std::string& url)
+bool ServerConfig::matching(const std::string& url)
 {
     if (url.empty() || url[0] != '/')
         return false;
@@ -171,9 +171,6 @@ void ServerConfig::endSequenceValid(std::ifstream &configFile)
 			configFile.seekg(nextPos);
 			statusMessage = "server end";
 			setPrefixes();
-			if (!Matching("/files/img/a/"))
-				statusMessage = "url error";
-			std::cout << "최종매칭된거: " << matchLocation.getRoot() << std::endl;
 			return ;
 		}
 		statusMessage = "Config error: Invalid server block format";

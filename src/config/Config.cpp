@@ -62,7 +62,7 @@ int Config::parseServerBlock(std::ifstream &configFile)
 		statusMessage = "Config error: server token is empty";
 		return -1;
 	}
-	if (serverToken[0] != "server" || !parseListen(serverToken, 65530))
+	if (serverToken[0] != "server" || !parseListen(serverToken, 65535))
 	{
 		statusMessage = "Config error: server or port error\nerror line: " + configLine;
 		return -1;

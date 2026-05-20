@@ -13,7 +13,7 @@
 
 #include "Util.hpp"
 
-
+//메서드의 기본값은 모두 허용임. 따라서 사용할 때 clear로 초기화하고 사용해야 함.
 enum HttpMethod
 {
 	/**
@@ -114,7 +114,7 @@ class LocationConfig
 		LocationConfig()
 		{
 			autoIndex = false;
-			methods.insert(METHOD_GET); //메서드 추가할때 clear로 꼭 초기화
+			methods.insert(METHOD_GET);
 			methods.insert(METHOD_POST);
 			methods.insert(METHOD_DELETE);
 		}
