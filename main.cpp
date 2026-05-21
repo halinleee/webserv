@@ -81,7 +81,7 @@ int main()
 
     std::cout << "[Config status] " << config.getStatusMessage() << "\n";
 
-    std::map<unsigned int, ServerConfig> servers = config.getConfig();
+    std::map<in_port_t, ServerConfig> servers = config.getConfig();
     if (servers.empty())
     {
         std::cout << "(no servers)\n";
@@ -90,7 +90,7 @@ int main()
 
     // 1) 포트 목록만 출력
     std::cout << "Available ports:";
-    for (std::map<unsigned int, ServerConfig>::const_iterator it = servers.begin();
+    for (std::map<in_port_t, ServerConfig>::const_iterator it = servers.begin();
          it != servers.end(); ++it)
     {
         std::cout << " " << it->first;
@@ -111,7 +111,7 @@ int main()
     }
 
     // 3) 해당 포트 서버만 출력
-    std::map<unsigned int, ServerConfig>::const_iterator it = servers.find(port);
+    std::map<in_port_t, ServerConfig>::const_iterator it = servers.find(port);
     if (it == servers.end())
     {
         std::cout << "No server for port " << port << ".\n";

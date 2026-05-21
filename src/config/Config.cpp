@@ -1,14 +1,10 @@
-#include "../../include/Config.hpp"
-#include "../../include/Util.hpp"
+#include "../../include/Config.hpp" // Config 선언
+#include "../../include/Util.hpp"   // isBlankLine/ftSplit/toInt 등
+
+#include <fstream> // std::ifstream (구현에서 파일 열기)
 
 std::string basePath = "";
 
-/**
- * @brief `server <port>` 헤더의 포트 번호 형식을 검증한다.
- * @param token 공백 기준으로 분리된 토큰. 예: {"server", "8080"}
- * @param max 허용할 최대 포트 번호 (보통 65535)
- * @return 포트가 유효하면 true, 아니면 false
- */
 bool Config::parseListen(const std::vector<std::string>& token, size_t max)
 {
 	if (token.size() != 2)
@@ -23,18 +19,6 @@ bool Config::parseListen(const std::vector<std::string>& token, size_t max)
 	return true;
 }
 
-
-/**
- * @brief config 파일에서 server 블록 1개를 파싱하여 서버 맵에 등록한다.
- * @details
- * - server 헤더(`server <port>`)를 읽고 포트를 검증한다.
- * - 이후 블록 본문은 ServerConfig 파서에 위임한다.
- * @param configFile 열린 config 파일 스트림
- * @retval  1 더 이상 읽을 server가 없어서 전체 파싱이 끝난 경우
- * @retval  0 server 1개를 정상 처리했고 다음 server를 계속 파싱해야 하는 경우
- * @retval -1 파싱 오류가 발생한 경우
- * @note 오류 상세는 statusMessage에 저장된다.
- */
 int Config::parseServerBlock(std::ifstream &configFile)
 {
 	std::string configLine;
@@ -46,14 +30,13 @@ int Config::parseServerBlock(std::ifstream &configFile)
 		break;
 	}
 	
-	//서버 port가 없는지, 서버 전체 파싱이 끝났는지 확인
+	//server port가 없는지, 서버 전체 파싱이 끝났는지 확인
 	if (configFile.eof() && servers.empty())
 	{
 		statusMessage = "Config error: config file is empty";
 		return -1;
 	}
-	else if (configFile.eof() && configLine.empty())
-		return 1;
+	else if (configFile.eof() && configLine.empty()) return 1;
 	
 	//server port 검사
 	std::vector<std::string> serverToken = ftSplit(configLine, ' ');
@@ -73,6 +56,7 @@ int Config::parseServerBlock(std::ifstream &configFile)
 		statusMessage = "Config error: port config error\nerror line: " + configLine;
 		return -1;
 	}
+	
 	ServerConfig server(configFile, configLine);
 	statusMessage = server.getStatusMessage();
 	if (statusMessage == "file end")
@@ -88,11 +72,7 @@ int Config::parseServerBlock(std::ifstream &configFile)
 	else
 		return -1;
 }
-/**
- * @brief 기본 설정 파일(`./config/webserv.conf`)을 열고 전체 server 블록을 파싱한다.
- * @details 파일 오픈 실패 또는 파싱 실패 시 statusMessage에 오류 상태를 저장하고 종료한다.
- * @note 이 생성자는 예외를 던지지 않고 statusMessage로 상태를 전달한다.
- */
+
 Config::Config()
 {
 	// std::string configPath;
