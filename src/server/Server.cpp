@@ -35,11 +35,9 @@ bool Server::serverAdd(in_port_t port, Epoll &epoll)
 {
     int socketFd;
     Socket *tmpSocket;
-    if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-        return (STATUS_ERROR);
+    if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {return (STATUS_ERROR);}
     tmpSocket = new Socket(socketFd, port);
-    if (!serverSetting(tmpSocket))
-        return (STATUS_ERROR);
+    if (!serverSetting(tmpSocket)) {return (STATUS_ERROR);}
     if (!epoll.epollControl(EPOLL_CTL_ADD, tmpSocket->getFd(), EPOLLIN))
     {
         delete tmpSocket;
@@ -73,22 +71,15 @@ bool Server::eventProcess(Epoll &epoll)
     int index = 0;
     while(serverActive)
     {
-        if ((eventCount = epoll.epWait()) < 0)
-            return (STATUS_ERROR); 
+        if ((eventCount = epoll.epWait()) < 0) {return (STATUS_ERROR);}
         for (int i = 0; i < eventCount; i++)
         {
             currentFd = epoll[i].data.fd;
             currentEvent = epoll[i].events;
-            if ((this->serverSocket->getFd() == currentFd) && (currentEvent & EPOLLIN))
-            {
-                if (!clientAccept(epoll, this->serverSocket))
-                    return (STATUS_ERROR);
-            }
-            else
-            {
-                if (!clientLoop(epoll, currentFd, currentEvent))
-                    return (STATUS_ERROR);
-            }
+            if ((this->serverSocket->getFd() == currentFd) && (currentEvent & EPOLLIN) && !clientAccept(epoll, this->serverSocket))
+                return (STATUS_ERROR);
+            else if (!clientLoop(epoll, currentFd, currentEvent)) 
+                return (STATUS_ERROR);
         }
         if (this->inClientVec.size() > 0)
             checkKeepAliveClient(index);
@@ -134,7 +125,7 @@ bool Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
             deleteClient(currentFd);
             return (STATUS_ERROR);
         }
-        if (currentEvent & EPOLLIN) 
+        if (currentEvent & EPOLLIN)
         {
             std::cout << currentFd << "EPOLL_IN" << std::endl;
             if (!clientRequest(epoll, this->client[currentFd]))
@@ -191,8 +182,7 @@ bool Server::clientResponse(Epoll &epoll, Client *client)
     }
     else
         std::cout << "cgi response send" << std::endl;
-    if (!serverSend(client))
-        return (STATUS_OK);
+    if (!serverSend(client)) {return (STATUS_OK);}
     epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0);
     return (STATUS_OK);
 }
@@ -218,8 +208,7 @@ int Server::serverSend(Client *client)
     client->getCharDq().clear();
     if (length < 0)
         return (STATUS_ERROR);
-    if (static_cast<ssize_t>(length) == targetSize)
-        return (STATUS_OK);
+    if (static_cast<ssize_t>(length) == targetSize) {return (STATUS_OK);}
     else
     {
         client->response = client->response.substr(length);
@@ -303,7 +292,7 @@ bool Server::clientAccept(Epoll &epoll, Socket *socket)
 bool Server::clientRequest(Epoll &epoll, Client *client)
 {
     unsigned char received[4096];
-    int cgiFlag = 0;
+    int cgiFlag = 1;
     int length = recv(client->getSocket().getFd(), received, sizeof(received) -1, 0);
     if (length < 0)
         return (STATUS_ERROR);
@@ -356,27 +345,22 @@ bool Server::cgiRun(Epoll &epoll, Client *client)
     int pipeInFd[2], pipeOutFd[2];
     int eventSocket = client->getSocket().getFd();
     
-    if (pipe(pipeInFd) < 0)
-        return (STATUS_ERROR);
-    if (pipe(pipeOutFd) < 0)
-        return (STATUS_ERROR);
+    if (pipe(pipeInFd) < 0) {return (STATUS_ERROR);}
+    if (pipe(pipeOutFd) < 0) {return (STATUS_ERROR);}
     
     fcntl(pipeInFd[0], F_SETFD, FD_CLOEXEC);
     fcntl(pipeInFd[1], F_SETFD, FD_CLOEXEC);
     fcntl(pipeOutFd[0], F_SETFD, FD_CLOEXEC);
     fcntl(pipeOutFd[1], F_SETFD, FD_CLOEXEC);
+
     this->pipeToClientMap[pipeInFd[1]] = eventSocket;
     this->pipeToClientMap[pipeOutFd[0]] = eventSocket;
     nonblockingSet(pipeInFd[1]);
     nonblockingSet(pipeOutFd[0]);
-    if (!(epoll.epollControl(EPOLL_CTL_DEL, eventSocket, EPOLLOUT)))
-        return (STATUS_ERROR);
-    if (!(epoll.epollControl(EPOLL_CTL_ADD, pipeInFd[1], EPOLLOUT)))
-        return (STATUS_ERROR);
-    if (!(epoll.epollControl(EPOLL_CTL_ADD, pipeOutFd[0], EPOLLIN)))
-        return (STATUS_ERROR);
-    if (static_cast<int>(tmpPid = cgi.excute(this->env, pipeInFd, pipeOutFd)) < 0)
-        return (STATUS_ERROR);
+    if (!(epoll.epollControl(EPOLL_CTL_DEL, eventSocket, EPOLLOUT))) {return (STATUS_ERROR);}
+    if (!(epoll.epollControl(EPOLL_CTL_ADD, pipeInFd[1], EPOLLOUT))) {return (STATUS_ERROR);}
+    if (!(epoll.epollControl(EPOLL_CTL_ADD, pipeOutFd[0], EPOLLIN))) {return (STATUS_ERROR);}
+    if (static_cast<int>(tmpPid = cgi.excute(this->env, pipeInFd, pipeOutFd)) < 0) {return (STATUS_ERROR);}
     else
     {
         client->setPid(tmpPid);
@@ -403,8 +387,7 @@ bool Server::cgiPipeRead(Epoll &epoll, Client *client)
         client->pipeClose(OutFlag);
         return (STATUS_ERROR);
     }
-    else if (status == STATUS_RE)
-        return (STATUS_OK);
+    else if (status == STATUS_RE) {return (STATUS_OK);}
     else if (status == STATUS_OK)
     {
         epoll.epollControl(EPOLL_CTL_DEL, client->getPipeFd(OutFlag), EPOLLIN);
@@ -436,8 +419,7 @@ bool Server::cgiPipeWrite(Epoll &epoll, Client *client)
         client->pipeClose(InFlag);
         return (STATUS_ERROR);
     }
-    else if (status == STATUS_RE)
-        return (STATUS_OK);
+    else if (status == STATUS_RE) {return (STATUS_OK);}
     else
     {
         epoll.epollControl(EPOLL_CTL_DEL, client->getPipeFd(InFlag), EPOLLOUT);
@@ -506,8 +488,7 @@ void Server::deleteClient(int deleteFd)
  */
 bool Server::clientExist(int fd)
 {
-    if (fd < 0 || static_cast<size_t>(fd) >= this->client.size())
-        return (false);
+    if (fd < 0 || static_cast<size_t>(fd) >= this->client.size()) {return (false);}
     return (this->client[fd] != NULL);
 }
 
