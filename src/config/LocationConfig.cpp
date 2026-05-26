@@ -3,7 +3,7 @@
 
 #include <fstream> // std::ifstream 정의 + tellg/seekg/getline에 필요한 스트림 구현
 
-
+/*
 bool LocationConfig::isValidMethodsForPrefix(const std::string& prefixToken, const std::vector<std::string> &methodsToken)
 {
 	std::vector<std::string> token = ftSplit(prefixToken, '/');
@@ -14,29 +14,18 @@ bool LocationConfig::isValidMethodsForPrefix(const std::string& prefixToken, con
 	{
 		if (token[0] == "upload")
 		{
-			//if (methodsToken[i] == "DELETE")
+			
 		}
 	}
 	return true;
 }
+	*/
 
 bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)
 {
-	if (s == "GET") 
-	{
-		out = METHOD_GET;
-		return true;
-	}
-	else if (s == "POST")
-	{
-		out = METHOD_POST;
-		return true;
-	}
-	else if (s == "DELETE")
-	{
-		out = METHOD_DELETE;
-		return true;
-	}
+	if (s == "GET") { out = METHOD_GET; return true; }
+	else if (s == "POST") { out = METHOD_POST; return true; }
+	else if (s == "DELETE") { out = METHOD_DELETE; return true; }
 	return false;
 }
 
@@ -155,24 +144,14 @@ LocationConfig::LocationConfig(std::ifstream &configFile, const std::string &pre
 			status = true;
 			return ;
 		}
-		if (indent == -1 || indent != 2) //indent -1은 countIndent의 에러처리
-		{
-			status = false;
-			return ;
-		}
+		if (indent == -1 || indent != 2) { status = false; return ; }
 		
 		removeIndent(line, '\t');
 		std::vector<std::string> token = ftSplit(line, ' ');
-		if (token.empty())
-		{
-			status = false;
-			return ;
-		}
+		if (token.empty()) { status = false; return ; }
+
 		if (!parseLocDir(token, prefixToken))
-		{
-			status = false;
-			return ;
-		}
+		{ status = false; return ; }
 	}
 	status = false;
 	return ;

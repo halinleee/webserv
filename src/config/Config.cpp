@@ -3,19 +3,14 @@
 
 #include <fstream> // std::ifstream (구현에서 파일 열기)
 
-std::string basePath = "";
-
 bool Config::parseListen(const std::vector<std::string>& token, size_t max)
 {
-	if (token.size() != 2)
-		return false;
+	if (token.size() != 2) return false;
 
 	unsigned int num = 0;
-	if (!toInt(token[1], num))
-		return false;
+	if (!toInt(token[1], num)) return false;
 
-	if (num == 0 || num > max)
-		return false;
+	if (num == 0 || num > max) return false;
 	return true;
 }
 
@@ -25,50 +20,33 @@ int Config::parseServerBlock(std::ifstream &configFile)
 
 	while (std::getline(configFile, configLine))
 	{
-		if (isBlankLine(configLine))
-			continue;
+		if (isBlankLine(configLine)) continue;
 		break;
 	}
 	
 	//server port가 없는지, 서버 전체 파싱이 끝났는지 확인
 	if (configFile.eof() && servers.empty())
-	{
-		statusMessage = "Config error: config file is empty";
-		return -1;
-	}
+		{ statusMessage = "Config error: config file is empty"; return -1; }
 	else if (configFile.eof() && configLine.empty()) return 1;
 	
 	//server port 검사
 	std::vector<std::string> serverToken = ftSplit(configLine, ' ');
 	if (serverToken.empty())
-	{
-		statusMessage = "Config error: server token is empty";
-		return -1;
-	}
+		{ statusMessage = "Config error: server token is empty"; return -1; }
+
 	if (serverToken[0] != "server" || !parseListen(serverToken, 65535))
-	{
-		statusMessage = "Config error: server or port error\nerror line: " + configLine;
-		return -1;
-	}
+		{ statusMessage = "Config error: server or port error\nerror line: " + configLine; return -1; }
+
 	unsigned int key = 0;
 	if (!toInt(serverToken[1], key))
-	{
-		statusMessage = "Config error: port config error\nerror line: " + configLine;
-		return -1;
-	}
+		{ statusMessage = "Config error: port config error\nerror line: " + configLine; return -1; }
 	
 	ServerConfig server(configFile, configLine);
 	statusMessage = server.getStatusMessage();
 	if (statusMessage == "file end")
-	{
-		servers[key] = server;
-		return 1;
-	}
+		{ servers[key] = server; return 1; }
 	else if (statusMessage == "server end")
-	{
-		servers[key] = server;
-		return 0;
-	}
+		{ servers[key] = server; return 0; }
 	else
 		return -1;
 }
@@ -95,8 +73,6 @@ Config::Config()
 		return ;
 	}
 
-	//main 연결되면 문자열을 av로 변환
-	basePath = "/home/gajeon/webserv";
 	while (true)
 	{
 		int res = parseServerBlock(configFile);

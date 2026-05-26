@@ -4,8 +4,6 @@
 #include <string> // std::string (대부분 함수 매개변수/리턴, basePath)
 #include <vector> // std::vector<std::string> (ftSplit 리턴)
 
-extern std::string basePath;
-
 /**
  * @brief 경로가 실제로 존재하며 읽기 가능한지 확인한다.
  *
@@ -53,7 +51,7 @@ bool isValidPrefix(std::string &path);
  * @param delim 제거할 문자(예: '\t')
  * @return 항상 true (현재 구현은 실패 케이스 없음)
  */
-bool removeIndent (std::string &value, char delim);
+void removeIndent (std::string &value, char delim);
 /**
  * @brief 문자열의 선행 탭('\t') 개수를 센다.
  *

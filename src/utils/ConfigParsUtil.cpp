@@ -15,6 +15,7 @@
  * @param path 이어붙일 경로
  * @return 생성된 경로 문자열
  */
+/*
 static std::string makeAbsolutePath(const std::string &base, const std::string &path)
 {
 	if (path[0] == '/')
@@ -26,16 +27,22 @@ static std::string makeAbsolutePath(const std::string &base, const std::string &
 		return base + path;
 	return base + "/" + path;
 }
+	*/
 
 
 bool isValidRoot(const std::string &path)
 {
-	std::string absolutePath = makeAbsolutePath(basePath, path);
 	struct stat st;
-	if (stat(absolutePath.c_str(), &st) != 0)
+
+	if (stat(path.c_str(), &st) != 0)
 		return false;
-	if (access(absolutePath.c_str(), R_OK) != 0)
+
+	if (!S_ISDIR(st.st_mode))
 		return false;
+
+	if (access(path.c_str(), R_OK) != 0)
+		return false;
+
 	return true;
 }
 
@@ -97,7 +104,7 @@ bool isValidPrefix(std::string &path)
 }
 
 
-bool removeIndent(std::string &value, char delim)
+void removeIndent(std::string &value, char delim)
 {
     size_t pos = 0;
 
@@ -105,7 +112,7 @@ bool removeIndent(std::string &value, char delim)
         ++pos;
 
     value.erase(0, pos);
-    return true;
+    return ;
 }
 
 

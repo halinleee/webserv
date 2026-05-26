@@ -1,7 +1,7 @@
 #include "../../include/ServerConfig.hpp" // ServerConfig 정의
 #include "../../include/Util.hpp"         // toInt/isValidUriPath/isValidPrefix/isBlankLine/removeIndent/ftSplit/countIndent
 
-#include <fstream> // std::ifstream, std::getline, std::streampos 사용(구현부)
+#include <fstream> // std::ifstream, std::getline, std::streampos 사용(구현부) 
 
 void ServerConfig::setPrefixes(void)
 {
@@ -54,6 +54,27 @@ bool ServerConfig::matching(const std::string& url)
     return true;
 }
 
+bool ServerConfig::parseKeepAlive(std::vector<std::string>& token, size_t max)
+{
+	if (token.size() != 2)
+		return false;
+
+	if (token[0] != "keepalive_timeout")
+		return false;
+
+	unsigned int num = 0;
+
+	if (!toInt(token[1], num))
+		return false;
+
+	if (num == 0 || num > max)
+		return false;
+
+	keepAliveTimeout = static_cast<size_t>(num);
+
+	return true;
+}
+
 bool ServerConfig::parseErrorPage(std::vector<std::string> &token)
 {
 	if (token.size() != 3)
@@ -74,15 +95,19 @@ bool ServerConfig::parseBody(const std::vector<std::string> &token, size_t max)
 	if (token.size() != 2)
 		return false;
 
+	if (token[0] != "client_max_body_size")
+		return false;
+
 	unsigned int num = 0;
+
 	if (!toInt(token[1], num))
 		return false;
 
 	if (num == 0 || num > max)
 		return false;
 
-	if (token[0] == "client_max_body_size")
-		clientMaxBodySize = (static_cast<size_t>(num));
+	clientMaxBodySize = static_cast<size_t>(num);
+
 	return true;
 }
 
@@ -93,6 +118,8 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 		return parseBody(token, 10000000);
 	else if (token[0] == "error_page")
 		return parseErrorPage(token);
+	else if (token[0] == "keepalive_timeout")
+		return parseKeepAlive(token, 75);
 	else if (token[0] == "location")
 	{
 		if (token.size() != 2 || !isValidPrefix(token[1]))
@@ -151,25 +178,17 @@ ServerConfig::ServerConfig(std::ifstream &configFile, std::string configLine)
 
 		int indent = countIndent(configLine);
 		if (indent > 1 || indent == -1)
-		{
-			statusMessage = "Config error: indent error\nerror line: " + configLine;
-			return ;
-		}
+			{ statusMessage = "Config error: indent error\nerror line: " + configLine; return ; }
 
 		if (indent == 1)
 		{
 			removeIndent(configLine, '\t');
 			std::vector<std::string> DirectiveToken = ftSplit(configLine, ' ');
 			if (DirectiveToken.empty())
-			{
-				statusMessage = "Config error: Directive token is empty";
-				return ;
-			}
+			{ statusMessage = "Config error: Directive token is empty"; return ; }
+
 			if (!parseServerDirective(DirectiveToken, configFile))
-			{
-				statusMessage = "Config error: Invalid server block format\nerror line: " + configLine;
-				return ;
-			}
+			{ statusMessage = "Config error: Invalid server block format\nerror line: " + configLine; return ; }
 		}
 
 		if (indent == 0)
@@ -177,18 +196,11 @@ ServerConfig::ServerConfig(std::ifstream &configFile, std::string configLine)
 			if (configLine == "end")
 			{
 				if (locations.empty())
-				{
-					statusMessage = "Config error: location is not defined";
-					return ;
-				}
-				endSequenceValid(configFile);
-				return ;
+				{ statusMessage = "Config error: location is not defined"; return ; }
+				endSequenceValid(configFile); return ;
 			}
 			else
-			{
-				statusMessage = "Config error: Invalid server block format";
-				return ;
-			}
+			{ statusMessage = "Config error: Invalid server block format"; return ;}
 		}
 	}
 	statusMessage = "Config error: Invalid server block format";
