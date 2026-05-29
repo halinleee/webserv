@@ -10,6 +10,10 @@ custom_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 # HTTP 표준(RFC 2822)에 맞는 Date 헤더용 시간 (GMT 기준)
 standard_date_str = formatdate(timeval=None, localtime=False, usegmt=True)
 
+
+while True:
+    pass
+
 # 2. HTTP 헤더 출력
 # Content-type은 필수 헤더입니다.
 print("HTTP/1.1 200 OK")

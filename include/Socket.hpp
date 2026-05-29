@@ -1,8 +1,17 @@
 #ifndef SOCKET_HPP
 # define SOCKET_HPP
-# define DEFAULT_TIMEOUT 50
+# define DEFAULT_TIMEOUT 1000
 
 #include "main.hpp"
+
+/**
+ * @brief timeOut을 관리하기 위해서 활동시간과 timeOut시간을 가지고 있는 구조체
+ */
+struct time
+{
+    time_t timeAct;
+    time_t timeOut;
+};
 
 /**
  * @brief 네트워크 소켓을 관리하는 클래스

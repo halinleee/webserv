@@ -114,6 +114,11 @@ class Client
         */
         std::string response;
 
+        /** 
+         * @brief cgi(child 프로세스)가 정상 종료가 되었는지 확인하는 함수
+         * 
+        */
+        bool checkCgiExited(void);
         /**
          * @brief 이 클라이언트의 keep-alive가 유지를 하는지 확인하는 함수
         */
