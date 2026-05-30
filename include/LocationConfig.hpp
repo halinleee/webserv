@@ -1,10 +1,10 @@
 #ifndef LOCATIONCONFIG_HPP
 #define LOCATIONCONFIG_HPP
 
-#include <iosfwd>   // std::ifstream (LocationConfig(std::ifstream&))
-#include <string>   // std::string (멤버/리턴 타입)
-#include <vector>   // std::vector<std::string> (parseLocDir 매개변수)
-#include <set>      // std::set<HttpMethod> (methods 멤버/리턴 타입)
+#include <iosfwd>
+#include <string>
+#include <vector>
+#include <set>
 
 /**
  * @brief 문자열로 된 HTTP 메서드를 HttpMethod enum으로 변환한다.
@@ -49,7 +49,7 @@ enum HttpMethod
 
 /**
  * @class LocationConfig
- * @brief 설정 파일 내 하나의 server 블록을 표현한 구조체
+ * @brief 설정 파일 내 하나의 Location 블록을 표현한 구조체
  *
  * root: 요청한 리소스를 찾을 기준 디렉토리 경로 (ex: root ./www/site1;)
  *
@@ -133,50 +133,29 @@ class LocationConfig
 		 * @param token 공백 기준으로 분리된 지시어 토큰(예: {"root", "./www"})
 		 * @return 지시어/인자가 유효하고 값 설정에 성공하면 true, 아니면 false
 		 */
-		bool isValidMethodsForPrefix(const std::string& prefixToken, const std::vector<std::string> &methodsToken);
-		bool parseHttpMethod(const std::string &s, HttpMethod &out);
-		bool parseLocDir(std::vector<std::string> token, const std::string &prefixToken);
+		bool parseHttpMethod(const std::string& s, HttpMethod& out);
+		bool parseLocDir(std::vector<std::string> token, const std::string& prefixToken);
 
 
 	public:
 		LocationConfig()
 		{
 			autoIndex = false;
-			methods.insert(METHOD_GET);
-			methods.insert(METHOD_POST);
-			methods.insert(METHOD_DELETE);
+			methods.insert(METHOD_GET); //메서드 추가할때 clear로 꼭 초기화
+			status = false;
 		}
-		/**
-		 * @brief location 블록 본문을 파싱하여 LocationConfig를 구성한다.
-		 *
-		 * @details
-		 * 이 생성자는 `location <prefix>` 라인 다음부터 파일을 읽기 시작하여,
-		 * 들여쓰기 규칙에 따라 location 지시어들을 처리한다.
-		 *
-		 * 들여쓰기 규칙:
-		 * - indent 2: location 지시어(root, index, methods, autoindex, upload_dir, return, cgi_ext)
-		 * - indent 0 또는 1: location 블록 종료로 간주하고, 파일 포인터를 해당 라인 시작으로 되돌린다(seekg)
-		 * - indent == -1 또는 indent != 2: 들여쓰기 오류로 실패 처리
-		 *
-		 * 파싱 결과는 status 멤버에 기록된다.
-		 * - status == true  : 정상 종료(블록 종료 조건 만족)
-		 * - status == false : 파싱 중 오류 또는 EOF로 비정상 종료
-		 *
-		 * @param configFile 열린 config 파일 스트림 (location 블록 본문을 읽는다)
-		 * @note 이 생성자는 예외를 던지지 않으며, 성공/실패는 status로 전달한다.
-		 */
-		LocationConfig(std::ifstream &configFile, const std::string &prefixToken);
+		LocationConfig(std::ifstream& configFile, const std::string& prefixToken);
 
 		bool isOk() const { return status; }
 
-		const std::string &getRoot() const { return root; }
-		const std::string &getIndex() const { return index; }
-		const bool &getAutoIndex() const { return autoIndex; }
-		const std::set<HttpMethod> &getMethods() const { return methods; }
-		const std::string &getUploadDir() const { return uploadDir; }
-		const std::string &getRedirectPath() const { return redirectPath; }
-		const std::string &getCgiExtension() const { return cgiExtension; }
-		const std::string &getCgiPath() const { return cgiPath; }
+		const std::string& getRoot() const { return root; }
+		const std::string& getIndex() const { return index; }
+		const bool& getAutoIndex() const { return autoIndex; }
+		const std::set<HttpMethod>& getMethods() const { return methods; }
+		const std::string& getUploadDir() const { return uploadDir; }
+		const std::string& getRedirectPath() const { return redirectPath; }
+		const std::string& getCgiExtension() const { return cgiExtension; }
+		const std::string& getCgiPath() const { return cgiPath; }
 };
 
 #endif

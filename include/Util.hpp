@@ -1,34 +1,9 @@
 # ifndef UTIL_HPP
 # define UTIL_HPP
 
-#include <string> // std::string (대부분 함수 매개변수/리턴, basePath)
-#include <vector> // std::vector<std::string> (ftSplit 리턴)
+#include <string>
+#include <vector>
 
-/**
- * @brief 경로가 실제로 존재하며 읽기 가능한지 확인한다.
- *
- * @details
- * - makeAbsolutePath()로 절대경로를 생성한다.
- * - stat()으로 경로 존재 여부를 확인한다.
- * - access()로 읽기 권한을 확인한다.
- *
- * @param path 검증할 경로 문자열
- * @return true 유효한 경로인 경우
- * @return false 경로가 없거나 읽기 권한이 없는 경우
- */
-bool isValidRoot(const std::string &path);
-/**
- * @brief URI/경로 문자열을 검증하고 연속된 '/'를 1개로 정규화한다.
- *
- * @details
- * - 공백 문자가 포함되면 실패한다.
- * - 연속된 '/'는 하나로 축약한다. 예) "////a//b" -> "/a/b"
- * - prefix를 제외한 경로는 '/'로 시작하는지 강제하지 않는다(상대경로도 통과 가능).
- *
- * @param path 검증/정규화할 경로 문자열
- * @return 유효하면 true, 아니면 false
- */
-bool isValidUriPath(std::string &path);
 /**
  * @brief location prefix(예: "/upload")를 검증하고 연속된 '/'를 1개로 정규화한다.
  *
@@ -40,7 +15,7 @@ bool isValidUriPath(std::string &path);
  * @param path 검증/정규화할 prefix 문자열
  * @return 유효하면 true, 아니면 false
  */
-bool isValidPrefix(std::string &path);
+bool isValidNormalizePath(std::string& path);
 /**
  * @brief 문자열 앞부분의 특정 문자(delim) 반복(들여쓰기)을 제거한다.
  *
@@ -51,7 +26,7 @@ bool isValidPrefix(std::string &path);
  * @param delim 제거할 문자(예: '\t')
  * @return 항상 true (현재 구현은 실패 케이스 없음)
  */
-void removeIndent (std::string &value, char delim);
+void removeIndent (std::string& value, char delim);
 /**
  * @brief 문자열의 선행 탭('\t') 개수를 센다.
  *
@@ -65,7 +40,7 @@ void removeIndent (std::string &value, char delim);
  * - 0 이상: 선행 탭 개수
  * - -1: 선행 공백이 있어 들여쓰기 오류로 간주
  */
-int countIndent(const std::string &line);
+int countIndent(const std::string& line);
 /**
  * @brief 라인이 공백(whitespace)만으로 구성되어 있는지 판별한다.
  *
@@ -74,7 +49,7 @@ int countIndent(const std::string &line);
  * @param line 입력 라인
  * @return 공백/탭 등 whitespace만 있거나 빈 문자열이면 true, 그 외 문자가 있으면 false
  */
-bool isBlankLine(const std::string &line);
+bool isBlankLine(const std::string& line);
 /**
  * @brief 문자열을 구분자(delim) 기준으로 분리한다.
  *
@@ -86,7 +61,7 @@ bool isBlankLine(const std::string &line);
  * @param delim 구분자 문자
  * @return 분리된 토큰 벡터
  */
-std::vector<std::string> ftSplit(const std::string &line, char delim);
+std::vector<std::string> ftSplit(const std::string& line, char delim);
 /**
  * @brief 문자열이 10진수 숫자(0~9)로만 구성되었는지 검사한다.
  *
@@ -94,7 +69,7 @@ std::vector<std::string> ftSplit(const std::string &line, char delim);
  * @return 비어있지 않고 모든 문자가 숫자면 true, 아니면 false
  * @note 부호(+/-)는 허용하지 않는다. (isdigit에서 걸러줌. 0~9만 봄)
  */
-bool isNumber(const std::string &s);
+bool isNumber(const std::string& s);
 /**
  * @brief 숫자 문자열을 unsigned int로 변환한다.
  *
@@ -106,6 +81,6 @@ bool isNumber(const std::string &s);
  * @param value [out] 변환 결과
  * @return 변환 성공 시 true, 실패 시 false
  */
-bool toInt (const std::string &s, unsigned int &value);
+bool toInt (const std::string& s, size_t& value);
 
 # endif

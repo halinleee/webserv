@@ -1,20 +1,22 @@
-#include "../../include/Config.hpp" // Config 선언
-#include "../../include/Util.hpp"   // isBlankLine/ftSplit/toInt 등
+#include "Config.hpp"
+#include "Util.hpp"
 
-#include <fstream> // std::ifstream (구현에서 파일 열기)
+#include <fstream>
 
-bool Config::parseListen(const std::vector<std::string>& token, size_t max)
+#define PORT_MAX 65535
+
+bool Config::isValidListen(const std::vector<std::string>& token)
 {
 	if (token.size() != 2) return false;
 
-	unsigned int num = 0;
+	size_t num = 0;
 	if (!toInt(token[1], num)) return false;
 
-	if (num == 0 || num > max) return false;
+	if (num == 0 || num > PORT_MAX) return false;
 	return true;
 }
 
-int Config::parseServerBlock(std::ifstream &configFile)
+Config::ParseStatus Config::parseServerBlock(std::ifstream &configFile)
 {
 	std::string configLine;
 
@@ -26,44 +28,46 @@ int Config::parseServerBlock(std::ifstream &configFile)
 	
 	//server port가 없는지, 서버 전체 파싱이 끝났는지 확인
 	if (configFile.eof() && servers.empty())
-		{ statusMessage = "Config error: config file is empty"; return -1; }
-	else if (configFile.eof() && configLine.empty()) return 1;
+		{ statusMessage = "Config error: config file is empty"; return PARSE_ERROR; }
+	else if (configFile.eof() && configLine.empty()) return PARSE_SERVER_END;
 	
 	//server port 검사
 	std::vector<std::string> serverToken = ftSplit(configLine, ' ');
 	if (serverToken.empty())
-		{ statusMessage = "Config error: server token is empty"; return -1; }
+		{ statusMessage = "Config error: server token is empty"; return PARSE_ERROR; }
 
-	if (serverToken[0] != "server" || !parseListen(serverToken, 65535))
-		{ statusMessage = "Config error: server or port error\nerror line: " + configLine; return -1; }
+	if (serverToken[0] != "server" || !isValidListen(serverToken))
+		{ statusMessage = "Config error: server or port error\nerror line: " + configLine; return PARSE_ERROR; }
 
-	unsigned int key = 0;
+	size_t key = 0;
 	if (!toInt(serverToken[1], key))
-		{ statusMessage = "Config error: port config error\nerror line: " + configLine; return -1; }
+		{ statusMessage = "Config error: port config error\nerror line: " + configLine; return PARSE_ERROR; }
 	
-	ServerConfig server(configFile, configLine);
+	ServerConfig server(configFile);
 	statusMessage = server.getStatusMessage();
 	if (statusMessage == "file end")
-		{ servers[key] = server; return 1; }
+		{ servers[key] = server; return PARSE_FILE_END; }
 	else if (statusMessage == "server end")
-		{ servers[key] = server; return 0; }
+		{ servers[key] = server; return PARSE_SERVER_END; }
 	else
-		return -1;
+		return PARSE_ERROR;
 }
 
 Config::Config()
 {
-	// std::string configPath;
-    // if (argc == 2)
-    //     configPath = argv[1];
-    // else
-    //     configPath = "./config/webserv.conf"; // default
-    // std::ifstream configFile(configPath.c_str());
-    // if (!configFile.is_open())
-    // {
-    //     std::cerr << "Failed to open config file: " << configPath << std::endl;
-    //     return 1;
-    // }
+	/* todo
+	std::string configPath;
+    if (argc == 2)
+        configPath = argv[1];
+    else
+        configPath = "./config/webserv.conf"; // default
+    std::ifstream configFile(configPath.c_str());
+    if (!configFile.is_open())
+    {
+        std::cerr << "Failed to open config file: " << configPath << std::endl;
+        return 1;
+    }
+	*/
 
 	//main 연결할때까지 인자값 받았다 치고 임시로 이 코드 돌려유
 	std::ifstream configFile("./webserv.conf");
@@ -76,9 +80,9 @@ Config::Config()
 	while (true)
 	{
 		int res = parseServerBlock(configFile);
-		if (res == -1)
+		if (res == PARSE_ERROR)
 			return ;
-		if (res == 1)
+		if (res == PARSE_FILE_END)
 			break;
 	}
 	statusMessage = "ok";

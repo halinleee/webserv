@@ -1,7 +1,10 @@
-#include "../../include/ServerConfig.hpp" // ServerConfig 정의
-#include "../../include/Util.hpp"         // toInt/isValidUriPath/isValidPrefix/isBlankLine/removeIndent/ftSplit/countIndent
+#include "ServerConfig.hpp"
+#include "Util.hpp"
+#include "type.hpp"
+#include <fstream>
 
-#include <fstream> // std::ifstream, std::getline, std::streampos 사용(구현부) 
+#define BODY_SIZE_MAX (5 * 1024 * 1024) //5242880 bytes
+#define TIME_OUT_MAX 180
 
 void ServerConfig::setPrefixes(void)
 {
@@ -18,8 +21,8 @@ bool ServerConfig::matching(const std::string& url)
     if (url.empty() || url[0] != '/')
         return false;
 
-    size_t highScore = 0;
-    bool match = false;
+    size_t highScore = 0; //가장 긴 prefix 길이 저장하는 변수
+    bool match = false; //매칭이 한번이라도 성공했는지에 대한 변수
 
     for (size_t i = 0; i < prefixes.size(); ++i)
     {
@@ -27,12 +30,21 @@ bool ServerConfig::matching(const std::string& url)
         size_t prefixLen = prefix.size();
         size_t urlLen = url.size();
 
-        if (urlLen < prefixLen)
+        if (urlLen < prefixLen) //url이 prefix보다 짧으면 스킵
             continue;
 		
-        if (url.compare(0, prefixLen, prefix) != 0)
+        if (url.compare(0, prefixLen, prefix) != 0) //url의 앞부분이 prefix와 정확히 같지 않으면 스킵
             continue;
-
+		/*
+		경계 체크
+		prefix가 '/'로 끝나지 않는 경우(ex: "/bin")에는 "/bin123"과 같은 케이스를 매칭하면 안됨
+		prefix 마지막이 '/'가 아니고 url이 prefix보다 길어서 뒤에 경로가 더 존재하며
+		url[prefix] 길이 뒤에 문자가 '/'가 아니면 "/bin"가 "/bin123"처럼 잘못 매칭되는 상황이므로 스킵
+		ex)
+			url: /cgi_bin/cgi/bin123/abc/files [x]
+			url: /cgi_bin/cgi/bin/abc/files    [o]
+	 		location /cgi_bin/cgi/bin
+		*/
         if (prefix[prefixLen - 1] != '/' && urlLen > prefixLen && url[prefixLen] != '/')
             continue;
 
@@ -54,7 +66,7 @@ bool ServerConfig::matching(const std::string& url)
     return true;
 }
 
-bool ServerConfig::parseKeepAlive(std::vector<std::string>& token, size_t max)
+bool ServerConfig::parseKeepAlive(std::vector<std::string>& token)
 {
 	if (token.size() != 2)
 		return false;
@@ -62,12 +74,12 @@ bool ServerConfig::parseKeepAlive(std::vector<std::string>& token, size_t max)
 	if (token[0] != "keepalive_timeout")
 		return false;
 
-	unsigned int num = 0;
+	size_t num = 0;
 
 	if (!toInt(token[1], num))
 		return false;
 
-	if (num == 0 || num > max)
+	if (num == 0 || num > TIME_OUT_MAX)
 		return false;
 
 	keepAliveTimeout = static_cast<size_t>(num);
@@ -75,22 +87,42 @@ bool ServerConfig::parseKeepAlive(std::vector<std::string>& token, size_t max)
 	return true;
 }
 
+bool isValidErrorCode(size_t code)
+{
+	switch (code)
+	{
+		case STATUS_BAD_REQUEST:
+		case STATUS_URI_LONG:
+		case STATUS_NOT_IMPLEMENTED:
+		case STATUS_HTTP_VERSION:
+		case STATUS_HEADER_TOO_LARGE:
+		case  STATUS_PAYLOAD_TOO_LARGE:
+			return true;
+		default:
+			return false;
+	}
+}
+
 bool ServerConfig::parseErrorPage(std::vector<std::string> &token)
 {
 	if (token.size() != 3)
 		return false;
 
-	unsigned int num = 0;
+	size_t num = 0;
 	if (!toInt(token[1], num))
 		return false;
 	
-	if (!isValidUriPath(token[2]))
+	if (!isValidNormalizePath(token[2]))
 		return false;
+	
+	if(!isValidErrorCode(num))
+		return false;
+
 	errorPages[num] = token[2];
 	return true;
 }
 
-bool ServerConfig::parseBody(const std::vector<std::string> &token, size_t max)
+bool ServerConfig::parseBody(const std::vector<std::string> &token)
 {
 	if (token.size() != 2)
 		return false;
@@ -98,15 +130,15 @@ bool ServerConfig::parseBody(const std::vector<std::string> &token, size_t max)
 	if (token[0] != "client_max_body_size")
 		return false;
 
-	unsigned int num = 0;
+	size_t num = 0;
 
 	if (!toInt(token[1], num))
 		return false;
 
-	if (num == 0 || num > max)
+	if (num == 0 || num > BODY_SIZE_MAX)
 		return false;
 
-	clientMaxBodySize = static_cast<size_t>(num);
+	clientMaxBodySize = num;
 
 	return true;
 }
@@ -115,14 +147,14 @@ bool ServerConfig::parseBody(const std::vector<std::string> &token, size_t max)
 bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::ifstream &configFile)
 {	
 	if (token[0] == "client_max_body_size")
-		return parseBody(token, 10000000);
+		return parseBody(token);
 	else if (token[0] == "error_page")
 		return parseErrorPage(token);
 	else if (token[0] == "keepalive_timeout")
-		return parseKeepAlive(token, 75);
+		return parseKeepAlive(token);
 	else if (token[0] == "location")
 	{
-		if (token.size() != 2 || !isValidPrefix(token[1]))
+		if (token.size() != 2 || !isValidNormalizePath(token[1]))
 			return false;
 		LocationConfig locConfig(configFile, token[1]);
 		if (!locConfig.isOk())
@@ -166,10 +198,13 @@ void ServerConfig::endSequenceValid(std::ifstream &configFile)
 }
 
 
-ServerConfig::ServerConfig(std::ifstream &configFile, std::string configLine)
+ServerConfig::ServerConfig(std::ifstream &configFile)
 {
 	clientMaxBodySize = 1000000;
 	statusMessage = "Default Error";
+	keepAliveTimeout = 75;
+
+	std::string configLine;
 
 	while (std::getline(configFile, configLine))
 	{
@@ -183,11 +218,11 @@ ServerConfig::ServerConfig(std::ifstream &configFile, std::string configLine)
 		if (indent == 1)
 		{
 			removeIndent(configLine, '\t');
-			std::vector<std::string> DirectiveToken = ftSplit(configLine, ' ');
-			if (DirectiveToken.empty())
+			std::vector<std::string> directiveToken = ftSplit(configLine, ' ');
+			if (directiveToken.empty())
 			{ statusMessage = "Config error: Directive token is empty"; return ; }
 
-			if (!parseServerDirective(DirectiveToken, configFile))
+			if (!parseServerDirective(directiveToken, configFile))
 			{ statusMessage = "Config error: Invalid server block format\nerror line: " + configLine; return ; }
 		}
 

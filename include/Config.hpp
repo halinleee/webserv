@@ -1,14 +1,14 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-#include "ServerConfig.hpp" // ServerConfig 타입 사용(servers 맵 value)
+#include "ServerConfig.hpp"
 
-#include <netinet/in.h> // in_port_t (servers 맵 key)
-#include <iosfwd>		// std::ifstream (parseServerBlock 선언)
-#include <cstddef>		// size_t (parseListen 매개변수)
-#include <map>			// std::map (servers 멤버)
-#include <string>		// std::string (statusMessage, 여러 매개변수/리턴)
-#include <vector>		// std::vector<std::string> (parseListen 매개변수)
+#include <netinet/in.h>
+#include <iosfwd>
+#include <cstddef>
+#include <map>
+#include <string>
+#include <vector>
 
 /**
  * @class Config
@@ -39,7 +39,6 @@ class Config
 		std::string statusMessage;
 		enum ParseStatus
 		{
-			PARSE_OK,
 			PARSE_SERVER_END,
 			PARSE_FILE_END,
 			PARSE_ERROR
@@ -52,19 +51,19 @@ class Config
 		 * @param max 허용할 최대 포트 번호 (보통 65535)
 		 * @return 포트가 유효하면 true, 아니면 false
 		 */
-		bool parseListen(const std::vector<std::string> &token, size_t max);
+		bool isValidListen(const std::vector<std::string>& token);
 		/**
 		 * @brief config 파일에서 server 블록 1개를 파싱하여 서버 맵에 등록한다.
 		 * @details
 		 * - server 헤더(`server <port>`)를 읽고 포트를 검증한다.
 		 * - 이후 블록 본문은 ServerConfig 파서에 위임한다.
 		 * @param configFile 열린 config 파일 스트림
-		 * @retval  1: 더 이상 읽을 server가 없어서 전체 파싱이 끝난 경우
-		 * @retval  0: server 1개를 정상 처리했고 다음 server를 계속 파싱해야 하는 경우
-		 * @retval -1: 파싱 오류가 발생한 경우
+		 * @retval PARSE_FILE_END: 더 이상 읽을 server가 없어서 전체 파싱이 끝난 경우
+		 * @retval PARSE_SERVER_END: server 1개를 정상 처리했고 다음 server를 계속 파싱해야 하는 경우
+		 * @retval PARSE_ERROR: 파싱 오류가 발생한 경우
 		 * @note 오류 상세는 statusMessage에 저장된다.
 		 */
-		int parseServerBlock(std::ifstream &configFile);
+		ParseStatus parseServerBlock(std::ifstream& configFile);
 
 	public:
 		/**
@@ -73,8 +72,8 @@ class Config
 		 * @note 이 생성자는 예외를 던지지 않고 statusMessage로 상태를 전달한다.
 		 */
 		Config();
-		std::map<in_port_t, ServerConfig> getConfig() { return servers; }
-		std::string getStatusMessage() const { return statusMessage; }
+		const std::map<in_port_t, ServerConfig>& getConfig() const { return servers; }
+		const std::string& getStatusMessage() const { return statusMessage; }
 };
 
 #endif

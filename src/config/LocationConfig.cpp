@@ -1,25 +1,6 @@
-#include "../../include/LocationConfig.hpp" // LocationConfig 선언
-#include "../../include/Util.hpp"           // isValidUriPath/isValidRoot/isBlankLine/countIndent/removeIndent/ftSplit
-
-#include <fstream> // std::ifstream 정의 + tellg/seekg/getline에 필요한 스트림 구현
-
-/*
-bool LocationConfig::isValidMethodsForPrefix(const std::string& prefixToken, const std::vector<std::string> &methodsToken)
-{
-	std::vector<std::string> token = ftSplit(prefixToken, '/');
-	if (token.empty())
-		return false;
-
-	for (size_t i = 0; i < methodsToken.size(); ++i)
-	{
-		if (token[0] == "upload")
-		{
-			
-		}
-	}
-	return true;
-}
-	*/
+#include "LocationConfig.hpp"
+#include "Util.hpp"
+#include <fstream>
 
 bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)
 {
@@ -36,10 +17,7 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token, const std::stri
 		if (token.size() != 2)
 			return false;
 		
-		if (!isValidUriPath(token[1]))
-			return false;
-		
-		if (!isValidRoot(token[1]))
+		if (!isValidNormalizePath(token[1]))
 			return false;
 
 		root = token[1];
@@ -49,7 +27,7 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token, const std::stri
 		if (token.size() != 2)
 			return false;
 		
-		if (!isValidUriPath(token[1]))
+		if (!isValidNormalizePath(token[1]))
 			return false;
 		index = token[1];
 	}
@@ -60,8 +38,6 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token, const std::stri
 			return false;
 		
 		methods.clear();
-		if (!isValidMethodsForPrefix(prefixToken, token))
-			return false;
 		for (size_t i = 1; i < token.size(); ++i)
 		{
 			HttpMethod method;
@@ -87,25 +63,31 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token, const std::stri
 		if (token.size() != 2)
 			return false;
 
-		if (!isValidUriPath(token[1]))
+		if (!isValidNormalizePath(token[1]))
 			return false;
 		uploadDir = token[1];
 	}
 	else if (token[0] == "return")
 	{
-		if (token.size() != 2)
+		if (token.size() != 3)
 			return false;
 
-		if (!isValidUriPath(token[1]))
+		size_t num = 0;
+		if (!toInt(token[1], num))
 			return false;
-		redirectPath = token[1];
+
+		if (!isValidNormalizePath(token[2]))
+			return false;
+		
+		redirectPath = token[2];
 	}
+
 	else if (token[0] == "cgi_ext")
 	{
 		if (token.size() != 3)
 			return false;
 
-		if (!isValidUriPath(token[2]))
+		if (!isValidNormalizePath(token[2]))
 			return false;
 		cgiExtension = token[1];
 		cgiPath = token[2];
@@ -118,11 +100,9 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token, const std::stri
 
 LocationConfig::LocationConfig(std::ifstream &configFile, const std::string &prefixToken)
 {
-	//변수 초기화
 	autoIndex = false;
 	methods.insert(METHOD_GET); //메서드 추가할때 clear로 꼭 초기화
-	methods.insert(METHOD_POST);
-	methods.insert(METHOD_DELETE);
+	status = false;
 
 	std::string line;
 
