@@ -10,7 +10,7 @@ bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)
 	return false;
 }
 
-bool LocationConfig::parseLocDir(std::vector<std::string> token, const std::string &prefixToken)
+bool LocationConfig::parseLocDir(std::vector<std::string> token)
 {
 	if (token[0] == "root")
 	{
@@ -98,7 +98,7 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token, const std::stri
 	return true;
 }
 
-LocationConfig::LocationConfig(std::ifstream &configFile, const std::string &prefixToken)
+LocationConfig::LocationConfig(std::ifstream &configFile)
 {
 	autoIndex = false;
 	methods.insert(METHOD_GET); //메서드 추가할때 clear로 꼭 초기화
@@ -130,7 +130,7 @@ LocationConfig::LocationConfig(std::ifstream &configFile, const std::string &pre
 		std::vector<std::string> token = ftSplit(line, ' ');
 		if (token.empty()) { status = false; return ; }
 
-		if (!parseLocDir(token, prefixToken))
+		if (!parseLocDir(token))
 		{ status = false; return ; }
 	}
 	status = false;

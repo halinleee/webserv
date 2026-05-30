@@ -134,7 +134,7 @@ class LocationConfig
 		 * @return 지시어/인자가 유효하고 값 설정에 성공하면 true, 아니면 false
 		 */
 		bool parseHttpMethod(const std::string& s, HttpMethod& out);
-		bool parseLocDir(std::vector<std::string> token, const std::string& prefixToken);
+		bool parseLocDir(std::vector<std::string> token);
 
 
 	public:
@@ -144,7 +144,7 @@ class LocationConfig
 			methods.insert(METHOD_GET); //메서드 추가할때 clear로 꼭 초기화
 			status = false;
 		}
-		LocationConfig(std::ifstream& configFile, const std::string& prefixToken);
+		LocationConfig(std::ifstream& configFile);
 
 		bool isOk() const { return status; }
 

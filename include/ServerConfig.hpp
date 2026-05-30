@@ -24,7 +24,7 @@ class ServerConfig
 		std::vector<std::string> prefixes;
 
 	private:
-		void ServerConfig::setPrefixes(void);
+		void setPrefixes(void);
 		bool parseKeepAlive(std::vector<std::string>& token);
 		/**
 		 * @brief `error_page` 지시어를 검증하고 errorPages에 저장한다.
@@ -88,6 +88,7 @@ class ServerConfig
 		 */
 		ServerConfig(std::ifstream& configFile);
 		const size_t& getClientMaxBodySize() const { return clientMaxBodySize; }
+		int getKeepAliveTimeout() const { return keepAliveTimeout; }
 		const std::map<size_t, std::string>& getErrorPages() const { return errorPages; }
 		const std::map<std::string, LocationConfig>& getLocations() const { return locations; }
 		const std::string& getStatusMessage() const { return statusMessage; }

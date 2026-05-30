@@ -156,7 +156,7 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 	{
 		if (token.size() != 2 || !isValidNormalizePath(token[1]))
 			return false;
-		LocationConfig locConfig(configFile, token[1]);
+		LocationConfig locConfig(configFile);
 		if (!locConfig.isOk())
 			return false;
 		locations[token[1]] = locConfig; //prefix key값에 value 대입

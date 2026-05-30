@@ -1,5 +1,6 @@
 CC = c++
 CFLAGS = -std=c++98 -Wall -Wextra -Werror
+CPPFLAGS = -I./include
 
 NAME = webserv
 
@@ -12,12 +13,12 @@ SRCS = main.cpp \
 OBJS = $(SRCS:.cpp=.o)
 
 %.o: %.cpp
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(NAME)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(OBJS) -o $(NAME)
 
 clean:
 	rm -f $(OBJS)
