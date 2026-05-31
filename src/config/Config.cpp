@@ -43,7 +43,9 @@ Config::ParseStatus Config::parseServerBlock(std::ifstream &configFile)
 	if (!toInt(serverToken[1], key))
 		{ statusMessage = "Config error: port config error\nerror line: " + configLine; return PARSE_ERROR; }
 	
-	ServerConfig server(configFile);
+	ServerConfig server;
+	if (!server.parseServerConfigBlock(configFile))
+		return PARSE_ERROR;
 	statusMessage = server.getStatusMessage();
 	if (statusMessage == "file end")
 		{ servers[key] = server; return PARSE_FILE_END; }
@@ -53,7 +55,7 @@ Config::ParseStatus Config::parseServerBlock(std::ifstream &configFile)
 		return PARSE_ERROR;
 }
 
-Config::Config()
+bool Config::parseConfig()
 {
 	/* todo
 	std::string configPath;
@@ -74,17 +76,17 @@ Config::Config()
 	if (!configFile.is_open())
 	{
 		statusMessage = "Failed to open file";
-		return ;
+		return false;
 	}
 
 	while (true)
 	{
 		int res = parseServerBlock(configFile);
 		if (res == PARSE_ERROR)
-			return ;
+			return false;
 		if (res == PARSE_FILE_END)
 			break;
 	}
 	statusMessage = "ok";
-	return ;
+	return true;
 }

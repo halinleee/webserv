@@ -65,28 +65,16 @@ class ServerConfig
 		void endSequenceValid(std::ifstream& configFile);
 
 	public:
+		bool parseServerConfigBlock(std::ifstream &configFile);
+		
+
+	public:
 		ServerConfig()
 		{
 			clientMaxBodySize = 1000000;
 			statusMessage = "Default Error";
 			keepAliveTimeout = 75;
 		};
-		/**
-		 * @brief server 블록 본문을 파싱하여 ServerConfig를 구성한다.
-		 * @details
-		 * 이 생성자는 server 헤더(server <port>) 다음 라인부터 읽기 시작하여,
-		 * 들여쓰기 규칙에 따라 server 블록을 구성하는 지시어들을 처리한다.
-		 *
-		 * 처리 규칙(현재 구현 기준):
-		 * - indent 1: server 지시어(client_max_body_size, error_page, location)
-		 * - indent 0: "end"를 만나면 server 블록 종료
-		 * - indent > 1 또는 indent == -1: 들여쓰기 오류로 실패
-		 *
-		 * @param configFile 열린 config 파일 스트림 (현재 server 블록의 본문을 읽는다)
-		 * @param configLine 호출 시점의 라인 버퍼(입력/출력 용도)
-		 * @note 파싱 결과/오류는 statusMessage에 저장되며, 예외는 던지지 않는다.
-		 */
-		ServerConfig(std::ifstream& configFile);
 		const size_t& getClientMaxBodySize() const { return clientMaxBodySize; }
 		int getKeepAliveTimeout() const { return keepAliveTimeout; }
 		const std::map<size_t, std::string>& getErrorPages() const { return errorPages; }

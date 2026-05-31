@@ -4,9 +4,24 @@
 #include <unistd.h>
 #include <cctype>
 
+bool isValidFileName(const std::string &file)
+{
+	if (file.empty())
+    	return false;
+	for(size_t i = 0; i < file.size(); ++i)
+	{
+		unsigned char ch = static_cast<unsigned char>(file[i]);
+
+		if (!std::isalnum(ch) && ch != '_' && ch != '.' )
+			return false;
+	}
+	return true;
+}
+
+
 bool isValidNormalizePath(std::string &path)
 {
-	if (path.empty() || path[0] != '/')// location의 prefix 경로가 '/'로 시작하지 않으면 에러로 처리함
+	if (path.empty() || path[0] != '/')//경로가 '/'로 시작하지 않으면 에러로 처리함
 		return false;
 	
 	std::string str;

@@ -10,7 +10,7 @@ bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)
 	return false;
 }
 
-bool LocationConfig::parseLocDir(std::vector<std::string> token)
+bool LocationConfig::parseLocationDir(std::vector<std::string> token)
 {
 	if (token[0] == "root")
 	{
@@ -26,14 +26,12 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 	{
 		if (token.size() != 2)
 			return false;
-		
-		if (!isValidNormalizePath(token[1]))
+		if (!isValidFileName(token[1]))
 			return false;
 		index = token[1];
 	}
 	else if (token[0] == "methods")
 	{
-
 		if (token.size() < 2)
 			return false;
 		
@@ -79,6 +77,7 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 		if (!isValidNormalizePath(token[2]))
 			return false;
 		
+		redirectCode = num;
 		redirectPath = token[2];
 	}
 
@@ -98,12 +97,8 @@ bool LocationConfig::parseLocDir(std::vector<std::string> token)
 	return true;
 }
 
-LocationConfig::LocationConfig(std::ifstream &configFile)
+bool LocationConfig::parseLocationBlock(std::ifstream &configFile)
 {
-	autoIndex = false;
-	methods.insert(METHOD_GET); //메서드 추가할때 clear로 꼭 초기화
-	status = false;
-
 	std::string line;
 
 	while (true)
@@ -121,18 +116,18 @@ LocationConfig::LocationConfig(std::ifstream &configFile)
 		{
 			configFile.clear();
 			configFile.seekg(pos);
-			status = true;
-			return ;
+			return true;
 		}
-		if (indent == -1 || indent != 2) { status = false; return ; }
+		if (indent == -1 || indent != 2)
+			return false;
 		
 		removeIndent(line, '\t');
 		std::vector<std::string> token = ftSplit(line, ' ');
-		if (token.empty()) { status = false; return ; }
+		if (token.empty())
+			return false;
 
-		if (!parseLocDir(token))
-		{ status = false; return ; }
+		if (!parseLocationDir(token))
+			return false;
 	}
-	status = false;
-	return ;
+	return false;
 }

@@ -36,7 +36,8 @@ static void dumpLocation(const std::string& prefix, const LocationConfig& loc)
     std::cout << "\n";
 
     std::cout << "    upload_dir  : " << loc.getUploadDir() << "\n";
-    std::cout << "    return      : " << loc.getRedirectPath() << "\n";
+    std::cout << "    return path      : " << loc.getRedirectPath() << "\n";
+    std::cout << "    return code      : " << loc.getRedirectCode() << "\n";
     std::cout << "    cgi_ext     : " << loc.getCgiExtension() << "\n";
     std::cout << "    cgi_path    : " << loc.getCgiPath() << "\n";
 }
@@ -119,8 +120,13 @@ static bool selectServer(
 int main()
 {
     Config config;
+    if (!config.parseConfig())
+    {
+        std::cout << "[Config status] " << config.getStatusMessage() << "\n";
+        return -1;
+    }
     std::cout << "[Config status] " << config.getStatusMessage() << "\n";
-
+    
     const std::map<in_port_t, ServerConfig>& servers = config.getConfig();
     if (servers.empty())
     {

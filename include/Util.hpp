@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+bool isValidFileName(const std::string &file);
 /**
  * @brief location prefix(예: "/upload")를 검증하고 연속된 '/'를 1개로 정규화한다.
  *

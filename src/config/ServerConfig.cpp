@@ -21,8 +21,8 @@ bool ServerConfig::matching(const std::string& url)
     if (url.empty() || url[0] != '/')
         return false;
 
-    size_t highScore = 0; //가장 긴 prefix 길이 저장하는 변수
-    bool match = false; //매칭이 한번이라도 성공했는지에 대한 변수
+    size_t highScore = 0;
+    bool match = false;
 
     for (size_t i = 0; i < prefixes.size(); ++i)
     {
@@ -82,7 +82,7 @@ bool ServerConfig::parseKeepAlive(std::vector<std::string>& token)
 	if (num == 0 || num > TIME_OUT_MAX)
 		return false;
 
-	keepAliveTimeout = static_cast<size_t>(num);
+	keepAliveTimeout = static_cast<time_t>(num);
 
 	return true;
 }
@@ -92,6 +92,7 @@ bool isValidErrorCode(size_t code)
 	switch (code)
 	{
 		case STATUS_BAD_REQUEST:
+		case 404:
 		case STATUS_URI_LONG:
 		case STATUS_NOT_IMPLEMENTED:
 		case STATUS_HTTP_VERSION:
@@ -156,8 +157,9 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 	{
 		if (token.size() != 2 || !isValidNormalizePath(token[1]))
 			return false;
-		LocationConfig locConfig(configFile);
-		if (!locConfig.isOk())
+		
+		LocationConfig locConfig;
+		if (!locConfig.parseLocationBlock(configFile))
 			return false;
 		locations[token[1]] = locConfig; //prefix key값에 value 대입
 		return true;
@@ -198,12 +200,8 @@ void ServerConfig::endSequenceValid(std::ifstream &configFile)
 }
 
 
-ServerConfig::ServerConfig(std::ifstream &configFile)
+bool ServerConfig::parseServerConfigBlock(std::ifstream &configFile)
 {
-	clientMaxBodySize = 1000000;
-	statusMessage = "Default Error";
-	keepAliveTimeout = 75;
-
 	std::string configLine;
 
 	while (std::getline(configFile, configLine))
@@ -213,17 +211,17 @@ ServerConfig::ServerConfig(std::ifstream &configFile)
 
 		int indent = countIndent(configLine);
 		if (indent > 1 || indent == -1)
-			{ statusMessage = "Config error: indent error\nerror line: " + configLine; return ; }
+			{ statusMessage = "Config error: indent error\nerror line: " + configLine; return false; }
 
 		if (indent == 1)
 		{
 			removeIndent(configLine, '\t');
 			std::vector<std::string> directiveToken = ftSplit(configLine, ' ');
 			if (directiveToken.empty())
-			{ statusMessage = "Config error: Directive token is empty"; return ; }
+			{ statusMessage = "Config error: Directive token is empty"; return false; }
 
 			if (!parseServerDirective(directiveToken, configFile))
-			{ statusMessage = "Config error: Invalid server block format\nerror line: " + configLine; return ; }
+			{ statusMessage = "Config error: Invalid server block format\nerror line: " + configLine; return false; }
 		}
 
 		if (indent == 0)
@@ -231,13 +229,20 @@ ServerConfig::ServerConfig(std::ifstream &configFile)
 			if (configLine == "end")
 			{
 				if (locations.empty())
-				{ statusMessage = "Config error: location is not defined"; return ; }
-				endSequenceValid(configFile); return ;
+				{ 
+					statusMessage = "Config error: location is not defined";
+					return false; 
+				}
+				endSequenceValid(configFile);
+				return true;
 			}
 			else
-			{ statusMessage = "Config error: Invalid server block format"; return ;}
+			{ 
+				statusMessage = "Config error: Invalid server block format";
+				return false;
+			}
 		}
 	}
 	statusMessage = "Config error: Invalid server block format";
-	return ;
+	return false;
 }

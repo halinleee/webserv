@@ -44,6 +44,9 @@ class Config
 			PARSE_ERROR
 		};
 
+	public:
+		bool parseConfig();
+
 	private:
 		/**
 		 * @brief `server <port>` 헤더의 포트 번호 형식을 검증한다.
@@ -71,7 +74,10 @@ class Config
 		 * @details 파일 오픈 실패 또는 파싱 실패 시 statusMessage에 오류 상태를 저장하고 종료한다.
 		 * @note 이 생성자는 예외를 던지지 않고 statusMessage로 상태를 전달한다.
 		 */
-		Config();
+		Config()
+		{
+			statusMessage = "Default Error";
+		}
 		const std::map<in_port_t, ServerConfig>& getConfig() const { return servers; }
 		const std::string& getStatusMessage() const { return statusMessage; }
 };
