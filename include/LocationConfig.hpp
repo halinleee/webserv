@@ -7,44 +7,10 @@
 #include <vector>
 #include <set>
 
-/**
- * @brief 문자열로 된 HTTP 메서드를 HttpMethod enum으로 변환한다.
- *
- * @details 허용되는 메서드 문자열은 다음과 같다:
- * - "GET"    -> METHOD_GET
- * - "POST"   -> METHOD_POST
- * - "DELETE" -> METHOD_DELETE
- *
- * 그 외의 문자열은 변환에 실패한다.
- * 
- * 메서드의 기본값은 모두 허용임. 따라서 사용할 때 clear로 초기화하고 사용해야 함.
- *
- * @param s 변환할 메서드 문자열
- * @param out 변환 성공 시 결과가 저장될 HttpMethod 출력 인자
- * @return 변환 성공 시 true, 허용되지 않은 문자열이면 false
- */
 enum HttpMethod
 {
-	/**
-	 * @brief GET 요청
-	 *
-	 * 서버에 리소스를 요청할 때 사용되며,
-	 * 주로 정적 파일 조회, 페이지 조회, 디렉토리 탐색 등에 사용된다.
-	 */
 	METHOD_GET,
-	/**
-	 * @brief POST 요청
-	 *
-	 * 서버에 데이터를 전송할 때 사용되며,
-	 * 주로 파일 업로드, 폼 전송, CGI 입력 데이터 전달 등에 사용된다.
-	 */
 	METHOD_POST,
-	/**
-	 * @brief DELETE 요청
-	 *
-	 * 서버의 특정 리소스를 삭제할 때 사용된다.
-	 * 업로드된 파일을 제거할 때 사용된다.
-	 */
 	METHOD_DELETE
 };
 
@@ -116,23 +82,6 @@ class LocationConfig
 		std::string cgiPath;
 
 	private:
-		/**
-		 * @brief location 블록 내부(indentation 2) 지시어를 파싱하고 멤버 값을 설정한다.
-		 *
-		 * @details 허용되는 지시어(현재 구현 기준):
-		 * - root <path>
-		 * - index <path>
-		 * - methods <METHOD...>
-		 * - autoindex on|off
-		 * - upload_dir <path>
-		 * - return <status_code> <path>
-		 * - cgi_ext <ext> <path>
-		 *
-		 * `methods` 지시어는 등장 시 기존 methods를 clear한 뒤 토큰에 나온 메서드만 허용하도록 재설정한다.
-		 *
-		 * @param token 공백 기준으로 분리된 지시어 토큰(예: {"root", "./www"})
-		 * @return 지시어/인자가 유효하고 값 설정에 성공하면 true, 아니면 false
-		 */
 		bool parseHttpMethod(const std::string& s, HttpMethod& out);
 		bool parseLocationDir(std::vector<std::string> token);
 	

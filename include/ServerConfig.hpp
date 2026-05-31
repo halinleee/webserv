@@ -9,14 +9,10 @@
 #include <string>
 #include <vector>
 
-/**
- * @class ServerConfig
- * @brief 설정 파일 내 하나의 server 블록을 표현한 구조체
- */
 class ServerConfig
 {
 	private:
-		int keepAliveTimeout;
+		time_t keepAliveTimeout;
 		size_t clientMaxBodySize;
 		std::map<size_t, std::string> errorPages;
 		std::map<std::string, LocationConfig> locations;
@@ -26,14 +22,6 @@ class ServerConfig
 	private:
 		void setPrefixes(void);
 		bool parseKeepAlive(std::vector<std::string>& token);
-		/**
-		 * @brief `error_page` 지시어를 검증하고 errorPages에 저장한다.
-		 * @details token 형식은 다음과 같아야 한다.
-		 * - error_page <status_code> <uri>
-		 * 예: {"error_page", "404", "/errors/404.html"}
-		 * @param token 공백 기준으로 분리된 지시어 토큰
-		 * @return 유효하면 true, 아니면 false
-		 */
 		bool parseErrorPage(std::vector<std::string>& token);
 		bool parseBody(const std::vector<std::string>& token);
 		/**
@@ -48,20 +36,6 @@ class ServerConfig
 		 * @return 유효한 지시어이고 처리에 성공하면 true, 아니면 false
 		 */
 		bool parseServerDirective(std::vector<std::string>& token, std::ifstream& configFile);
-		/**
-		 * @brief `end` 이후에 올 수 있는 다음 블록을 검증하고 파싱 상태를 설정한다.
-		 * @details
-		 * `end` 다음에는 (빈 줄을 제외하고) 다음 server 헤더(`server <port>`)가 오거나,
-		 * 파일이 종료되어야 한다. 그 외의 문자열이 오면 config 형식 오류로 처리한다.
-		 *
-		 * 이 함수는 configFile의 위치를 필요 시 다음 server 헤더 시작 지점으로 되돌린다(seekg).
-		 *
-		 * @param configFile 열린 config 파일 스트림
-		 * @note 결과는 statusMessage에 다음 중 하나로 저장된다:
-		 * - "server end" : 다음 server 블록이 이어짐
-		 * - "file end"   : 파일 종료
-		 * - "Config error: Invalid server block format" : 형식 오류
-		 */
 		void endSequenceValid(std::ifstream& configFile);
 
 	public:
