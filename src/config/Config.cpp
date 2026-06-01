@@ -28,21 +28,41 @@ Config::ParseStatus Config::parseServerBlock(std::ifstream &configFile)
 	
 	//server port가 없는지, 서버 전체 파싱이 끝났는지 확인
 	if (configFile.eof() && servers.empty())
-		{ statusMessage = "Config error: config file is empty"; return PARSE_ERROR; }
-	else if (configFile.eof() && configLine.empty()) return PARSE_SERVER_END;
+	{ 
+		statusMessage = "Config error: config file is empty"; 
+		return PARSE_ERROR; 
+	}
+	else if (configFile.eof() && configLine.empty()) 
+		return PARSE_SERVER_END;
 	
 	//server port 검사
+	if (countIndent(configLine) != 0)
+	{
+		statusMessage = "Config error: server port line indent error";
+		return PARSE_ERROR;
+	}
+
 	std::vector<std::string> serverToken = ftSplit(configLine, ' ');
 	if (serverToken.empty())
-		{ statusMessage = "Config error: server token is empty"; return PARSE_ERROR; }
+	{ 
+		statusMessage = "Config error: server token is empty"; 
+		return PARSE_ERROR; 
+	}
 
 	if (serverToken[0] != "server" || !isValidListen(serverToken))
-		{ statusMessage = "Config error: server or port error\nerror line: " + configLine; return PARSE_ERROR; }
+	{ 
+		statusMessage = "Config error: server or port error"; 
+		return PARSE_ERROR; 
+	}
 
 	size_t key = 0;
 	if (!toInt(serverToken[1], key))
-		{ statusMessage = "Config error: port config error\nerror line: " + configLine; return PARSE_ERROR; }
+	{ 
+		statusMessage = "Config error: port config error";
+		return PARSE_ERROR; 
+	}
 	
+	//server 파싱 시작
 	ServerConfig server;
 	if (!server.parseServerConfigBlock(configFile))
 	{
@@ -52,9 +72,15 @@ Config::ParseStatus Config::parseServerBlock(std::ifstream &configFile)
 	
 	statusMessage = server.getStatusMessage();
 	if (statusMessage == "file end")
-		{ servers[key] = server; return PARSE_FILE_END; }
+	{ 
+		servers[key] = server; 
+		return PARSE_FILE_END; 
+	}
 	else if (statusMessage == "server end")
-		{ servers[key] = server; return PARSE_SERVER_END; }
+	{ 
+		servers[key] = server; 
+		return PARSE_SERVER_END; 
+	}
 	else
 		return PARSE_ERROR;
 }

@@ -8,11 +8,12 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <ctime>
 
 class ServerConfig
 {
 	private:
-		time_t keepAliveTimeout;
+		std::time_t keepAliveTimeout;
 		size_t clientMaxBodySize;
 		std::map<size_t, std::string> errorPages;
 		std::map<std::string, LocationConfig> locations;

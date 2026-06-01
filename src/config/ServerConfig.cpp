@@ -82,7 +82,7 @@ bool ServerConfig::parseKeepAlive(std::vector<std::string>& token)
 	if (num == 0 || num > TIME_OUT_MAX)
 		return false;
 
-	keepAliveTimeout = static_cast<time_t>(num);
+	keepAliveTimeout = static_cast<std::time_t>(num);
 
 	return true;
 }
