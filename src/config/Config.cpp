@@ -45,7 +45,11 @@ Config::ParseStatus Config::parseServerBlock(std::ifstream &configFile)
 	
 	ServerConfig server;
 	if (!server.parseServerConfigBlock(configFile))
+	{
+		statusMessage = server.getStatusMessage();
 		return PARSE_ERROR;
+	}
+	
 	statusMessage = server.getStatusMessage();
 	if (statusMessage == "file end")
 		{ servers[key] = server; return PARSE_FILE_END; }
