@@ -15,19 +15,13 @@ class Config
 	private:
 		std::map<in_port_t, ServerConfig> servers;
 		std::string statusMessage;
-		enum ParseStatus
-		{
-			PARSE_SERVER_END,
-			PARSE_FILE_END,
-			PARSE_ERROR
-		};
 
 	public:
 		bool parseConfig();
 
 	private:
 		bool isValidListen(const std::vector<std::string>& token);
-		ParseStatus parseServerBlock(std::ifstream& configFile);
+		parseStatus parseServerBlock(std::ifstream& configFile);
 
 	public:
 		Config()

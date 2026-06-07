@@ -26,10 +26,10 @@ class ServerConfig
 		bool parseErrorPage(std::vector<std::string>& token);
 		bool parseBody(const std::vector<std::string>& token);
 		bool parseServerDirective(std::vector<std::string>& token, std::ifstream& configFile);
-		void endSequenceValid(std::ifstream& configFile);
+		parseStatus endSequenceValid(std::ifstream& configFile);
 
 	public:
-		bool parseServerConfigBlock(std::ifstream &configFile);
+		parseStatus parseServerConfigBlock(std::ifstream &configFile);
 		
 
 	public:
@@ -40,7 +40,7 @@ class ServerConfig
 			keepAliveTimeout = 75;
 		};
 		const size_t& getClientMaxBodySize() const { return clientMaxBodySize; }
-		int getKeepAliveTimeout() const { return keepAliveTimeout; }
+		std::time_t getKeepAliveTimeout() const { return keepAliveTimeout; }
 		const std::map<size_t, std::string>& getErrorPages() const { return errorPages; }
 		const std::map<std::string, LocationConfig>& getLocations() const { return locations; }
 		const std::string& getStatusMessage() const { return statusMessage; }

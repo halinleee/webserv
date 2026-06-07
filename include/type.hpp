@@ -9,6 +9,13 @@
 // class Socket;
 // class Client;
 
+enum parseStatus
+{
+    PARSE_SERVER_END,
+    PARSE_FILE_END,
+    PARSE_ERROR
+};
+
 enum RetStatus 
 {
     STATUS_ERROR = 0,

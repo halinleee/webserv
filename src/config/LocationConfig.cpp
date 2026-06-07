@@ -4,9 +4,21 @@
 
 bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)
 {
-	if (s == "GET") { out = METHOD_GET; return true; }
-	else if (s == "POST") { out = METHOD_POST; return true; }
-	else if (s == "DELETE") { out = METHOD_DELETE; return true; }
+	if (s == "GET") 
+	{ 
+		out = METHOD_GET; 
+		return true; 
+	}
+	else if (s == "POST") 
+	{ 
+		out = METHOD_POST; 
+		return true; 
+	}
+	else if (s == "DELETE") 
+	{ 
+		out = METHOD_DELETE; 
+		return true; 
+	}
 	return false;
 }
 

@@ -16,7 +16,7 @@ bool Config::isValidListen(const std::vector<std::string>& token)
 	return true;
 }
 
-Config::ParseStatus Config::parseServerBlock(std::ifstream &configFile)
+parseStatus Config::parseServerBlock(std::ifstream &configFile)
 {
 	std::string configLine;
 
@@ -55,30 +55,29 @@ Config::ParseStatus Config::parseServerBlock(std::ifstream &configFile)
 		return PARSE_ERROR; 
 	}
 
-	size_t key = 0;
-	if (!toInt(serverToken[1], key))
+	size_t tmp = 0;
+	if (!toInt(serverToken[1], tmp))
 	{ 
 		statusMessage = "Config error: port config error";
 		return PARSE_ERROR; 
 	}
-	
+	in_port_t key = static_cast<in_port_t>(tmp);
+
 	//server 파싱 시작
 	ServerConfig server;
-	if (!server.parseServerConfigBlock(configFile))
-	{
-		statusMessage = server.getStatusMessage();
-		return PARSE_ERROR;
-	}
-	
+	parseStatus result = server.parseServerConfigBlock(configFile);
 	statusMessage = server.getStatusMessage();
-	if (statusMessage == "file end")
+
+	if (result == PARSE_ERROR)
+		return PARSE_ERROR;
+	if (result == PARSE_FILE_END)
 	{ 
-		servers[key] = server; 
+		servers[key] = server;
 		return PARSE_FILE_END; 
 	}
-	else if (statusMessage == "server end")
+	else if (result == PARSE_SERVER_END)
 	{ 
-		servers[key] = server; 
+		servers[key] = server;
 		return PARSE_SERVER_END; 
 	}
 	else
