@@ -27,6 +27,7 @@ enum Status
 {
     STATUS_UNDEFINED = 0, //// 이렇게 해도 되는지 검증 필요
     STATUS_BAD_REQUEST = 400,
+    STATUS_NOT_FOUND = 404,
     STATUS_URI_LONG = 414,
     STATUS_NOT_IMPLEMENTED = 501,
     STATUS_HTTP_VERSION = 505,

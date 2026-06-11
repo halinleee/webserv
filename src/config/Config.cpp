@@ -5,11 +5,10 @@
 
 #define PORT_MAX 65535
 
-bool Config::isValidListen(const std::vector<std::string>& token)
+bool Config::isValidListen(const std::vector<std::string>& token, size_t& num)
 {
 	if (token.size() != 2) return false;
 
-	size_t num = 0;
 	if (!toInt(token[1], num)) return false;
 
 	if (num == 0 || num > PORT_MAX) return false;
@@ -49,19 +48,14 @@ parseStatus Config::parseServerBlock(std::ifstream &configFile)
 		return PARSE_ERROR; 
 	}
 
-	if (serverToken[0] != "server" || !isValidListen(serverToken))
+	size_t num = 0;
+	if (serverToken[0] != "server" || !isValidListen(serverToken, num))
 	{ 
 		statusMessage = "Config error: server or port error"; 
 		return PARSE_ERROR; 
 	}
 
-	size_t tmp = 0;
-	if (!toInt(serverToken[1], tmp))
-	{ 
-		statusMessage = "Config error: port config error";
-		return PARSE_ERROR; 
-	}
-	in_port_t key = static_cast<in_port_t>(tmp);
+	in_port_t key = static_cast<in_port_t>(num);
 
 	//server 파싱 시작
 	ServerConfig server;
@@ -73,7 +67,7 @@ parseStatus Config::parseServerBlock(std::ifstream &configFile)
 	if (result == PARSE_FILE_END)
 	{ 
 		servers[key] = server;
-		return PARSE_FILE_END; 
+		return PARSE_FILE_END;
 	}
 	else if (result == PARSE_SERVER_END)
 	{ 

@@ -51,7 +51,7 @@ bool ServerConfig::matching(const std::string& url)
         if (prefixLen > highScore)
         {
             highScore = prefixLen;
-            matchLocation = locations[prefix];
+            matchLocation = locations.find(prefix)->second;
             match = true;
         }
     }
@@ -92,7 +92,7 @@ bool isValidErrorCode(size_t code)
 	switch (code)
 	{
 		case STATUS_BAD_REQUEST:
-		case 404:
+		case STATUS_NOT_FOUND:
 		case STATUS_URI_LONG:
 		case STATUS_NOT_IMPLEMENTED:
 		case STATUS_HTTP_VERSION:

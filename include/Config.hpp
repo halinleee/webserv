@@ -20,7 +20,7 @@ class Config
 		bool parseConfig();
 
 	private:
-		bool isValidListen(const std::vector<std::string>& token);
+		bool isValidListen(const std::vector<std::string>& token, size_t& num);
 		parseStatus parseServerBlock(std::ifstream& configFile);
 
 	public:
