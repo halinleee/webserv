@@ -15,7 +15,7 @@ bool Cgi::dupSetting(int *in, int *out)
     return (true);
 }
 
-int Cgi::excute(EnvMap envp, int *in, int *out)
+pid_t Cgi::excute(EnvMap envp, int *in, int *out)
 {
     pid_t pid;
     char **env;
@@ -31,15 +31,15 @@ int Cgi::excute(EnvMap envp, int *in, int *out)
     else if (pid == 0)
     {
         if (!dupSetting(in, out))
-            throw std::runtime_error("CGI: dup Error");        
+            return (-1);        
         env = mapToEnvp(envp);
         cmd[0] = (char *)"/home/seungsch/Webserve/src/cgi/test.py";
         cmd[1] = NULL;
         if (execve(cmd[0], cmd, env) < 0)
         {
             freeSplit(env);
-            write(STDERR_FILENO, "Error", 6);
-            throw std::runtime_error("CGI: execve failed");
+            write(STDERR_FILENO, "CgiError\n", 9);
+            return (-1);
         }
     }
     return (pid);

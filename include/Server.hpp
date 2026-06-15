@@ -1,7 +1,7 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-#include "main.hpp"
+#include "type.hpp"
 #include "Epoll.hpp"
 #include "Utils.hpp"
 #include "Socket.hpp"
@@ -9,6 +9,8 @@
 #include "Cgi.hpp"
 
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <netinet/in.h>
 
 /**
  * @brief 웹 서버의 전반적인 동작과 클라이언트 연결, 이벤트를 관리하는 핵심 클래스
@@ -63,6 +65,10 @@ class Server
          * 덧붙여서 자식 프로세스(execve)에 전달하는 베이스로 사용됩니다.
          */
         EnvMap env;
+        /**
+         * @brief configfile에서 설정된 서버 내의 timeOut되는 기준시간을 가지고 있는 구조체
+         */
+        struct timeValue timeOutValue;
         
     public:
         /**
@@ -71,7 +77,7 @@ class Server
          * 서버 초기화 단계에서 메모리를 확보하고 envp를 맵 형태로 변환하여 보관합니다.
          * @param envp 메인 함수에서 전달받은 환경변수
          */
-        Server(char **envp);
+        Server(char **envp, timeValue timeValue);
 
         /**
          * @brief Client 맵과 serverSocket으로 할당받은 자원회수
@@ -86,9 +92,9 @@ class Server
          * 내부적으로 serverSetting()을 호출하여 소켓 옵션을 설정하고 논블로킹 모드로 만든 후, Epoll의 감시 대상에 추가합니다.
          * @param port 바인딩할 포트 번호
          * @param epoll 이벤트를 관리할 Epoll 객체
-         * @return Error 발생시 1, 정상 동작 0
+         * @return Error STATUS_ERROR, 정상 동작 STATUS_OK
          */
-        bool serverAdd (in_port_t port, Epoll &epoll);
+        RetStatus serverAdd (in_port_t port, Epoll &epoll);
 
         /**
          * @brief 서버가 client에게 데이터를 송신하는 함수
@@ -97,16 +103,16 @@ class Server
          * @param client 보낼 clinet 객체
          * @return 함수의 성공 여부
          */
-        int serverSend(Client *client);
+        RetStatus serverSend(Client *client);
 
         /**
          * @brief Epoll 이벤트를 감지하고 종류에 따라 분기 처리하는 메인 이벤트 루프 함수
-         
+        
          * 무한 루프 내에서 epWait()을 호출하여 발생하는 이벤트(연결 요청, 데이터 수신, 송신 가능 여부 등)를
          * 판단하고 각각 clientAccept, clientRequest, clientResponse 등으로 라우팅하는 서버의 심장부 역할을 합니다.
          * @param epoll 이벤트를 관리할 Epoll 객체
          */
-        bool eventProcess(Epoll &epoll);
+        RetStatus eventProcess(Epoll &epoll);
 
         /**
          * @brief 서버 소켓의 바인딩 및 리슨을 설정하는 함수
@@ -115,7 +121,7 @@ class Server
          * @param serverSocket 설정할 서버 Socket 객체
          * @return bind, listen, nonblockingSet 함수의 실패여부
          */
-        bool serverSetting(Socket *serverSocket);
+        RetStatus serverSetting(Socket *serverSocket);
 
         /**
          * @brief 클라이언트의 연결 요청을 수락하고 Client 객체를 생성 및 Epoll에 등록하는 함수
@@ -124,7 +130,7 @@ class Server
          * @param epoll 이벤트를 관리할 Epoll 객체
          * @param socket 연결 요청을 받은 서버 Socket 객체
          */
-        bool clientAccept(Epoll &epoll, Socket *socket); //차후에 서버에 접속하는 클라이언트 정보를 가공할 일이 있으면 수정 필요
+        RetStatus clientAccept(Epoll &epoll, Socket *socket); //차후에 서버에 접속하는 클라이언트 정보를 가공할 일이 있으면 수정 필요
 
         /**
          * @brief eventProcess에서 client에 대한 동작(request, response, cgi)에 대한 동작을 수행하는 함수
@@ -133,7 +139,7 @@ class Server
          * @param currentEvent 현재 이벤트의 내용
          * @return loop 동작 중 error발생 여부(발생시 STATUS_ERROR = 0, 아닐 시 STATUS_OK = 1)
          */
-        bool clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent);
+        RetStatus clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent);
 
         /**
          * @brief 클라이언트의 데이터를 읽어들이고 요청을 파싱하는 함수
@@ -142,7 +148,7 @@ class Server
          * @param epoll 이벤트를 관리할 Epoll 객체
          * @param client 데이터를 전송한 클라이언트 객체
          */
-        bool clientRequest(Epoll &epoll, Client *client); // 차후에 클라이언트 요청이 들어오는걸 파싱하는 로직이 들어가야함(현재 프린트만 하도록 동작)
+        RetStatus clientRequest(Epoll &epoll, Client *client); // 차후에 클라이언트 요청이 들어오는걸 파싱하는 로직이 들어가야함(현재 프린트만 하도록 동작)
 
         /**
          * @brief 클라이언트에게 응답 데이터를 전송하는 함수
@@ -151,7 +157,7 @@ class Server
          * @param epoll 이벤트를 관리할 Epoll 객체
          * @param client 응답을 보낼 클라이언트 객체
          */
-        bool clientResponse(Epoll &epoll, Client *client);
+        RetStatus clientResponse(Epoll &epoll, Client *client);
 
         /**
         * @brief 특정 FD에 해당하는 클라이언트 객체의 포인터가 존재하는지 확인하는 함수
@@ -167,7 +173,7 @@ class Server
          * @param epoll 이벤트를 관리할 Epoll 객체
          * @param client 이벤트가 발생한 클라이언트 객체
          */
-        bool cgiRun(Epoll &epoll, Client *client);
+        RetStatus cgiRun(Epoll &epoll, Client *client);
 
         /**
          * @brief CGI 프로세스로부터 데이터를 읽어들이는 함수
@@ -178,7 +184,7 @@ class Server
          * @param epoll 이벤트를 관리하는 Epoll 객체
          * @param socket 이벤트가 감지된 pipe의 FD를 가지고 있는 client객체의 주소
          */
-        bool cgiPipeRead(Epoll &epoll, Client *client);
+        RetStatus cgiPipeRead(Epoll &epoll, Client *client);
 
         /**
          * @brief CGI 프로세스로 데이터를 전송(쓰기)하는 함수
@@ -189,17 +195,12 @@ class Server
          * @param epoll 이벤트를 관리하는 Epoll 객체
          * @param client 이벤트가 감지된 pipe의 FD를 가지고 있는 client객체의 주소
          */
-        bool cgiPipeWrite(Epoll &epoll, Client *client);
-
-        /**
-         * @brief 클라이언트가 동작을 언제 했고 
-         */
-        bool checkKeepAlive();
+        RetStatus cgiPipeWrite(Epoll &epoll, Client *client);
 
         /**
          * @brief 클라이언트의 요청을 보낸 시간이 keep-alive 시간을 지났는지 확인하고 지났을 경우 해제하는 함수
          */
-        void checkKeepAliveClient(int &index);
+        void checkTimeOutClient(int &index);
         
         
         /**

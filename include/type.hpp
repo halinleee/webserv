@@ -5,6 +5,7 @@
 #include <vector>
 #include <deque>
 #include <string>
+#include <ctime>
 
 class Socket;
 class Client;
@@ -17,11 +18,23 @@ class Client;
  * 
  * @todo 나중에 각 status code에 대해서 확인한 후 status code의 숫자로 지정해 넘겨주도록 변경필요
  */
-enum  Status 
+enum  RetStatus 
 {
     STATUS_ERROR = 0,
     STATUS_OK = 1,
     STATUS_RE = 2
+};
+
+/**
+ * @brief timeOut을 관리하기 위해서 활동시간과 timeOut시간을 가지고 있는 구조체
+ */
+struct timeValue
+{
+    time_t connetionTimeOut;
+    time_t readTimeout;
+    time_t writeTimeout;
+    time_t keepAliveTimeout;
+    time_t cgiTimeout;
 };
 
 /**

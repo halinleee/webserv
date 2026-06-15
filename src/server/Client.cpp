@@ -9,6 +9,7 @@ Client::Client()
     this->inPipe[1] = -1;
     this->outPipe[0] = -1;
     this->outPipe[1] = -1;
+    this->runCgi = false;
     this->pid = -1;
 }
 
@@ -21,6 +22,7 @@ Client::Client(Socket *socket, EnvMap env)
     this->inPipe[1] = -1;
     this->outPipe[0] = -1;
     this->outPipe[1] = -1;
+    this->runCgi = false;
     this->pid = -1;
 }
 
@@ -57,21 +59,28 @@ int Client::readCgiPipe()
     return (STATUS_RE);
 }
 
-bool Client::checkCgiExited(void)
+void Client::CgiExited()
+{
+    kill(this->pid, SIGKILL);
+    waitpid(this->pid, NULL, 0);
+    std::cout << "cgi timeOut kill" << std::endl;
+}
+
+RetStatus Client::checkCgiExited(void)
 {
     int status;
 
     int result = waitpid(this->pid, &status, WNOHANG);
-    if (result < 0)
+    if (result < 0) // timeOut에 의한 sigkill 분기
         return (STATUS_ERROR);
     if (WIFEXITED(status))
     {
-        if (WEXITSTATUS(status) == 0)
+        if (WEXITSTATUS(status) == 0) // 정상종료
             return (STATUS_OK);
         std::cout << "cgi exited with code " << WEXITSTATUS(status) << std::endl;
         return (STATUS_ERROR);
     }
-    if (WIFSIGNALED(status))
+    if (WIFSIGNALED(status)) // 프로세스 돌리고 cmd로 kill의 분기
     {
         std::cout << "cgi killed by signal " << WTERMSIG(status) << std::endl;
         return (STATUS_ERROR);
@@ -95,26 +104,6 @@ void Client::timeSet(void)
 void Client::CharDqAppend(int length, unsigned char *received)
 {
     this->recDq.insert(this->recDq.end(), received, received + length);
-}
-
-CharDq &Client::getCharDq(void)
-{
-    return (this->recDq);
-}
-
-Socket &Client::getSocket()
-{
-    return (*this->clientSocket);
-}
-
-int Client::getStatusCode()
-{
-    return (this->statusCode);
-}
-
-void Client::setStatusCode(int statusCode)
-{
-    this->statusCode = statusCode;
 }
 
 void Client::pipeClose(int flag)
@@ -168,15 +157,25 @@ int Client::getPipeFd(int index)
         return (this->outPipe[0]);
 }
 
-void Client::setPid(pid_t pid)
-{
-    this->pid = pid;
-}
+bool Client::checkAlive(void) { return (this->clientSocket->checkTimeOut());}
 
-pid_t Client::getPid()
-{
-    return (this->pid);
-}
+pid_t Client::getPid() {return (this->pid);}
+
+CharDq &Client::getCharDq(void) { return (this->recDq);}
+
+Socket &Client::getSocket() { return (*this->clientSocket);}
+
+int Client::getStatusCode() { return (this->statusCode);}
+
+bool Client::checkRunCgi(void) { return (this->runCgi);}
+
+void Client::setRunCgi(void) {this->runCgi ? this->runCgi = false : this->runCgi = true ;}
+
+void Client::setStatusCode(int statusCode) {this->statusCode = statusCode;}
+
+void Client::setPid(pid_t pid) {this->pid = pid;}
+
+void Client::timeSet(time_t addTime) {this->clientSocket->setTimeStatus(addTime); }
 
 Client::~Client()
 {

@@ -1,8 +1,10 @@
 #ifndef CGI_HPP
 # define CGI_HPP
 
-#include "main.hpp"
+#include "type.hpp"
 #include "Utils.hpp"
+#include <sys/types.h>
+#include <unistd.h>
 
 /**
  * @brief CGI(Common Gateway Interface) 실행 및 파이프 통신을 처리하는 클래스

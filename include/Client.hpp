@@ -1,10 +1,11 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
 
-#include "main.hpp" // 차후에 main.hpp를 제거하고 필요한 client에 관련된 헤더파일은 hpp에서 직접 include 하도록 수정
 #include "Socket.hpp"
-#include "Utils.hpp"
+#include "type.hpp"
+#include <iostream>
 #include <sys/wait.h>
+#include <sys/types.h>
 
 /**
  * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 http의 요청에서 body을 전달하는 inPipe의 쓰기 끝을 반환하는 flag
@@ -32,6 +33,14 @@ class Client
          * accept() 성공 시 동적 할당되며, 클라이언트의 port, ip주소등 클라이언테에 대한 정보를 가지고 있습니다.
          */
         Socket *clientSocket;
+
+        /**
+         * @var runCgi
+         * @brief Cgi의 동작여부를 담고있는 bool 변수
+         * 
+         * TimeOut, Cgi분기s에서 사용
+         */
+        bool runCgi;
         /**
          * @var recVec
          * @brief recv로 수신받은 HTTP 요청 원본 데이터를 누적해서 담고 있는 deque<char> 버퍼
@@ -50,12 +59,12 @@ class Client
          * @var inPipe
          * @brief Server -> CGI 프로그램 방향으로 데이터를 전달하기 위한 pipe FD 배열 (크기 2)
          */
-        int inPipe[2];
+        FD inPipe[2];
         /**
          * @var outPipe
          * @brief CGI 프로그램 -> Server 방향으로 실행 결과를 받아오기 위한 pipe FD 배열 (크기 2)
          */
-        int outPipe[2];
+        FD outPipe[2];
         /**
          * @var statusCode
          * @brief HTTP 응답을 생성할 때 기준이 되는 상태 코드 (ex: 200, 404, 500)
@@ -118,16 +127,27 @@ class Client
          * @brief cgi(child 프로세스)가 정상 종료가 되었는지 확인하는 함수
          * 
         */
-        bool checkCgiExited(void);
+        RetStatus checkCgiExited(void);
         /**
          * @brief 이 클라이언트의 keep-alive가 유지를 하는지 확인하는 함수
         */
         bool checkAlive(void);
+        /**
+         * @brief 이 클라이언트의 cgi가 돌아가고 있는지 확인하는 함수
+        */
+        bool checkRunCgi(void);
 
         /**
          * @brief 클라이언트의 keepAlive시간을 초기화하는 함수
         */
-        void timeSet(void);
+        void timeSet(time_t addTime);
+
+        /**
+         * @brief Cgi에 대해서 sigkill을 하는 함수
+         * 
+         * cgi timeOut에 사용
+         */
+        void CgiExited();
 
         /**
          * @brief Cgi프로그램에게 넘길 body내용을 Cgi프로그램과 연결되어 있는 파이프에 적는 함수
@@ -136,7 +156,7 @@ class Client
          * @return 1(STATUS_OK) 정상 동작
          * @return 1(STATUS_RE) 정상 동작은 했으나 pipe의 크기 제한으로 다시 이 함수를 와야할 경우
         */
-        int writeCgiPipe();
+        int writeCgiPipe(void);
 
         /**
          * @brief Cgi프로그램이 보낸 결과를 파이프에서 읽어오는 함수
@@ -145,7 +165,9 @@ class Client
          * @return 1(STATUS_OK) EOF (모든 데이터를 다 읽음)
          * @return 2(STATUS_RE) 아직 읽을 데이터가 남아있음
          */
-        int readCgiPipe();
+        int readCgiPipe(void);
+
+        void setRunCgi(void);
         /**
          * @brief CGI 실행 시 할당된 자식 프로세스의 PID를 설정하는 함수
          * 

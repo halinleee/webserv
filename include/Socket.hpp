@@ -1,13 +1,13 @@
 #ifndef SOCKET_HPP
 # define SOCKET_HPP
-# define DEFAULT_TIMEOUT 1000
 
-#include "main.hpp"
+#include <netinet/in.h>
+#include <ctime>
 
 /**
- * @brief timeOut을 관리하기 위해서 활동시간과 timeOut시간을 가지고 있는 구조체
+ * @brief 여러가지의 timeOut을 관리하기 위해서 활동시간과 아웃시간을 가지고 있는 구조체
  */
-struct time
+struct timeState
 {
     time_t timeAct;
     time_t timeOut;
@@ -33,20 +33,12 @@ class Socket
          * 서버 소켓의 경우 바인딩할 때 사용되며, 클라이언트 소켓의 경우 연결된 클라이언트의 정보를 보관합니다.
          */
         struct sockaddr_in addr;
+
         /**
-         * @param timeAct
-         * @brief 클라이언트가 http요청을 보낸 시간
-         * 
-         * keep-alive에 대해서 구현하기 위해서 필요하고 http request를 할떄마다 갱신 필요
+         * @brief timeOut시간을 가지고 있는 timeState객체
+         * @details connection timeOut, headreader timeOut, body read timeOut, processing timeOut, cgiTimeOut, writeTimeOut, 
          */
-        time_t timeAct;
-        /**
-         * @param timeOut
-         * @brief 클라이언트가 http요청을 보내고 통신이 유지되는 시간
-         * 
-         * keep-alive에 대해서 구현하기 위해서 필요하고 http request를 할떄마다 갱신 필요
-         */
-        time_t timeOut;
+        struct  timeState timeState;
     
     public:
         /**
@@ -92,17 +84,17 @@ class Socket
         const struct sockaddr_in &getAddr(void) const;
 
         /**
-         * @brief 소켓의 타임아웃 시간을 반환하는 함수
-         * @return 설정된 타임아웃 시간 (const 참조)
+         * @brief 소켓의 타임아웃을 했는지 확인하는 함수
+         * @return timeOut의 여부
          * @details 서버가 장기 미활동 클라이언트를 정리(Timeout 처리)할지 판별하는 기준 시간으로 사용됩니다.
          */
-        const time_t &getTimeOut(void) const;
+        bool checkTimeOut(void);
 
         /**
-         * @brief 소켓의 최근 활동 시간 및 타임아웃 시간을 갱신하는 함수
-         * @details 클라이언트로부터 새로운 요청(recv)이 들어올 때마다 호출되어, 연결 유지 기한을 연장합니다.
+         * @brief 소켓의 mainTime을 최근 활동 시간, 타임아웃 시간을 갱신하는 함수
+         * @details accept가 되고 recv가 들어오는데까지 걸리는시간, recv가 경괴되는시간, send과 경과되는 시간, send 후 유지되는시간을 갱신하기 위해 사용한다.
          */
-        void actTimeSet(void);
+        void setTimeStatus(time_t addTime);
 };
 
 

@@ -1,7 +1,7 @@
 #ifndef UTILS_HPP
 # define UTILS_HPP
 
-#include "main.hpp"
+#include "type.hpp"
 
 /**
  * @brief 특정 파일 디스크립터를 논블로킹(Non-blocking) 모드로 설정하는 함수

@@ -1,7 +1,8 @@
 #ifndef EPOLL_HPP
 # define EPOLL_HPP
 
-#include "main.hpp"
+#include <sys/epoll.h>
+#include <sys/types.h>
 
 /**
  * @brief Linux epoll I/O 다중화 기능을 캡슐화한 클래스
