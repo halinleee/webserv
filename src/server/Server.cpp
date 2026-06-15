@@ -126,15 +126,12 @@ bool Server::clientResponse(Epoll &epoll, Client *client)
     response += "\r\n";
     response += html_body;
 
-    if (client->response.empty())    
-    {
-        // std::cout << "normal response send" << std::endl;
+    if (client->response.empty())
         client->response = response;
-    }
-    else
-        // std::cout << "cgi response send" << std::endl;
-    if (!serverSend(client)) {return (STATUS_OK);}
-    epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0);
+    int sendStatus = serverSend(client);
+    if (sendStatus == STATUS_ERROR) {return (STATUS_ERROR);}
+    if (sendStatus == STATUS_RE) {return (STATUS_OK);}
+    epoll.epollControl(EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN);
     client->timeSet();
     return (STATUS_OK);
 }
@@ -145,23 +142,19 @@ bool Server::clientResponse(Epoll &epoll, Client *client)
  */
 int Server::serverSend(Client *client)
 {
-    ssize_t targetSize = 0;
-    ssize_t length = 0;
-
-    targetSize = client->response.size();
-    length = send(client->getSocket().getFd(), client->response.c_str(), targetSize, 0);
-    // std::cout << "response print" << std::endl;
-    // std::cout << client->response << std::endl;
-    client->response.clear();
-    client->getCharDq().clear();
+    ssize_t targetSize = client->response.size();
+    ssize_t length = send(client->getSocket().getFd(), client->response.c_str(), targetSize, 0);
     if (length < 0)
         return (STATUS_ERROR);
-    if (static_cast<ssize_t>(length) == targetSize) {return (STATUS_OK);}
-    else
+    if (length == targetSize)
     {
-        client->response = client->response.substr(length);
-        return (STATUS_RE);
+        client->response.clear();
+        client->getCharDq().clear();
+        return (STATUS_OK);
     }
+    client->response = client->response.substr(length);
+    client->getCharDq().clear();
+    return (STATUS_RE);
 }
 
 bool Server::serverSetting(Socket *serverSocket)
@@ -347,17 +340,22 @@ bool Server::cgiPipeWrite(Epoll &epoll, Client *client)
 void Server::checkKeepAliveClient(int &index)
 {
     int i = 0;
-    int numClient = static_cast<int>(this->inClientVec.size()); 
+    int numClient = static_cast<int>(this->inClientVec.size());
     while (i < 16)
     {
         if (index >= numClient)
             break;
-        if (!(this->client[this->inClientVec[index]]->checkAlive()))
+        FD fd = this->inClientVec[index];
+        bool shouldDelete = (this->client[fd] == NULL);
+        if (!shouldDelete && !this->client[fd]->checkAlive())
         {
-            FD tmpFd = this->inClientVec[index];
-            std::cout << "delete [" << tmpFd <<"]" << std::endl;
-            deleteClient(tmpFd);
-            this->inClientVec.erase(this->inClientVec.begin() + (index));
+            std::cout << "timeout delete [" << fd << "]" << std::endl;
+            deleteClient(fd);
+            shouldDelete = true;
+        }
+        if (shouldDelete)
+        {
+            this->inClientVec.erase(this->inClientVec.begin() + index);
             numClient = static_cast<int>(this->inClientVec.size());
         }
         else
@@ -366,7 +364,6 @@ void Server::checkKeepAliveClient(int &index)
     }
     if (index >= numClient)
         index = 0;
-    return ;
 }
 
 void Server::deleteClient(int deleteFd)

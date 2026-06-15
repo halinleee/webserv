@@ -1,4 +1,5 @@
 #include "Client.hpp"
+#include <cerrno>
 
 Client::Client() 
 {
@@ -41,26 +42,18 @@ int Client::writeCgiPipe()
 
 int Client::readCgiPipe()
 {
-    int status;
     char received[4096];
-    ssize_t length = 0;
-
-    length = read(this->outPipe[0], received, 4095);
-    if (length <= 0)
+    ssize_t length = read(this->outPipe[0], received, 4095);
+    if (length < 0)
     {
-        if (length < 0)
-            return (STATUS_ERROR);
-        else if (length == 0)
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
             return (STATUS_RE);
-        else
-        {
-            if (!checkCgiExited())
-                return (STATUS_ERROR);
-            received[length] = '\0';
-            this->response.append(received, length);
-            return (STATUS_OK);
-        }
+        return (STATUS_ERROR);
     }
+    if (length == 0)
+        return (STATUS_OK);
+    received[length] = '\0';
+    this->response.append(received, length);
     return (STATUS_RE);
 }
 
@@ -71,7 +64,7 @@ bool Client::checkCgiExited(void)
     int result = waitpid(this->pid, &status, WNOHANG);
     if (result < 0)
         return (STATUS_ERROR);
-    if (WIFEXITED(status) == 0)
+    if (WIFEXITED(status))
     {
         if (WEXITSTATUS(status) == 0)
             return (STATUS_OK);
@@ -83,6 +76,7 @@ bool Client::checkCgiExited(void)
         std::cout << "cgi killed by signal " << WTERMSIG(status) << std::endl;
         return (STATUS_ERROR);
     }
+    return (STATUS_ERROR);
 }
 
 bool Client::checkAlive(void)
