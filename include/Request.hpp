@@ -34,10 +34,3 @@ struct Request
 };
 
 #endif
-
-/*
-
-- 일반 헤더는 하나만 유지 (마지막에 들어온 값으로) <- 잘 되고 있냐ㅏ?
-- `Set-Cookie`나 `Cookie`, `X-Forwarded-For`와 같은 헤더는 여러 개 허용
-
-*/

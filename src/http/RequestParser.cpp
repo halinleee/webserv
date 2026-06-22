@@ -208,11 +208,13 @@ bool RequestParser::validateHeaders()
 		{ statusCode = STATUS_BAD_REQUEST; return false; }
 	if (!parseHost(tmpHeaders["host"][0])) { statusCode = STATUS_BAD_REQUEST; return false; }
 
-	bool hasCL = tmpHeaders["content-length"].size() > 0;
-	bool hasTE = tmpHeaders["transfer-encoding"].size() > 0;
+	std::map<std::string, strVec>::iterator clIt = tmpHeaders.find("content-length");
+	std::map<std::string, strVec>::iterator teIt = tmpHeaders.find("transfer-encoding");
+	bool hasCL = clIt != tmpHeaders.end() && !clIt->second.empty();
+	bool hasTE = teIt != tmpHeaders.end() && !teIt->second.empty();
 	if (hasCL && hasTE) { statusCode = STATUS_BAD_REQUEST; return false; }
-	if (hasCL && !validateContentLength(tmpHeaders["content-length"])) return false;
-	if (hasTE && !validateTransferEncoding(tmpHeaders["transfer-encoding"])) return false;
+	if (hasCL && !validateContentLength(clIt->second)) return false;
+	if (hasTE && !validateTransferEncoding(teIt->second)) return false;
 
 	return true;
 }
@@ -398,14 +400,14 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 				inTrailer = true;
 				continue;
 			}
+			if (parsedReq.body.size() + size > MAX_CLIENT_BODY_LENGTH)
+				{ statusCode = STATUS_PAYLOAD_TOO_LARGE; return true; }
 			chunkRemaining = static_cast<size_t>(size);
 		}
 		else
 		{
 			if (buf.size() < chunkRemaining + 2) return false;
 
-			if (parsedReq.body.size() + chunkRemaining > MAX_CLIENT_BODY_LENGTH)
-				{ statusCode = STATUS_PAYLOAD_TOO_LARGE; return true; }
 			if (buf[chunkRemaining] != '\r' || buf[chunkRemaining + 1] != '\n')
     			{ statusCode = STATUS_BAD_REQUEST; return true; }
 			
