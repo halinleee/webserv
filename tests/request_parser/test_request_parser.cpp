@@ -27,7 +27,6 @@ static void appendStr(CharDq& buf, const std::string& s)
 	buf.insert(buf.end(), s.begin(), s.end());
 }
 
-// 버퍼에 raw 문자열을 한 번에 채워 넣고 parse()를 호출, 끝까지(REQ_PARSE_INCOMPLETE가 아닐 때까지) 반복
 static ReqParseResult feedAll(RequestParser& parser, CharDq& buf, const std::string& raw)
 {
 	appendStr(buf, raw);
@@ -213,9 +212,9 @@ static void test_zero_headers_request()
 {
 	RequestParser parser;
 	CharDq buf;
-	// 헤더가 하나도 없는 요청(start-line 뒤에 바로 빈 줄). Host가 없으니 400을 기대하지만,
-	// parseHeaders가 헤더 섹션 종료를 findCRLFCRLF(4바이트 패턴)로만 찾기 때문에 남은 버퍼가
-	// "\r\n"(2바이트)뿐인 이 경우를 끝까지 REQ_PARSE_INCOMPLETE로 본다. (버그)
+	// 헤더가 하나도 없는 요청(start-line 뒤에 바로 빈 줄). parseHeaders에는 남은 버퍼가
+	// "\r\n"으로 시작하면 헤더 섹션 종료로 바로 처리하는 특수 분기가 있어 INCOMPLETE에
+	// 멈추지 않고, Host 헤더가 없으므로 400으로 종료된다.
 	ReqParseResult ret = feedAll(parser, buf, "GET / HTTP/1.1\r\n\r\n");
 
 	CHECK(ret == REQ_PARSE_ERROR);

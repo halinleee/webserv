@@ -401,7 +401,9 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 
 			if (parsedReq.body.size() + chunkRemaining > MAX_CLIENT_BODY_LENGTH)
 				{ statusCode = STATUS_PAYLOAD_TOO_LARGE; return true; }
-
+			if (buf[chunkRemaining] != '\r' || buf[chunkRemaining + 1] != '\n')
+    			{ statusCode = STATUS_BAD_REQUEST; return true; }
+			
 			parsedReq.body.insert(parsedReq.body.end(), buf.begin(), buf.begin() + chunkRemaining);
 			buf.erase(buf.begin(), buf.begin() + chunkRemaining + 2);
 			chunkRemaining = 0;

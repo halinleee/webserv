@@ -167,6 +167,7 @@ bool Server::clientResponse(Epoll &epoll, Client *client)
             if (!epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0))
                 return (STATUS_ERROR);
             this->clientDel(client->getSocket().getFd());
+            return (STATUS_OK);
         }
         // parser나 request 객체 등을 초기화해야 함. (TODO)
         if (!epoll.epollControl(EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN))
