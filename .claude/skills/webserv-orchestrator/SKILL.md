@@ -26,7 +26,7 @@ description: >
 워크플로우 시작 전 기존 산출물을 확인하여 실행 모드를 결정한다.
 
 ```bash
-ls /home/seungsikchoi/code/Webserver/_workspace/ 2>/dev/null
+ls /home/seungsch/Webserve/_workspace/ 2>/dev/null
 ```
 
 - `_workspace/` 없음 → **초기 실행**: Phase 1부터 전체 수행
@@ -38,7 +38,7 @@ ls /home/seungsikchoi/code/Webserver/_workspace/ 2>/dev/null
 ### 1-1. 작업 디렉토리 준비
 
 ```bash
-mkdir -p /home/seungsikchoi/code/Webserver/_workspace
+mkdir -p /home/seungsch/Webserve/_workspace
 ```
 
 ### 1-2. 에이전트 팀 구성

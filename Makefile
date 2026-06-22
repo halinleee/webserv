@@ -14,7 +14,7 @@ SERVER_SRC  = Server.cpp Socket.cpp Epoll.cpp Client.cpp
 SERVER_OBJ  = $(addprefix $(OBJS_DIR)/, $(SERVER_SRC:.cpp=.o))
 
 UTILS_DIR   = ./src/utils
-UTILS_SRC   = Utils.cpp
+UTILS_SRC   = Utils.cpp Pipe.cpp
 UTILS_OBJ   = $(addprefix $(OBJS_DIR)/, $(UTILS_SRC:.cpp=.o))
 
 CGI_DIR   = ./src/cgi

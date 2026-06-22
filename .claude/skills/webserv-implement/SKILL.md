@@ -10,10 +10,10 @@ description: >
 
 ## 환경 정보
 
-- **빌드**: `make -C /home/seungsikchoi/code/Webserver`
+- **빌드**: `make -C /home/seungsch/Webserve`
 - **표준**: C++98 (컴파일러 플래그 `-std=c++98 -Wall -Wextra -Werror`)
 - **실행**: `./Webserver {port}` 또는 `./Webserver {config_file}`
-- **소스 루트**: `/home/seungsikchoi/code/Webserver/`
+- **소스 루트**: `/home/seungsch/Webserve/`
 
 ## C++98 제약 — 핵심 규칙
 

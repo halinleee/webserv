@@ -1,4 +1,5 @@
 #include "Cgi.hpp"
+#include <cstdlib>
 
 Cgi::Cgi() {}
 Cgi::~Cgi() {}
@@ -31,7 +32,7 @@ pid_t Cgi::excute(EnvMap envp, int *in, int *out)
     else if (pid == 0)
     {
         if (!dupSetting(in, out))
-            return (-1);        
+            exit (-1);
         env = mapToEnvp(envp);
         cmd[0] = (char *)"/home/seungsch/Webserve/src/cgi/test.py";
         cmd[1] = NULL;
@@ -39,7 +40,7 @@ pid_t Cgi::excute(EnvMap envp, int *in, int *out)
         {
             freeSplit(env);
             write(STDERR_FILENO, "CgiError\n", 9);
-            return (-1);
+            exit (-1);
         }
     }
     return (pid);

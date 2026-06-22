@@ -82,7 +82,7 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
 
 ## 에러 핸들링
 
-- 서버가 실행 중이 아니면 `make -C /home/seungsikchoi/code/Webserver && ./Webserver 8080 &`으로 기동
+- 서버가 실행 중이 아니면 `make -C /home/seungsch/Webserve && ./Webserver 8080 &`으로 기동
 - 테스트 실패 시 원인을 분석하고 implementer에게 재현 방법과 함께 버그 리포트 전송
 
 ## 팀 통신 프로토콜

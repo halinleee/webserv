@@ -28,14 +28,14 @@ class Epoll
          * epCtl() 함수 내에서 어떤 파일 디스크립터(fd)에 대해 어떤 이벤트(EPOLLIN, EPOLLOUT 등)를
          * 감시할 것인지 설정하여 epoll_ctl() 시스템 콜에 전달하는 용도로 사용됩니다.
          */
-         epoll_event event;
+        epoll_event event;
         /**
          * @brief 발생한 이벤트들을 운영체제로부터 복사받는 epoll_event 구조체 배열
          * 
          * epWait() 함수 호출 시, 운영체제가 감지한 I/O 이벤트들의 정보(발생한 fd와 이벤트 종류)가
          * 이 배열에 채워집니다. 최대 50개의 이벤트를 한 번에 가져올 수 있으며, Server 클래스의 이벤트 루프에서 이 배열을 순회합니다.
          */
-         epoll_event events[50];
+        epoll_event events[50];
     
     public:
         /**
@@ -63,7 +63,7 @@ class Epoll
 
         /**
          * @brief 발생한 이벤트 배열(events)의 특정 인덱스에 접근하는 연산자 오버로딩
-         
+        
          * Server::eventProcess() 함수 내에서 epWait() 반환 후 for 루프를 통해 발생한 각 이벤트(fd 및 이벤트 플래그)를 배열 인덱싱 하듯이 편리하게 조회하기 위해 사용됩니다.
          * @param i 인덱스
          * @return 해당 인덱스의 epoll_event 구조체 참조

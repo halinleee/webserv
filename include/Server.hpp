@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <algorithm>
 
 /**
  * @brief 웹 서버의 전반적인 동작과 클라이언트 연결, 이벤트를 관리하는 핵심 클래스
@@ -217,6 +218,11 @@ class Server
          * request로 날라온 http를 해석하고 동작 후 나온 response의 주소를 반환
          */
         std::string getResponse(void);
+
+        /**
+         * @brief error가 발생했을때 client의 statuscode를 수정하고 epollOut을 활성화하는 함수
+         */
+        RetStatus errorHandling(Client *client, Epoll eopll, int statusCode);
 
         /**
          * @brief signal handler에서 서버를 close하기 위해서 호출되는 함수

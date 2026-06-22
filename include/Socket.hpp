@@ -85,7 +85,7 @@ class Socket
 
         /**
          * @brief 소켓의 타임아웃을 했는지 확인하는 함수
-         * @return timeOut의 여부
+         * @return timeOut이 됐는지의 여부(timeOut 됐으면 1, 아니면 0)
          * @details 서버가 장기 미활동 클라이언트를 정리(Timeout 처리)할지 판별하는 기준 시간으로 사용됩니다.
          */
         bool checkTimeOut(void);

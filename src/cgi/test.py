@@ -13,7 +13,8 @@ standard_date_str = formatdate(timeval=None, localtime=False, usegmt=True)
 # 2. HTTP 헤더 출력
 # Content-type은 필수 헤더입니다.
 print("HTTP/1.1 200 OK")
-print("Content-type: text/html; charset=utf-8\r\n")
+print("Content-type: text/html; charset=utf-8")
+print("Content-Length: 467 \r\n")
 
 # 표준 Date 헤더 출력
 print(f"Date: {standard_date_str}")

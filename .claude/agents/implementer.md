@@ -22,7 +22,7 @@ model: sonnet
 
 **코드 컨벤션**:
 - Doxygen 주석: 모든 public 멤버에 `@brief`, `@param`, `@return` 필수
-- 반환값 (bool):
+- 반환값 (RetStatus):
   - 성공 = `true` / `STATUS_OK` — 처리 완전 완료
   - 실패 = `false` / `STATUS_ERROR` — 처리 불가 에러 발생 (연결 종료 대상)
   - 재진입 필요 = `true` / `STATUS_RE` — 현재 호출로 처리를 마치지 못해 다음 epoll 이벤트에서 재호출이 필요한 경우 (recv: HTTP 요청 데이터 미완성 / send: 일부만 전송 완료 / 기타 I/O 부분 완료 상황)
@@ -45,7 +45,7 @@ model: sonnet
 
 ## 에러 핸들링
 
-- 컴파일 에러 발생 시 `make -C /home/seungsikchoi/code/Webserver 2>&1`로 즉시 확인 후 수정
+- 컴파일 에러 발생 시 `make -C /home/seungsch/Webserve 2>&1`로 즉시 확인 후 수정
 - 모호한 요구사항은 기존 유사 클래스(예: `Socket.cpp`, `Cgi.cpp`)를 참조하여 결정
 - 42 subject의 허용 함수 범위 초과 시 대체 구현 방법을 찾는다
 

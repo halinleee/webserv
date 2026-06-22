@@ -1,14 +1,10 @@
 #include "Client.hpp"
 #include <cerrno>
 
-Client::Client() 
+Client::Client()
 {
     this->clientSocket = 0;
     this->statusCode = 0;
-    this->inPipe[0] = -1;
-    this->inPipe[1] = -1;
-    this->outPipe[0] = -1;
-    this->outPipe[1] = -1;
     this->runCgi = false;
     this->pid = -1;
 }
@@ -18,12 +14,14 @@ Client::Client(Socket *socket, EnvMap env)
     this->clientSocket = socket;
     this->statusCode = 0;
     this->env = env;
-    this->inPipe[0] = -1;
-    this->inPipe[1] = -1;
-    this->outPipe[0] = -1;
-    this->outPipe[1] = -1;
     this->runCgi = false;
     this->pid = -1;
+}
+
+Client::~Client()
+{
+    delete this->clientSocket;
+    // cgiPipe 소멸자가 열려있는 fd를 자동으로 닫음
 }
 
 int Client::writeCgiPipe()
@@ -32,20 +30,19 @@ int Client::writeCgiPipe()
 
     if (this->body.empty())
         return (STATUS_OK);
-    written = write(this->inPipe[1], &this->body[0], this->body.size());
-    if (written <= 0)
+    written = write(this->cgiPipe.getInWriteFd(), &this->body[0], this->body.size());
+    if (written < 0)
         return (STATUS_ERROR);
     this->body.erase(this->body.begin(), this->body.begin() + written);
     if (this->body.empty())
         return (STATUS_OK);
-    else
-        return (STATUS_RE);
+    return (STATUS_RE);
 }
 
 int Client::readCgiPipe()
 {
     char received[4096];
-    ssize_t length = read(this->outPipe[0], received, 4095);
+    ssize_t length = read(this->cgiPipe.getOutReadFd(), received, 4095);
     if (length < 0)
     {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -71,34 +68,23 @@ RetStatus Client::checkCgiExited(void)
     int status;
 
     int result = waitpid(this->pid, &status, WNOHANG);
-    if (result < 0) // timeOut에 의한 sigkill 분기
+    if (result == 0)
+        return (STATUS_RE);
+    if (result < 0)
         return (STATUS_ERROR);
     if (WIFEXITED(status))
     {
-        if (WEXITSTATUS(status) == 0) // 정상종료
+        if (WEXITSTATUS(status) == 0)
             return (STATUS_OK);
         std::cout << "cgi exited with code " << WEXITSTATUS(status) << std::endl;
         return (STATUS_ERROR);
     }
-    if (WIFSIGNALED(status)) // 프로세스 돌리고 cmd로 kill의 분기
+    if (WIFSIGNALED(status))
     {
         std::cout << "cgi killed by signal " << WTERMSIG(status) << std::endl;
         return (STATUS_ERROR);
     }
     return (STATUS_ERROR);
-}
-
-bool Client::checkAlive(void)
-{
-    if (std::time(NULL) >= this->getSocket().getTimeOut())
-        return (false);
-    else
-        return (true);
-}
-
-void Client::timeSet(void)
-{
-    this->getSocket().actTimeSet();
 }
 
 void Client::CharDqAppend(int length, unsigned char *received)
@@ -109,77 +95,36 @@ void Client::CharDqAppend(int length, unsigned char *received)
 void Client::pipeClose(int flag)
 {
     if (flag == InFlag)
-    {
-        if (this->inPipe[0] > -1)
-            close(this->inPipe[0]);
-        if (this->inPipe[1] > -1)
-            close(this->inPipe[1]);
-        this->inPipe[0] = -1;
-        this->inPipe[1] = -1;
-    }
+        this->cgiPipe.closeInWrite();
     else if (flag == OutFlag)
-    {
-        if (this->outPipe[0] > -1)
-            close(this->outPipe[0]);
-        if (this->outPipe[1] > -1)
-            close(this->outPipe[1]);
-        this->outPipe[0] = -1;
-        this->outPipe[1] = -1;
-    }
-    
-}
-
-void Client::pipeClose(int pipe[2])
-{
-    if (pipe[0] > -1)
-        close(pipe[0]);
-    if (pipe[1] > -1)
-        close(pipe[1]);
-    pipe[0] = -1;
-    pipe[1] = -1;
-}
-
-void Client::setPipeFd(int inPipe[2], int outPipe[2])
-{
-    close(inPipe[0]);
-    close(outPipe[1]);
-    this->inPipe[0] = -1;
-    this->inPipe[1] = inPipe[1];
-    this->outPipe[0] = outPipe[0];
-    this->outPipe[1] = -1;
+        this->cgiPipe.closeOutRead();
 }
 
 int Client::getPipeFd(int index)
 {
     if (index == InFlag)
-        return (this->inPipe[1]);
-    else
-        return (this->outPipe[0]);
+        return (this->cgiPipe.getInWriteFd());
+    return (this->cgiPipe.getOutReadFd());
 }
 
-bool Client::checkAlive(void) { return (this->clientSocket->checkTimeOut());}
+Pipe &Client::getCgiPipe() { return (this->cgiPipe); }
 
-pid_t Client::getPid() {return (this->pid);}
+pid_t Client::getPid() { return (this->pid); }
 
-CharDq &Client::getCharDq(void) { return (this->recDq);}
+CharDq &Client::getCharDq(void) { return (this->recDq); }
 
-Socket &Client::getSocket() { return (*this->clientSocket);}
+Socket &Client::getSocket() { return (*this->clientSocket); }
 
-int Client::getStatusCode() { return (this->statusCode);}
+int Client::getStatusCode() { return (this->statusCode); }
 
-bool Client::checkRunCgi(void) { return (this->runCgi);}
+bool Client::checkRunCgi(void) { return (this->runCgi); }
 
-void Client::setRunCgi(void) {this->runCgi ? this->runCgi = false : this->runCgi = true ;}
+void Client::setRunCgi(bool value) { this->runCgi = value; }
 
-void Client::setStatusCode(int statusCode) {this->statusCode = statusCode;}
+void Client::setStatusCode(int statusCode) { this->statusCode = statusCode; }
 
-void Client::setPid(pid_t pid) {this->pid = pid;}
+void Client::setPid(pid_t pid) { this->pid = pid; }
 
-void Client::timeSet(time_t addTime) {this->clientSocket->setTimeStatus(addTime); }
+bool Client::checkAlive(void) { return (this->getSocket().checkTimeOut()); }
 
-Client::~Client()
-{
-    this->pipeClose(this->inPipe);
-    this->pipeClose(this->outPipe);
-    delete this->clientSocket;
-}
+void Client::timeSet(time_t addTime) { this->clientSocket->setTimeStatus(addTime); }

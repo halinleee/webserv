@@ -1,6 +1,7 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
 
+#include "Pipe.hpp"
 #include "Socket.hpp"
 #include "type.hpp"
 #include <iostream>
@@ -56,15 +57,10 @@ class Client
          */
         EnvMap env;
         /**
-         * @var inPipe
-         * @brief Server -> CGI 프로그램 방향으로 데이터를 전달하기 위한 pipe FD 배열 (크기 2)
+         * @var cgiPipe
+         * @brief CGI 통신용 파이프 쌍. Client 소멸 시 ~Pipe()가 자동으로 fd를 정리합니다.
          */
-        FD inPipe[2];
-        /**
-         * @var outPipe
-         * @brief CGI 프로그램 -> Server 방향으로 실행 결과를 받아오기 위한 pipe FD 배열 (크기 2)
-         */
-        FD outPipe[2];
+        Pipe cgiPipe;
         /**
          * @var statusCode
          * @brief HTTP 응답을 생성할 때 기준이 되는 상태 코드 (ex: 200, 404, 500)
@@ -167,7 +163,7 @@ class Client
          */
         int readCgiPipe(void);
 
-        void setRunCgi(void);
+        void setRunCgi(bool value);
         /**
          * @brief CGI 실행 시 할당된 자식 프로세스의 PID를 설정하는 함수
          * 
@@ -177,13 +173,11 @@ class Client
         void setPid(pid_t pid);
 
         /**
-         * @brief CGI 통신을 위한 파이프 FD를 설정하는 함수
-         * 
-         * CGI통신을 위한 파이프세팅, 자원회수를 위해 pipe() 시스템 콜로 생성된 두 개의 파이프를 Client 객체에 저장하는 함수입니다.
-         * @param inPipe 입력용 파이프 배열
-         * @param outPipe 출력용 파이프 배열
+         * @brief CGI 파이프 객체의 참조를 반환합니다.
+         *
+         * Server::cgiRun에서 init(), excute 인자 전달, closeChildSide() 등을 직접 호출하기 위해 사용합니다.
          */
-        void setPipeFd(int inPipe[2], int outPipe[2]);
+        Pipe &getCgiPipe();
 
         /**
          * @brief 클라이언트의 statuscode를 설정하는 함수
@@ -240,18 +234,9 @@ class Client
         int getPipeFd(int index);
 
         /**
-         * @brief pipe를 close하는 함수
-         * 
-         * CGI 실행이 강제 종료되거나 에러가 발생하여 더 이상 필요 없는 파이프의 읽기/쓰기 끝단을 모두 닫을 때 사용합니다.
-         * @param pipe pipeFD를 담고 있는 size 2인 int 배열
-         */
-        void pipeClose(int *pipe);
-
-        /**
-         * @brief pipe를 close하는 함수
-         * 
-         * CGI프로그램에 넘길 파이프에 내용을 작성하거나 읽고 정리하는 용도로 사용합니다.
-         * @param flag pipeFD를 담고 있는 size 2인 int 배열
+         * @brief InFlag 또는 OutFlag에 해당하는 파이프 끝단을 닫는 함수
+         *
+         * @param flag InFlag = inWriteFd 닫기, OutFlag = outReadFd 닫기
          */
         void pipeClose(int flag);
 };
