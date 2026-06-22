@@ -152,7 +152,7 @@ bool Server::clientResponse(Epoll &epoll, Client *client)
     response += "\r\n";
     response += html_body;
 
-    // reponse 빌드 (에러면 Connection: close 포함)
+    // response 빌드 (에러면 Connection: close 포함)
     // clientResponse()가 호출되는 경우는 에러 혹은 정상 응답을 내보낼 때. recv로 더 읽을 때는 호출되지 않음.
     // std::string response = buildResponse(client->getRequest(), client->getShouldClose()); (TODO: 구현 미완성)
 

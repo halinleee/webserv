@@ -1,4 +1,5 @@
 #include "HttpUtils.hpp"
+#include <cctype>
 
 void HttpUtils::consumeLeadingCRLF(CharDq& buf)
 {

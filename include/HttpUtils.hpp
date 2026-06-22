@@ -87,7 +87,7 @@ namespace HttpUtils
 	 * @brief 경로에 .이나 ..이 있는지 검사
 	 * 
 	 * @param str 검사할 string
-	 * @return dog segment가 존재하면 true, 아니면 false
+	 * @return dot segment가 존재하면 true, 아니면 false
 	 */
 	bool hasDotSegments(const std::string& str);
 
@@ -113,7 +113,7 @@ namespace HttpUtils
 	/**
 	 * @brief Vchar, SP, HTAB인지 판단
 	 * 
-	 * Vchar는 visibie한 ascii char (0x21 ~ 0x7E)
+	 * Vchar는 visible한 ascii char (0x21 ~ 0x7E)
 	 * 
 	 * @param c 판단할 문자
 	 * @return Vchar/SP/HTAB이면 true, 아니면 false

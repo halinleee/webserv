@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <netinet/in.h>
 #include "type.hpp"
 
 struct Request
@@ -17,7 +18,7 @@ struct Request
 
 	// headers
 	std::string host;
-	unsigned int port;
+	in_port_t port;
 	std::map<std::string, std::string> headers;
 	
 	// body

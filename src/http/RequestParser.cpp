@@ -4,6 +4,8 @@
 #include <string>
 #include <algorithm>
 #include <sstream>
+#include <cctype>
+#include <cstdlib>
 
 bool RequestParser::parseStartline(CharDq& buf)
 {
@@ -232,12 +234,12 @@ bool RequestParser::parseHost(const std::string& raw)
 	}
 
 	char* end = NULL;
-	long long numPort = std::strtoll(strPort.c_str(), &end, 10);
+	long numPort = std::strtol(strPort.c_str(), &end, 10);
 	if (*end != '\0' || numPort < 0 || numPort > 65535)
 		{ statusCode = STATUS_BAD_REQUEST; return false; }
 
 	parsedReq.host = host;
-	parsedReq.port = numPort;
+	parsedReq.port = static_cast<in_port_t>(numPort);
 	return true;
 }
 bool RequestParser::validateContentLength(const strVec& cl)
@@ -271,11 +273,11 @@ bool RequestParser::validateContentLength(const strVec& cl)
 	}
 
 	char* end = NULL;
-	unsigned long long n = std::strtoull(values[0].c_str(), &end, 10);
+	unsigned long n = std::strtoul(values[0].c_str(), &end, 10);
 	if (*end != '\0') { statusCode = STATUS_BAD_REQUEST; return false; }
 	if (n > MAX_CLIENT_BODY_LENGTH)													// TODO
 		{ statusCode = STATUS_PAYLOAD_TOO_LARGE; return false; }
-	parsedReq.contentLength = n;
+	parsedReq.contentLength = static_cast<long long>(n);
 	return true;
 }
 bool RequestParser::validateTransferEncoding(const strVec& te)
