@@ -11,6 +11,8 @@ bool RequestParser::parseStartline(CharDq& buf)
 {
 	HttpUtils::consumeLeadingCRLF(buf);
 
+	if (buf.size() > MAX_STARTLINE_LENGTH) { statusCode = STATUS_BAD_REQUEST; return true; }
+
 	size_t crlf = HttpUtils::findCRLF(buf);
 	if (crlf == HttpUtils::npos) return false;
 	std::string startLine = HttpUtils::extractLine(buf, crlf, 2);
@@ -137,6 +139,9 @@ bool RequestParser::parseHeaders(CharDq& buf)
 		validateHeaders();
 		return true;
 	}
+
+	if (buf.size() > MAX_HEADER_SECTION_LENGTH)
+		{ statusCode = STATUS_HEADER_TOO_LARGE; return true; }
 
 	size_t crlfcrlf = HttpUtils::findCRLFCRLF(buf);
 	if (crlfcrlf == HttpUtils::npos) return false;
