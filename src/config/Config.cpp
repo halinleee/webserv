@@ -93,10 +93,10 @@ bool Config::parseConfig()
 	*/
 
 	//main 연결할때까지 인자값 받았다 치고 임시로 이 코드 돌려유
-	std::ifstream configFile("./webserv.conf: ./webserv.conf");
+	std::ifstream configFile("./webserv.conf");
 	if (!configFile.is_open())
 	{
-		statusMessage = "Failed to open file";
+		statusMessage = "Failed to open file: ./webserv.conf";
 		return false;
 	}
 
