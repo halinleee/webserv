@@ -8,6 +8,7 @@
 
 void ServerConfig::setPrefixes(void)
 {
+	prefixes.clear();
 	for(std::map<std::string, LocationConfig>::const_iterator it = locations.begin();
 		it != locations.end(); ++it)
 	{

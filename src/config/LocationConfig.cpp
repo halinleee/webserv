@@ -98,6 +98,10 @@ bool LocationConfig::parseLocationDir(std::vector<std::string> token)
 		if (token.size() != 3)
 			return false;
 
+		if (token[1].empty() || token[1][0] != '.')
+			return false;
+		
+
 		if (!isValidNormalizePath(token[2]))
 			return false;
 		cgiExtension = token[1];
