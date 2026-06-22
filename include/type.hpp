@@ -16,6 +16,13 @@ enum parseStatus
     PARSE_ERROR
 };
 
+/**
+ * @brief 각 status에 대해서 키워드로 관리하기 위해서 enum을 설정 후 사용
+ * @var STATUS_ERROR 에러가 발생했을때 status로 숫자로는 0을 가지고 있음
+ * @var STATUS_OK 정상 동작했을때 status로 숫자로는 1을 가지고 있음
+ * 
+ * @todo 나중에 각 status code에 대해서 확인한 후 status code의 숫자로 지정해 넘겨주도록 변경필요
+ */
 enum RetStatus
 {
     STATUS_ERROR = 0,
@@ -33,6 +40,13 @@ enum Status
     STATUS_HTTP_VERSION = 505,
     STATUS_HEADER_TOO_LARGE = 431,
     STATUS_PAYLOAD_TOO_LARGE = 413
+};
+
+enum ReqParseResult
+{
+    REQ_PARSE_ERROR,
+    REQ_PARSE_DONE,
+    REQ_PARSE_INCOMPLETE
 };
 
 /**
@@ -99,10 +113,9 @@ typedef std::map<std::string, std::string> EnvMap;
 
 /**
  * @brief string 객체를 원소로 갖는 vector
- * 
+ *
  * request header의 값들을 임시로 저장하기 위해 사용
  */
 typedef std::vector<std::string> strVec;
-
 
 #endif

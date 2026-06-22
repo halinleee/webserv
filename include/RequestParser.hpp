@@ -9,8 +9,9 @@
  */
 #define MAX_STARTLINE_LENGTH 8192
 #define MAX_URI_LENGTH 4096
-#define MAX_HEADER_LENGTH 1024
-#define MAX_HEADER_SECTION_LENGTH 16384
+#define MAX_HEADER_LINE_LENGTH 1024
+#define MAX_HEADER_SECTION_LENGTH (16 * 1024)
+#define MAX_CLIENT_BODY_LENGTH 1000000			// 가을이가 파싱한 value 이용(TODO)
 
 /**
  * @brief HTTP 요청 파싱 상태를 나타내는 열거형
@@ -21,7 +22,7 @@
  * REQ_DONE: 파싱 완료
  * REQ_ERROR: 파싱 중 오류 발생
  */
-enum ParseState
+enum ParseState // TODO: class 내에 삽입 고려
 {
 	REQ_STARTLINE,
 	REQ_HEADERS,
@@ -40,17 +41,20 @@ typedef struct
 	std::string version;
 } ReqLine;
 
-
 class RequestParser
 {
 	private:
-		ParseState state;
+		ParseState parseState;
 		Status statusCode;
-		bool hasBody;
 
-		ReqLine tmpReq;
-		Request parsed_req;
+		ReqLine tmpReqLine;
+		std::map<std::string, strVec> tmpHeaders;
 
+		Request parsedReq;
+		size_t chunkRemaining;
+		bool inTrailer;
+
+		// request line
 		/**
 		 * @brief HTTP request의 start-line을 파싱
 		 * 
@@ -86,7 +90,7 @@ class RequestParser
 		/**
 		 * @brief method 파싱 및 검증
 		 * 
-		 * 메소드를 파싱한 후 parsed_req에 저장. 적절한 statusCode도 설정
+		 * 메소드를 파싱한 후 parsedReq에 저장. 적절한 statusCode도 설정
 		 * 
 		 * @param method 파싱할 메소드 문자열
 		 * 
@@ -113,8 +117,8 @@ class RequestParser
 		 * 		ASCII 범위(32~126)를 벗어나면 false
 		 * 		퍼센트 인코딩이 유효하지 않으면 false
 		 * 		path/query로 분리 후, path에 "//" 또는 "." ".." 가 있으면 false
-		 * 		path는 percent-decoding 후 parsed_req.path에 저장
-		 * 		query가 존재하면 parsed_req.query에 저장
+		 * 		path는 percent-decoding 후 parsedReq.path에 저장
+		 * 		query가 존재하면 parsedReq.query에 저장
 		 */
 		bool parseURI(const std::string& target);
 
@@ -129,16 +133,7 @@ class RequestParser
 		 */
 		bool isValidPercentEncoding(const std::string& target);
 
-		/**
-		 * @brief URI를 path와 query string으로 분리
-		 * 
-		 * 		  fragment(#)가 있다면 무시. ?가 없다면 path만 저장
-		 * 
-		 * @param target 분리할 URI
-		 * @param path 분리된 path를 저장할 문자열
-		 * @param query 분리된 query string을 저장할 문자열
-		 */
-		void splitURI(const std::string& target, std::string& path, std::string& query);
+		bool splitURI(const std::string& target, std::string& path, std::string& query);
 
 		/**
 		 * @brief 퍼센트 인코딩을 디코딩
@@ -161,15 +156,32 @@ class RequestParser
 		 */
 		bool parseVersion(const std::string& version);
 
+		// headers
 		bool parseHeaders(CharDq& buf);
+		bool parseKeyValue(const std::string& line, std::string& key, std::string& value);
+		bool validateHeaders();
+		bool parseHost(const std::string& raw);
+		///////////// max client body length는 config에서 파싱된 값을 사용해야함. 수정 필요
+		bool validateContentLength(const strVec& cl);
+		bool validateTransferEncoding(const strVec& te);
+		void transferHeaders();
+
+		// body
+		bool parseBody(CharDq& buf);
+		bool parsePlainBody(CharDq& buf);
+		bool parseChunkedBody(CharDq& buf);
+
+		void handleError();
 
 	public:
 		RequestParser();
 		~RequestParser();
 
 		void parse(CharDq& buf);
+		void clear();
 
-		ParseState getState() const;
+		ReqParseResult getState() const;
+		Request getRequest() const;
 };
 
 #endif

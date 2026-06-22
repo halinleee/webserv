@@ -30,19 +30,30 @@ namespace HttpUtils
 	 * 
 	 * @note buf 크기가 2 미만이면 CRLF가 존재할 수 없음
 	 */
-	size_t findCRLf(const CharDq& buf);
+	size_t findCRLF(const CharDq& buf);
 
 	/**
-	 * @brief 버퍼에서 줄바꿈(CRLF)전까지만 추출하여 반환
+	 * @brief 버퍼에서 줄바꿈줄바꿈(CRLFCRLF)의 시작 인덱스를 찾아 반환
 	 * 
-	 * @param buf 줄바꿈을 추출할 CharDq 버퍼
-	 * @param clrf CRLF가 시작되는 인덱스
+	 * @param buf 줄바꿈을 찾을 CharDq 버퍼
+	 * @return CRLFCRLF 시작 인덱스, 없으면 HttpUtils::npos
+	 * 
+	 * @note buf 크기가 4 미만이면 CRLFCRLF가 존재할 수 없음
+	 */
+	size_t findCRLFCRLF(const CharDq& buf);
+
+	/**
+	 * @brief 버퍼에서 줄바꿈 전까지만 추출하여 반환
+	 * 
+	 * @param buf 줄바꿈 전까지의 line을 추출할 CharDq 버퍼
+	 * @param end_pos 줄바꿈이 시작되는 인덱스
+	 * @param end_size 줄바꿈의 크기 (2 또는 4)
 	 * @return 추출한 문자열 (줄바꿈은 제외)
 	 * 
 	 * @warning 반드시 CRLF가 존재해야 함
 	 * 			함수 호출 전에 CRLF가 있는지 확인하는 로직이 필요
 	 */
-	std::string extractLine(CharDq& buf, size_t crlf);
+	std::string extractLine(CharDq& buf, size_t end_pos, size_t end_size);
 
 	/**
 	 * @brief CR이 있는지 확인
@@ -87,6 +98,27 @@ namespace HttpUtils
 	 * @return 변환된 정수 값(0~15), 유효하지 않으면 -1
 	 */
 	int hexToInt(const char c);
+
+	/**
+	 * @brief Tchar인지 판단
+	 * 
+	 * tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
+	 * 			"^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
+	 * 
+	 * @param c 판단할 문자
+	 * @return Tchar면 true, 아니면 false
+	 */
+	bool isTchar(unsigned char c);
+
+	/**
+	 * @brief Vchar, SP, HTAB인지 판단
+	 * 
+	 * Vchar는 visibie한 ascii char (0x21 ~ 0x7E)
+	 * 
+	 * @param c 판단할 문자
+	 * @return Vchar/SP/HTAB이면 true, 아니면 false
+	 */
+	bool isVcharSpTab(unsigned char c);
 }
 
 #endif

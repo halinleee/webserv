@@ -71,7 +71,8 @@ class Client
         pid_t pid;
 
         RequestParser parser;
-        //
+        Request request;
+        bool shouldClose;
     
     public:
         /**
@@ -176,7 +177,8 @@ class Client
          */
         void pipeClose(int *pipe);
 
-        void onReceive();
+        ReqParseResult onReceive();
+        bool getShouldClose() const;
 };
 
 
