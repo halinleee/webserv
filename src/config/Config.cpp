@@ -3,8 +3,6 @@
 
 #include <fstream>
 
-#define PORT_MAX 65535
-
 bool Config::isValidListen(const std::vector<std::string>& token, size_t& num)
 {
 	if (token.size() != 2) return false;
@@ -32,7 +30,7 @@ parseStatus Config::parseServerBlock(std::ifstream &configFile)
 		return PARSE_ERROR; 
 	}
 	else if (configFile.eof() && configLine.empty()) 
-		return PARSE_SERVER_END;
+		return PARSE_FILE_END;
 	
 	//server port 검사
 	if (countIndent(configLine) != 0)
@@ -95,7 +93,7 @@ bool Config::parseConfig()
 	*/
 
 	//main 연결할때까지 인자값 받았다 치고 임시로 이 코드 돌려유
-	std::ifstream configFile("./webserv.conf");
+	std::ifstream configFile("./webserv.conf: ./webserv.conf");
 	if (!configFile.is_open())
 	{
 		statusMessage = "Failed to open file";
@@ -104,7 +102,7 @@ bool Config::parseConfig()
 
 	while (true)
 	{
-		int res = parseServerBlock(configFile);
+		parseStatus res = parseServerBlock(configFile);
 		if (res == PARSE_ERROR)
 			return false;
 		if (res == PARSE_FILE_END)

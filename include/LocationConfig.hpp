@@ -7,13 +7,6 @@
 #include <vector>
 #include <set>
 
-enum HttpMethod
-{
-	METHOD_GET,
-	METHOD_POST,
-	METHOD_DELETE
-};
-
 class LocationConfig
 {
 	private:
@@ -29,7 +22,7 @@ class LocationConfig
 
 	private:
 		bool parseHttpMethod(const std::string& s, HttpMethod& out);
-		bool parseLocationDir(std::vector<std::string> token);
+		bool parseLocationDir(std::vector<std::string>& token);
 	
 	public:
 		bool parseLocationBlock(std::ifstream &configFile);
@@ -45,11 +38,11 @@ class LocationConfig
 
 		const std::string& getRoot() const { return root; }
 		const std::string& getIndex() const { return index; }
-		const bool getAutoIndex() const { return autoIndex; }
+		bool getAutoIndex() const { return autoIndex; }
 		const std::set<HttpMethod>& getMethods() const { return methods; }
 		const std::string& getUploadDir() const { return uploadDir; }
 		const std::string& getRedirectPath() const { return redirectPath; }
-		const size_t getRedirectCode() const { return redirectCode; }
+		size_t getRedirectCode() const { return redirectCode; }
 		const std::string& getCgiExtension() const { return cgiExtension; }
 		const std::string& getCgiPath() const { return cgiPath; }
 };

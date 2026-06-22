@@ -12,6 +12,9 @@
 
 class Config
 {
+	public:
+		static const size_t PORT_MAX = 65535;
+
 	private:
 		std::map<in_port_t, ServerConfig> servers;
 		std::string statusMessage;

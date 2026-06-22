@@ -3,9 +3,6 @@
 #include "type.hpp"
 #include <fstream>
 
-#define BODY_SIZE_MAX (5 * 1024 * 1024) //5242880 bytes
-#define TIME_OUT_MAX 180
-
 void ServerConfig::setPrefixes(void)
 {
 	prefixes.clear();

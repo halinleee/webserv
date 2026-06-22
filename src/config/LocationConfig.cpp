@@ -11,7 +11,7 @@ bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)
 	}
 	else if (s == "POST") 
 	{ 
-		out = METHOD_POST; 
+		out = METHOD_POST;
 		return true; 
 	}
 	else if (s == "DELETE") 
@@ -22,7 +22,7 @@ bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)
 	return false;
 }
 
-bool LocationConfig::parseLocationDir(std::vector<std::string> token)
+bool LocationConfig::parseLocationDir(std::vector<std::string>& token)
 {
 	if (token[0] == "root")
 	{
