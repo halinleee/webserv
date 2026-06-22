@@ -1,31 +1,49 @@
-CC = c++
-CFLAGS = -std=c++98 -Wall -Wextra -Werror
-CPPFLAGS = -I./include
+CC          = c++
+CXXFLAGS    = -Wall -Wextra -Werror -g -std=c++98
+NAME        = Webserver
+INCLUDES    = -I./include
 
-NAME = webserv
+OBJS_DIR    = ./obj
 
-SRCS = main.cpp \
-       src/config/Config.cpp \
-       src/config/ServerConfig.cpp \
-       src/config/LocationConfig.cpp \
-       src/utils/ConfigParsUtil.cpp
+SOURCES_DIR  = ./src
+SOURCES     = main.cpp
+SOURCES_OBJ = $(addprefix $(OBJS_DIR)/, $(SOURCES:.cpp=.o))
 
-OBJS = $(SRCS:.cpp=.o)
+SERVER_DIR  = ./src/server
+SERVER_SRC  = Server.cpp Socket.cpp Epoll.cpp Client.cpp
+SERVER_OBJ  = $(addprefix $(OBJS_DIR)/, $(SERVER_SRC:.cpp=.o))
 
-%.o: %.cpp
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+CONFIG_DIR  = ./src/config
+CONFIG_SRC  = Config.cpp ServerConfig.cpp LocationConfig.cpp
+CONFIG_OBJ  = $(addprefix $(OBJS_DIR)/, $(CONFIG_SRC:.cpp=.o))
 
-all: $(NAME)
+UTILS_DIR   = ./src/utils
+UTILS_SRC   = Utils.cpp ConfigParsUtil.cpp
+UTILS_OBJ   = $(addprefix $(OBJS_DIR)/, $(UTILS_SRC:.cpp=.o))
 
-$(NAME): $(OBJS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(OBJS) -o $(NAME)
+CGI_DIR   = ./src/cgi
+CGI_SRC   = Cgi.cpp
+CGI_OBJ   = $(addprefix $(OBJS_DIR)/, $(CGI_SRC:.cpp=.o))
 
-clean:
-	rm -f $(OBJS)
+OBJS        = $(SOURCES_OBJ) $(SERVER_OBJ) $(UTILS_OBJ) $(CONFIG_OBJ)
 
-fclean: clean
+vpath %.cpp . $(SERVER_DIR) $(SOURCES_DIR) $(UTILS_DIR) $(CONFIG_DIR)
+
+all : $(NAME)
+
+$(NAME) : $(OBJS)
+	$(CC) $(CXXFLAGS) -o $@ $^
+
+$(OBJS_DIR)/%.o : %.cpp
+	@mkdir -p $(OBJS_DIR)
+	$(CC) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
+
+clean :
+	rm -rf $(OBJS_DIR)
+
+fclean : clean
 	rm -f $(NAME)
 
-re: fclean all
+re : fclean all
 
-.PHONY: all clean fclean re
+.PHONY : all clean fclean re
