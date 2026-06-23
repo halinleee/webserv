@@ -30,7 +30,6 @@ struct Request
 		status(STATUS_UNDEFINED), method(METHOD_INVALID), port(80),
 		contentLength(-1), isChunked(false)
 	{}
-	bool isValid() const { return status < 400; }
 };
 
 #endif

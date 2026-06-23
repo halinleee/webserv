@@ -110,6 +110,8 @@ bool RequestParser::percentDecode(const std::string& path, std::string& result)
 	{
 		if (path[i] == '%')
 		{
+			if (i + 2 >= path.size()) return false;
+			
 			int first = HttpUtils::hexToInt(path[i + 1]);
 			int second = HttpUtils::hexToInt(path[i + 2]);
 			unsigned char added = static_cast<unsigned char>(first << 4 | second);
