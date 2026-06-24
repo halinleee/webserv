@@ -108,7 +108,7 @@ class RequestParser
 		 * 
 		 * @param target 파싱할 URI 문자열
 		 * 
-		 * @return 유요한 URI면 true, 아니면 false
+		 * @return 유효한 URI면 true, 아니면 false
 		 * 
 		 * @details
 		 * 		빈 문자열이거나 '/'로 시작하지 않으면 false
