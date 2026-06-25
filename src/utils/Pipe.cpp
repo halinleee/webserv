@@ -29,12 +29,12 @@ void Pipe::closeSafely(FD &fd)
 bool Pipe::init()
 {
     if (pipe(inPipe) < 0)
-        return (false);
+        return false;
     if (pipe(outPipe) < 0)
     {
         closeSafely(inPipe[0]);
         closeSafely(inPipe[1]);
-        return (false);
+        return false;
     }
     fcntl(inPipe[0],  F_SETFD, FD_CLOEXEC);
     fcntl(inPipe[1],  F_SETFD, FD_CLOEXEC);
@@ -42,7 +42,7 @@ bool Pipe::init()
     fcntl(outPipe[1], F_SETFD, FD_CLOEXEC);
     fcntl(inPipe[1],  F_SETFL, fcntl(inPipe[1],  F_GETFL, 0) | O_NONBLOCK);
     fcntl(outPipe[0], F_SETFL, fcntl(outPipe[0], F_GETFL, 0) | O_NONBLOCK);
-    return (true);
+    return true;
 }
 
 void Pipe::closeChildSide()
@@ -59,11 +59,11 @@ void Pipe::detach()
     outPipe[1] = -1;
 }
 
-FD *Pipe::getInPipeArr()  { return (inPipe); }
-FD *Pipe::getOutPipeArr() { return (outPipe); }
+FD *Pipe::getInPipeArr()  { return inPipe; }
+FD *Pipe::getOutPipeArr() { return outPipe; }
 
-FD Pipe::getInWriteFd()  const { return (inPipe[1]); }
-FD Pipe::getOutReadFd()  const { return (outPipe[0]); }
+FD Pipe::getInWriteFd()  const { return inPipe[1]; }
+FD Pipe::getOutReadFd()  const { return outPipe[0]; }
 
 void Pipe::closeInWrite()  { closeSafely(inPipe[1]); }
 void Pipe::closeOutRead()  { closeSafely(outPipe[0]); }

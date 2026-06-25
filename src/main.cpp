@@ -5,9 +5,6 @@
 
 Server *serverPointer;
 
-/**
- * @todo sigPipe 시그널 핸들링 추가해야함
- */
 static void sigIntHandler(int signum)
 {
     (void)signum;
@@ -27,12 +24,13 @@ int main(int ac, char **av, char **envp)
     Epoll epoll;
     serverPointer = &(server);
     signal(SIGINT, sigIntHandler);
+    signal(SIGPIPE, SIG_IGN);
     if (epoll.getEpollFd() == -1)
-        return (-1);
+        return -1;
     if (!server.serverAdd(8080, epoll))
     {
         std::cerr << "서버 시작 실패" << std::endl;
-        return (1);
+        return 1;
     }
     server.eventProcess(epoll);
     (void) ac;

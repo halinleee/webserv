@@ -143,6 +143,15 @@ class Server
         RetStatus clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent);
 
         /**
+         * @brief clientLoop에서 currentFd가 CGI 파이프일 때의 이벤트 처리를 담당하는 함수
+         * @param epoll 이벤트를 관리할 Epoll 객체
+         * @param pipeClient currentFd가 속한 클라이언트 객체
+         * @param currentFd 현재 이벤트가 감지된 파이프 FD
+         * @param currentEvent 현재 이벤트의 내용
+         */
+        RetStatus cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u_int32_t currentEvent);
+
+        /**
          * @brief 클라이언트의 데이터를 읽어들이고 요청을 파싱하는 함수
          * 
          * 클라이언트 소켓에 EPOLLIN 이벤트가 떴을 때 호출됩니다. recv()로 데이터를 읽어 Client의 recDq에 쌓고, 요청이 모두 도착했는지 확인합니다.
@@ -223,6 +232,15 @@ class Server
          * @brief error가 발생했을때 client의 statuscode를 수정하고 epollOut을 활성화하는 함수
          */
         RetStatus errorHandling(Client *client, Epoll eopll, int statusCode);
+
+        /**
+         * @brief epollControl 실패를 한 곳에서 처리하기 위한 함수
+         *
+         * epoll_ctl 실패는 대부분 OS 전체 자원고갈이 아니라 fd 라이프사이클 버그 케이스라
+         * 해당 client만 정리하고 나머지 서버는 계속 동작하도록 한다.
+         * @return epollControl 성공 시 STATUS_OK, 실패 시 client를 정리하고 STATUS_ERROR
+         */
+        RetStatus epollGuard(Epoll &epoll, int op, FD fd, u_int32_t event, Client *client);
 
         /**
          * @brief signal handler에서 서버를 close하기 위해서 호출되는 함수

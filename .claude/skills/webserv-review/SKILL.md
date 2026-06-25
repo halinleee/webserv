@@ -107,6 +107,16 @@ description: >
 □ 매직 넘버 상수화
 ```
 
+### P3 — 과설계/복잡도 (ponytail)
+```
+□ delete: 죽은 코드, 안 쓰는 유연성, 호출처 없는 추상화
+□ stdlib: STL/libc가 이미 제공하는 걸 손으로 재구현 (예: 직접 짠 split → istringstream, 직접 짠 trim → find_first_not_of)
+□ native: POSIX/Config가 이미 주는 기능을 따로 구현 (예: 직접 만든 MIME 매핑 vs Config 테이블)
+□ yagni: 구현체 1개뿐인 인터페이스, 아무도 안 쓰는 Config 옵션, 호출자 1개인 레이어
+□ shrink: 같은 동작을 더 적은 줄로 (단, 안전성 체크·에러 처리는 절대 줄이지 않음)
+```
+ponytail 태그는 `L<line>: <tag> {무엇을 자르는지}. {대안}.` 한 줄 형식으로 작성. P1(안전성)·P2(C++98/메모리)와 충돌 시 항상 안전성이 우선이며, 이 섹션은 그것들을 깎지 않는다.
+
 ## 결과 포맷
 
 ```markdown
@@ -120,9 +130,12 @@ description: >
 
 ### [P3] 개선 제안
 - [MINOR] {파일}:{라인} — {제안}
+- {ponytail 태그}: L{라인}: {delete/stdlib/native/yagni/shrink} {무엇을 자르는지}. {대안}.
 
 ### 통과 항목
 - ...
+
+### net: -{N}줄 가능 (자를 게 없으면 생략)
 
 ### 결론: 승인 / 재작업 필요
 ```

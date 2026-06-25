@@ -8,12 +8,12 @@ bool Cgi::dupSetting(int *in, int *out)
 {
     
     if (dup2(in[0], STDIN_FILENO) < 0)
-        return (false);
+        return false;
     if (dup2(out[1], STDOUT_FILENO) < 0)
-        return (false);
+        return false;
     pipeClose(in);
     pipeClose(out);
-    return (true);
+    return true;
 }
 
 pid_t Cgi::excute(EnvMap envp, int *in, int *out)
@@ -27,7 +27,7 @@ pid_t Cgi::excute(EnvMap envp, int *in, int *out)
     {
         pipeClose(in);
         pipeClose(out);
-        return (-1);
+        return -1;
     }
     else if (pid == 0)
     {
@@ -43,7 +43,7 @@ pid_t Cgi::excute(EnvMap envp, int *in, int *out)
             exit (-1);
         }
     }
-    return (pid);
+    return pid;
 }
 
 void Cgi::pipeClose(int *pipe)

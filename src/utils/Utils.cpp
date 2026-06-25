@@ -26,7 +26,7 @@ EnvMap envpParsing(char **envp)
         }
         i++;
     }
-    return (env);
+    return env;
 }
 
 /**
@@ -42,14 +42,14 @@ bool nonblockingSet(int fd)
     if (flags == -1)
     {
         std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
-        return (STATUS_ERROR);
+        return STATUS_ERROR;
     }
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
     {
         std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
-        return (STATUS_ERROR);
+        return STATUS_ERROR;
     }
-    return (STATUS_OK);
+    return STATUS_OK;
 }
 
 /**
@@ -71,7 +71,7 @@ char **mapToEnvp(const EnvMap &env)
         i++;
     }
     envp[i] = NULL;
-    return (envp);
+    return envp;
 }
 
 /**

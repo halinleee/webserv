@@ -23,8 +23,8 @@ bool Epoll::epollControl(int option, int appendFd, u_int64_t events)
     event.data.fd = appendFd;
     event.events = events;
     if (epoll_ctl(this->epollFd, option, appendFd, &event) < 0)
-        return (STATUS_ERROR);
-    return (STATUS_OK);
+        return STATUS_ERROR;
+    return STATUS_OK;
 }
 
 /**
@@ -51,7 +51,7 @@ int Epoll::getEpollFd()
  */
 epoll_event &Epoll::operator[] (unsigned int i)
 {
-    return (events[i]);
+    return events[i];
 }
 
 /**
@@ -62,6 +62,6 @@ int Epoll::epWait(void)
 {
     int eventCount = epoll_wait(this->epollFd, this->events, 50, 0);
     if (eventCount < 0)
-        return (-1);
-    return (eventCount);
+        return -1;
+    return eventCount;
 }

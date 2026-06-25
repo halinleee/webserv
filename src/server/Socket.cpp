@@ -37,11 +37,11 @@ void Socket::setTimeStatus(time_t addTime)
     this->timeState.timeOut = this->timeState.timeAct + addTime;
 }
 
-const int &Socket::getFd(void) const {return (this->socketFd);}
+const int &Socket::getFd(void) const {return this->socketFd;}
 
-const struct sockaddr_in &Socket::getAddr(void) const { return (this->addr); }
+const struct sockaddr_in &Socket::getAddr(void) const { return this->addr; }
 
-bool Socket::checkTimeOut(void) { return (this->timeState.timeOut < std::time(NULL)); }
+bool Socket::checkTimeOut(void) { return this->timeState.timeOut < std::time(NULL); }
 
 Socket::~Socket() 
 {
