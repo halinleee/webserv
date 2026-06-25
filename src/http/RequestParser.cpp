@@ -142,11 +142,13 @@ bool RequestParser::parseHeaders(CharDq& buf)
 		return true;
 	}
 
-	if (buf.size() > MAX_HEADER_SECTION_LENGTH)
-		{ statusCode = STATUS_HEADER_TOO_LARGE; return true; }
-
 	size_t crlfcrlf = HttpUtils::findCRLFCRLF(buf);
-	if (crlfcrlf == HttpUtils::npos) return false;
+	if (crlfcrlf == HttpUtils::npos)
+	{
+		if (buf.size() > MAX_HEADER_SECTION_LENGTH)
+			{ statusCode = STATUS_HEADER_TOO_LARGE; return true; }
+		return false;
+	}
 	if (crlfcrlf > MAX_HEADER_SECTION_LENGTH)
 		{ statusCode = STATUS_HEADER_TOO_LARGE; return true; }
 
