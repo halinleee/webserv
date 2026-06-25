@@ -94,3 +94,9 @@ bool Client::getShouldClose() const
 {
     return shouldClose;
 }
+
+void Client::resetForNextRequest()
+{
+    this->request = Request();
+    this->statusCode = 0;
+}

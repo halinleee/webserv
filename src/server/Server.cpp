@@ -169,14 +169,13 @@ bool Server::clientResponse(Epoll &epoll, Client *client)
             this->clientDel(client->getSocket().getFd());
             return (STATUS_OK);
         }
-        // parser나 request 객체 등을 초기화해야 함. (TODO)
+        client->resetForNextRequest();
         if (!epoll.epollControl(EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN))
             return (STATUS_ERROR);
         return (STATUS_OK);
     }
     std::cout << "클라이언트 연결 유지 : Client["<< client->getSocket().getFd() << "]" << std::endl;
     return (STATUS_RE);
-    // 응답을 다 보낸 뒤 RequestParser 객체의 clear()를 호출하여 상태를 초기화 해야 함. (TODO)
 }
 
 /**
