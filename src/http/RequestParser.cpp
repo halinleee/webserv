@@ -224,11 +224,13 @@ bool RequestParser::validateHeaders()
 }
 bool RequestParser::parseHost(const std::string& raw)
 {
+	if (raw.empty() || raw.find_first_of(" \t") != std::string::npos)
+		{ statusCode = STATUS_BAD_REQUEST; return false; }
+
 	size_t colon = raw.find(':');
 	if (colon == std::string::npos) 
 	{
-		if (raw.empty()) { statusCode = STATUS_BAD_REQUEST; return false; }
-		parsedReq.host = raw; 
+		parsedReq.host = raw;
 		parsedReq.port = 80; 
 		return true;
 	}
