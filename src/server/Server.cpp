@@ -286,7 +286,6 @@ RetStatus Server::clientAccept(Epoll &epoll, Socket *socket)
 RetStatus Server::clientRequest(Epoll &epoll, Client *client)
 {
     unsigned char received[4096];
-    int cgiFlag = 1;
     int length = recv(client->getSocket().getFd(), received, sizeof(received) -1, 0);
     client->getSocket().setTimeStatus(this->timeOutValue.readTimeout);
     ServerConfig config = this->configs[client->getListenFd()];
@@ -312,16 +311,16 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
         ReqParseResult ret = client->onReceive();
         if (ret == REQ_PARSE_INCOMPLETE)
             return (STATUS_RE);
-        if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
-            return errorHandling(client, epoll, 500);
     }
-    // std::cout << client->getCharDq().size() << std::endl;
-    // std::cout << received;
-    if (cgiFlag && (!client->checkRunCgi()))
-    { // 여기있는 조건문으로 우선 cgi를 킬지 안킬지 하는데 판단하는 조건을 나중에 추가해야함
+    config.matching(client->getRequest().path);
+    if (!(config.matchLocation.getCgiExtension() == "") && (!client->checkRunCgi()))
+    {
         if (!cgiRun(epoll, client))
             return errorHandling(client, epoll, 500);
+        return STATUS_OK; // cgiRun이 소켓 fd를 epoll에서 이미 DEL했으므로 아래 MOD를 건너뜀
     }
+    if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
+            return errorHandling(client, epoll, 500);
     return STATUS_OK;
 }
 
