@@ -21,13 +21,17 @@ UTILS_DIR   = ./src/utils
 UTILS_SRC   = Utils.cpp ConfigParsUtil.cpp
 UTILS_OBJ   = $(addprefix $(OBJS_DIR)/, $(UTILS_SRC:.cpp=.o))
 
+HTTP_DIR   = ./src/http
+HTTP_SRC   = HttpUtils.cpp RequestParser.cpp
+HTTP_OBJ   = $(addprefix $(OBJS_DIR)/, $(HTTP_SRC:.cpp=.o))
+
 CGI_DIR   = ./src/cgi
 CGI_SRC   = Cgi.cpp
 CGI_OBJ   = $(addprefix $(OBJS_DIR)/, $(CGI_SRC:.cpp=.o))
 
-OBJS        = $(SOURCES_OBJ) $(SERVER_OBJ) $(UTILS_OBJ) $(CONFIG_OBJ)
+OBJS        = $(SOURCES_OBJ) $(SERVER_OBJ) $(UTILS_OBJ) $(CONFIG_OBJ) $(HTTP_OBJ)
 
-vpath %.cpp . $(SERVER_DIR) $(SOURCES_DIR) $(UTILS_DIR) $(CONFIG_DIR)
+vpath %.cpp . $(SERVER_DIR) $(SOURCES_DIR) $(UTILS_DIR) $(CONFIG_DIR) $(HTTP_DIR)
 
 all : $(NAME)
 

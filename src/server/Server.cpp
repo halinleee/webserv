@@ -152,17 +152,30 @@ bool Server::clientResponse(Epoll &epoll, Client *client)
     response += "\r\n";
     response += html_body;
 
+    // response 빌드 (에러면 Connection: close 포함)
+    // clientResponse()가 호출되는 경우는 에러 혹은 정상 응답을 내보낼 때. recv로 더 읽을 때는 호출되지 않음.
+    // std::string response = buildResponse(client->getRequest(), client->getShouldClose()); (TODO: 구현 미완성)
+
     length = send(client->getSocket().getFd(), response.c_str(), response.size(), 0);
     if (length < 0)
         return (STATUS_ERROR);
     if (static_cast<size_t>(length) == response.size())
     {
-        epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0);
-        this->clientDel(client->getSocket().getFd());
+        if (client->getShouldClose()) // (TODO: 구현 미완성)
+        {
+            std::cout << "클라이언트 연결 종료 : Client["<< client->getSocket().getFd() << "]" << std::endl;
+            if (!epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0))
+                return (STATUS_ERROR);
+            this->clientDel(client->getSocket().getFd());
+            return (STATUS_OK);
+        }
+        client->resetForNextRequest();
+        if (!epoll.epollControl(EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN))
+            return (STATUS_ERROR);
         return (STATUS_OK);
     }
-    else
-        return (STATUS_OK);
+    std::cout << "클라이언트 연결 유지 : Client["<< client->getSocket().getFd() << "]" << std::endl;
+    return (STATUS_RE);
 }
 
 /**
@@ -232,10 +245,11 @@ bool Server::clientAccept(Epoll &epoll, Socket *socket)
 /**
  * @brief 클라이언트의 데이터를 읽어들이고 요청을 파싱하는 함수
  * 
- * recv()로 데이터를 받아 Client 객체 내의 수신 버퍼(deque)에 쌓습니다. 만약 데이터가 정상적으로 수신되었다면(연결 유지) 향후 응답을 위해 해당 소켓의 epoll 이벤트를 EPOLLOUT으로 변경합니다.
+ * recv()로 데이터를 받아 Client 객체 내의 수신 버퍼(deque)에 쌓고 onReceive()로 파싱을 시도합니다.
+ * 파싱이 아직 끝나지 않았으면(REQ_PARSE_INCOMPLETE) EPOLLIN을 유지해 다음 recv()를 기다리고,
+ * 파싱이 끝났으면(REQ_PARSE_DONE/REQ_PARSE_ERROR) 응답을 보낼 수 있도록 EPOLLOUT으로 전환합니다.
  * @param epoll 이벤트를 관리할 Epoll 객체
  * @param client 데이터를 전송한 클라이언트 객체
- * @todo http요청을 다 받은 후에 flag가 넘어오면 그때 EPOLLOUT을 감지하도록 변경
  */
 bool Server::clientRequest(Epoll &epoll, Client *client)
 {
@@ -244,28 +258,19 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
     int length = recv(client->getSocket().getFd(), received, sizeof(received) -1, 0);
     if (length < 0)
         return (STATUS_ERROR);
-    else if (length == 0)
+    if (length == 0)
     {
         std::cout << "클라이언트 정상 종료 : Client["<< client->getSocket().getFd() << "]" << std::endl;
         epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0);
         this->clientDel(client->getSocket().getFd());
         return (STATUS_OK);
     }
-    else 
-    {
-        received[length] = '\0';
-        std::cout << "클라이언트 연결 : Client["<< client->getSocket().getFd() << "]" << std::endl;
-        client->CharDqAppend(length, received);
-        if (!epoll.epollControl(EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT))
-        {
-            client->setStatusCode(500);
-            epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), EPOLLOUT);
-            this->clientDel(client->getSocket().getFd());
-            return (STATUS_ERROR);
-        }
-    }
+
+    std::cout << "클라이언트 연결 : Client["<< client->getSocket().getFd() << "]" << std::endl;
+    client->CharDqAppend(length, received);
     std::cout << client->getCharDq().size() << std::endl;
-    std::cout << received;
+
+    ReqParseResult ret = client->onReceive();
     // if (cgiFlag)
     // { // 여기있는 조건문으로 우선 cgi를 킬지 안킬지 하는데 판단하는 조건을 나중에 추가해야함
     //     if (cgiRun(epoll, socket->getFd()))
@@ -276,7 +281,17 @@ bool Server::clientRequest(Epoll &epoll, Client *client)
     //         return ;
     //     }
     // }
-    // HTTP 내용 파싱
+    if (ret == REQ_PARSE_INCOMPLETE)
+        return (STATUS_RE); // 요청이 덜 와서 다시 recv() 해야 함. EPOLLIN 유지
+
+    // REQ_PARSE_DONE 또는 REQ_PARSE_ERROR: 응답 보낼 준비가 됐으니 EPOLLOUT으로 전환
+    if (!epoll.epollControl(EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT))
+    {
+        client->setStatusCode(500);
+        epoll.epollControl(EPOLL_CTL_DEL, client->getSocket().getFd(), 0);
+        this->clientDel(client->getSocket().getFd());
+        return (STATUS_ERROR);
+    }
     return (STATUS_OK);
 }
 
@@ -336,6 +351,6 @@ void Server::clientDel(int deleteFd)
 bool Server::clientExist(int fd)
 {
     if (fd < 0 || static_cast<size_t>(fd) >= this->client.size())
-        return (false);
+        return false;
     return (this->client[fd] != NULL);
 }
