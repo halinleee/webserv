@@ -1,4 +1,22 @@
 {
+  "permissions": {
+    "allow": [
+      "Read(//home/seungsch/goinfre/**)",
+      "Bash(make -j4)",
+      "Bash(git stash *)",
+      "Bash(curl -sv http://127.0.0.1:9090/)",
+      "Bash(kill %1)",
+      "Bash(pkill -f ./Webserver)",
+      "Bash(pkill -f \"sleep 70\")",
+      "Bash(timeout 8 valgrind --error-exitcode=99 ./Webserver web.conf)",
+      "Bash(curl -s http://127.0.0.1:9090/cgi_bin/test.py -o /dev/null)",
+      "Bash(pkill -INT -f \"valgrind.*Webserver\")",
+      "Bash(valgrind ./Webserver web.conf)",
+      "Bash(echo \"diff exit: $?\")",
+      "Bash(c++ -g -std=c++98 -I./include -o /tmp/claude-101677/-home-seungsch-Webserve/38788b85-fb37-403e-804b-53f01a77abe2/scratchpad/t4 /tmp/claude-101677/-home-seungsch-Webserve/38788b85-fb37-403e-804b-53f01a77abe2/scratchpad/t4.cpp obj/Server.o obj/Socket.o obj/Epoll.o obj/Client.o obj/Utils.o obj/ConfigParsUtil.o obj/Pipe.o obj/Config.o obj/ServerConfig.o obj/LocationConfig.o obj/HttpUtils.o obj/RequestParser.o obj/Cgi.o)",
+      "Bash(valgrind ./t4 webserv.conf)"
+    ]
+  },
   "enabledPlugins": {
     "harness@harness-marketplace": true
   }

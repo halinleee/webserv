@@ -2,6 +2,7 @@
 #include <cstdlib>
 
 Cgi::Cgi() {}
+Cgi::Cgi(LocationConfig location) : cgiLocation(location) {}
 Cgi::~Cgi() {}
 
 bool Cgi::dupSetting(int *in, int *out)
@@ -34,7 +35,7 @@ pid_t Cgi::excute(EnvMap envp, int *in, int *out)
         if (!dupSetting(in, out))
             exit (-1);
         env = mapToEnvp(envp);
-        cmd[0] = (char *)"/home/seungsch/Webserve/src/cgi/test.py";
+        cmd[0] = const_cast<char *>(this->cgiLocation.getCgiPath().c_str());
         cmd[1] = NULL;
         if (execve(cmd[0], cmd, env) < 0)
         {

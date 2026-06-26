@@ -6,6 +6,8 @@ Client::Client()
     this->statusCode = 0;
     this->runCgi = false;
     this->pid = -1;
+    this->shouldClose = false;
+    this->listenFd = -1;
 }
 
 Client::Client(Socket *socket, EnvMap env)
@@ -15,6 +17,8 @@ Client::Client(Socket *socket, EnvMap env)
     this->env = env;
     this->runCgi = false;
     this->pid = -1;
+    this->shouldClose = false;
+    this->listenFd = -1;
 }
 
 Client::~Client()
@@ -112,6 +116,8 @@ Socket &Client::getSocket() { return *this->clientSocket; }
 
 int Client::getStatusCode() { return this->statusCode; }
 
+Request Client::getRequest() {return this->request; }
+
 bool Client::checkRunCgi(void) { return this->runCgi; }
 
 void Client::setRunCgi(bool value) { this->runCgi = value; }
@@ -120,6 +126,30 @@ void Client::setStatusCode(int statusCode) { this->statusCode = statusCode; }
 
 void Client::setPid(pid_t pid) { this->pid = pid; }
 
+void Client::setListenFd(int fd) { this->listenFd = fd; }
+
+int Client::getListenFd(void) const { return this->listenFd; }
+
 bool Client::checkAlive(void) { return this->getSocket().checkTimeOut(); }
 
 void Client::timeSet(time_t addTime) { this->clientSocket->setTimeStatus(addTime); }
+
+ReqParseResult Client::onReceive()
+{
+    parser.parse(recDq);
+    ReqParseResult ret = parser.getState();
+    if (ret == REQ_PARSE_ERROR) shouldClose = true;
+    if (ret == REQ_PARSE_INCOMPLETE) return ret;
+    request = parser.getRequest();
+    parser.clear();
+    return ret;
+
+    // REQ_PARSE_DONE   → send 응답 → 정상이면 request.clear() + EPOLLIN 복귀 (TODO)
+    // REQ_PARSE_ERROR → send 에러 (Connection: close 포함) → clientDel
+    // REQ_PARSE_INCOMPLETE    → EPOLLIN 유지 (데이터 더 기다림)
+}
+
+bool Client::getShouldClose() const
+{
+    return shouldClose;
+}

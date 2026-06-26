@@ -3,6 +3,7 @@
 
 #include "type.hpp"
 #include "Utils.hpp"
+#include "LocationConfig.hpp"
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -11,8 +12,11 @@
  */
 class Cgi
 {
+    private:
+        LocationConfig cgiLocation;
     public:
         Cgi();
+        Cgi(LocationConfig location);
         ~Cgi();
 
         /**

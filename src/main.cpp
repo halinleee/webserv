@@ -2,6 +2,7 @@
 #include "Utils.hpp"
 #include "Server.hpp"
 #include "Epoll.hpp"
+#include "Config.hpp"
 
 Server *serverPointer;
 
@@ -23,16 +24,21 @@ int main(int ac, char **av, char **envp)
     Server server(envp, timeValue);
     Epoll epoll;
     serverPointer = &(server);
+
+    Config config;
+    if (!config.parseConfig(ac, av))
+    {
+        std::cerr << config.getStatusMessage() << std::endl;
+        return 1;
+    }
     signal(SIGINT, sigIntHandler);
     signal(SIGPIPE, SIG_IGN);
     if (epoll.getEpollFd() == -1)
         return -1;
-    if (!server.serverAdd(8080, epoll))
+    if (!server.serverAdd(config.getConfig(), epoll))
     {
         std::cerr << "서버 시작 실패" << std::endl;
         return 1;
     }
     server.eventProcess(epoll);
-    (void) ac;
-    (void) av;
 }

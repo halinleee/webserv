@@ -10,6 +10,13 @@
 class Socket;
 class Client;
 
+enum parseStatus
+{
+    PARSE_SERVER_END,
+    PARSE_FILE_END,
+    PARSE_ERROR
+};
+
 /**
  * @brief 각 status에 대해서 키워드로 관리하기 위해서 enum을 설정 후 사용
  * @var STATUS_ERROR 에러가 발생했을때 status로 숫자로는 0을 가지고 있음
@@ -37,11 +44,46 @@ struct timeValue
     time_t cgiTimeout;
 };
 
+enum Status
+{
+    STATUS_UNDEFINED = 0, //// 이렇게 해도 되는지 검증 필요
+    STATUS_BAD_REQUEST = 400,
+    STATUS_NOT_FOUND = 404,
+    STATUS_URI_LONG = 414,
+    STATUS_NOT_IMPLEMENTED = 501,
+    STATUS_HTTP_VERSION = 505,
+    STATUS_HEADER_TOO_LARGE = 431,
+    STATUS_PAYLOAD_TOO_LARGE = 413
+};
+
+enum ReqParseResult
+{
+    REQ_PARSE_ERROR,
+    REQ_PARSE_DONE,
+    REQ_PARSE_INCOMPLETE
+};
+
 /**
- * @brief 파일디스크립터
+ * @brief HTTP 요청의 메소드를 구분하는 열거형
  * 
- * 가독성을 위해 파일디스크립터와 int의 차이를 만들기 위해 사용
+ * @note 서버에서 구현하는 메소드는 GET, POST, DELETE
+ * 
+ *       나머지 메소드는 에러 응답을 보내기 위해 필요
  */
+enum HttpMethod
+{
+    METHOD_GET,
+    METHOD_POST,
+    METHOD_DELETE,
+    METHOD_PUT,
+    METHOD_PATCH,
+    METHOD_HEAD,
+    METHOD_OPTIONS,
+    METHOD_TRACE,
+    METHOD_CONNECT,
+    METHOD_INVALID
+};
+
 typedef int FD;
 
 /**
@@ -91,5 +133,12 @@ typedef std::vector<FD> FdVec;
  * 최종적으로 execve 호출 시 char** 배열 형태로 변환되어 사용됩니다.
  */
 typedef std::map<std::string, std::string> EnvMap;
+
+/**
+ * @brief string 객체를 원소로 갖는 vector
+ *
+ * request header의 값들을 임시로 저장하기 위해 사용
+ */
+typedef std::vector<std::string> strVec;
 
 #endif

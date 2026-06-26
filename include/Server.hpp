@@ -7,11 +7,14 @@
 #include "Socket.hpp"
 #include "Client.hpp"
 #include "Cgi.hpp"
+#include "ServerConfig.hpp"
 
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <algorithm>
+#include <map>
+#include <vector>
 
 /**
  * @brief 웹 서버의 전반적인 동작과 클라이언트 연결, 이벤트를 관리하는 핵심 클래스
@@ -27,14 +30,23 @@ class Server
          * @brief server의 메인 loop에서 사용되며 signal을 받아서 서버를 종료하기 위해 사용
          */
         bool serverActive;
+
+
         /**
-         * @var serverSocket 
-         * @brief 서버가 연결을 대기하는 리스닝 소켓을 관리하는 객체 포인터
-         * 
-         * bind() 및 listen()이 완료된 서버 소켓으로, epoll에서 EPOLLIN 이벤트가 발생하면 accept()를 호출하는 대상이 됩니다.
+         * @var configs
+         * @brief 리스닝 소켓의 FD를 key로, 그 포트(server 블록)의 ServerConfig를 value로 가지는 map
+         *
+         * 클라이언트가 어느 포트로 접속했는지(Client::getListenFd())에 맞는 ServerConfig를 찾기 위해 사용됩니다.
+         */
+        std::map<int, ServerConfig> configs;
+        /**
+         * @var serverSockets
+         * @brief 서버가 연결을 대기하는 리스닝 소켓들을 관리하는 객체 포인터 목록
+         *
+         * bind() 및 listen()이 완료된 서버 소켓들로, config에 정의된 포트마다 하나씩 생성되며 epoll에서 EPOLLIN 이벤트가 발생하면 accept()를 호출하는 대상이 됩니다.
          * 안에 서버의 소켓FD, addr, time등의 정보를 socket구조체로 가지고 있습니다.
          */
-        Socket *serverSocket;
+        std::vector<Socket *> serverSockets;
         /**
          * @var client 
          * @brief 현재 서버에 접속 중인 모든 클라이언트의 FD를 인덱스로 클라이언트 객체의 포인터를 가지고 있는 vector
@@ -91,11 +103,20 @@ class Server
          * @brief 새로운 서버 소켓을 생성하고 Epoll에 등록하는 함수
          * 
          * 내부적으로 serverSetting()을 호출하여 소켓 옵션을 설정하고 논블로킹 모드로 만든 후, Epoll의 감시 대상에 추가합니다.
+         * config에 정의된 포트 개수만큼 반복 호출되어 서버 소켓을 누적시킵니다.
          * @param port 바인딩할 포트 번호
          * @param epoll 이벤트를 관리할 Epoll 객체
          * @return Error STATUS_ERROR, 정상 동작 STATUS_OK
          */
-        RetStatus serverAdd (in_port_t port, Epoll &epoll);
+        RetStatus serverAdd (in_port_t port, Epoll &epoll, ServerConfig config);
+
+        /**
+         * @brief config에 파싱된 모든 포트에 대해 serverAdd를 호출하는 함수
+         * @param configs port를 key로 가지는 서버 설정 map
+         * @param epoll 이벤트를 관리할 Epoll 객체
+         * @return 하나라도 실패하면 STATUS_ERROR, 모두 성공하면 STATUS_OK
+         */
+        RetStatus serverAdd (const std::map<in_port_t, ServerConfig> &configs, Epoll &epoll);
 
         /**
          * @brief 서버가 client에게 데이터를 송신하는 함수
@@ -104,7 +125,7 @@ class Server
          * @param client 보낼 clinet 객체
          * @return 함수의 성공 여부
          */
-        RetStatus serverSend(Client *client);
+        RetStatus serverSend(Epoll &epoll, Client *client);
 
         /**
          * @brief Epoll 이벤트를 감지하고 종류에 따라 분기 처리하는 메인 이벤트 루프 함수
@@ -123,6 +144,13 @@ class Server
          * @return bind, listen, nonblockingSet 함수의 실패여부
          */
         RetStatus serverSetting(Socket *serverSocket);
+
+        /**
+         * @brief 주어진 FD가 리스닝 소켓 목록 중 어느 소켓에 해당하는지 찾는 함수
+         * @param fd 확인할 파일 디스크립터
+         * @return 일치하는 Socket 포인터, 없으면 NULL
+         */
+        Socket *findServerSocket(FD fd);
 
         /**
          * @brief 클라이언트의 연결 요청을 수락하고 Client 객체를 생성 및 Epoll에 등록하는 함수

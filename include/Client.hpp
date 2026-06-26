@@ -3,6 +3,7 @@
 
 #include "Pipe.hpp"
 #include "Socket.hpp"
+#include "RequestParser.hpp"
 #include "type.hpp"
 #include <iostream>
 #include <sys/wait.h>
@@ -76,6 +77,10 @@ class Client
          */
         pid_t pid;
 
+        RequestParser parser;
+        Request request;
+        bool shouldClose;
+
         /**
          * @var body 
          * @brief 클라이언트가 보낸 http메세지에서 CGI에 넘길 body내용을 담은 vector
@@ -83,7 +88,15 @@ class Client
          * 현재 임시로 만들어뒀는데 나중에 http파싱이 끝나서 구조체가 넘어오게 되면 그떄 수정필요
         */
         bodyVec body;
-    
+
+        /**
+         * @var listenFd
+         * @brief 이 클라이언트가 accept된 리스닝 소켓(서버 포트)의 FD
+         *
+         * 클라이언트가 어느 server 블록(포트)으로 접속했는지 추적해, CGI 등에서 해당 포트의 ServerConfig를 찾아 쓰기 위해 사용됩니다.
+         */
+        FD listenFd;
+
     public:
         /**
          * @brief Client의 기본 생성자
@@ -176,6 +189,18 @@ class Client
         void setPid(pid_t pid);
 
         /**
+         * @brief 클라이언트가 accept된 리스닝 소켓의 FD를 설정하는 함수
+         * @param fd 리스닝 소켓의 FD
+         */
+        void setListenFd(int fd);
+
+        /**
+         * @brief 클라이언트가 accept된 리스닝 소켓의 FD를 반환하는 함수
+         * @return 리스닝 소켓의 FD
+         */
+        int getListenFd(void) const;
+
+        /**
          * @brief CGI 파이프 객체의 참조를 반환합니다.
          *
          * Server::cgiRun에서 init(), excute 인자 전달, closeChildSide() 등을 직접 호출하기 위해 사용합니다.
@@ -236,12 +261,16 @@ class Client
          */
         int getPipeFd(int index);
 
+        Request getRequest();
+
         /**
          * @brief InFlag 또는 OutFlag에 해당하는 파이프 끝단을 닫는 함수
          *
          * @param flag InFlag = inWriteFd 닫기, OutFlag = outReadFd 닫기
          */
         void pipeClose(int flag);
+        ReqParseResult onReceive();
+        bool getShouldClose() const;
 };
 
 
