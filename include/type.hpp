@@ -17,13 +17,6 @@ enum parseStatus
     PARSE_ERROR
 };
 
-enum parseStatus
-{
-    PARSE_SERVER_END,
-    PARSE_FILE_END,
-    PARSE_ERROR
-};
-
 /**
  * @brief 각 status에 대해서 키워드로 관리하기 위해서 enum을 설정 후 사용
  * @var STATUS_ERROR 에러가 발생했을때 status로 숫자로는 0을 가지고 있음

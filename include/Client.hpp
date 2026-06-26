@@ -263,8 +263,6 @@ class Client
 
         Request getRequest();
 
-        Request getRequest();
-
         /**
          * @brief InFlag 또는 OutFlag에 해당하는 파이프 끝단을 닫는 함수
          *

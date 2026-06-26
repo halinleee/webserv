@@ -143,7 +143,6 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
 /**
  * @todo response 빌더 완성되면 만드는 reponse빌드 부분 로직 추가해서 보내도록 변경해야함
  * @todo recv로 내용을 다 담기 전까지 response가 생성되기 전에 보내지 않고 return하는 로직을 추가해야함
- * @todo timeOut관련해서 로직 추가
  */
 RetStatus Server::clientResponse(Epoll &epoll, Client *client)
 {
@@ -160,10 +159,6 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
     response += "Content-Length: " + ss.str() + "\r\n";
     response += "\r\n";
     response += html_body;
-
-    // response 빌드 (에러면 Connection: close 포함)
-    // clientResponse()가 호출되는 경우는 에러 혹은 정상 응답을 내보낼 때. recv로 더 읽을 때는 호출되지 않음.
-    // std::string response = buildResponse(client->getRequest(), client->getShouldClose()); (TODO: 구현 미완성)
 
     // response 빌드 (에러면 Connection: close 포함)
     // clientResponse()가 호출되는 경우는 에러 혹은 정상 응답을 내보낼 때. recv로 더 읽을 때는 호출되지 않음.
@@ -204,18 +199,16 @@ RetStatus Server::serverSend(Epoll &epoll, Client *client)
             this->deleteClient(client->getSocket().getFd());
             return (STATUS_OK);
         }
-        // parser나 request 객체 등을 초기화해야 함. (TODO)
-        if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN,client))
+        if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN, client))
             return (STATUS_ERROR);
+        client->resetForNextRequest();
         return (STATUS_OK);
     }
     std::cout << "클라이언트 연결 유지 : Client["<< client->getSocket().getFd() << "]" << std::endl;
     client->response = client->response.substr(length);
-    client->resetForNextRequest();
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN, client))
         return (STATUS_ERROR);
     return (STATUS_RE);
-    // 응답을 다 보낸 뒤 RequestParser 객체의 clear()를 호출하여 상태를 초기화 해야 함. (TODO)
 }
 
 /**
