@@ -17,6 +17,13 @@ enum parseStatus
     PARSE_ERROR
 };
 
+enum parseStatus
+{
+    PARSE_SERVER_END,
+    PARSE_FILE_END,
+    PARSE_ERROR
+};
+
 /**
  * @brief 각 status에 대해서 키워드로 관리하기 위해서 enum을 설정 후 사용
  * @var STATUS_ERROR 에러가 발생했을때 status로 숫자로는 0을 가지고 있음
@@ -133,6 +140,13 @@ typedef std::vector<FD> FdVec;
  * 최종적으로 execve 호출 시 char** 배열 형태로 변환되어 사용됩니다.
  */
 typedef std::map<std::string, std::string> EnvMap;
+
+/**
+ * @brief string 객체를 원소로 갖는 vector
+ *
+ * request header의 값들을 임시로 저장하기 위해 사용
+ */
+typedef std::vector<std::string> strVec;
 
 /**
  * @brief string 객체를 원소로 갖는 vector

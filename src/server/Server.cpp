@@ -165,6 +165,10 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
     // clientResponse()가 호출되는 경우는 에러 혹은 정상 응답을 내보낼 때. recv로 더 읽을 때는 호출되지 않음.
     // std::string response = buildResponse(client->getRequest(), client->getShouldClose()); (TODO: 구현 미완성)
 
+    // response 빌드 (에러면 Connection: close 포함)
+    // clientResponse()가 호출되는 경우는 에러 혹은 정상 응답을 내보낼 때. recv로 더 읽을 때는 호출되지 않음.
+    // std::string response = buildResponse(client->getRequest(), client->getShouldClose()); (TODO: 구현 미완성)
+
     if (client->response.empty())
         client->response = response;
     int sendStatus = serverSend(epoll, client);
@@ -207,7 +211,7 @@ RetStatus Server::serverSend(Epoll &epoll, Client *client)
     }
     std::cout << "클라이언트 연결 유지 : Client["<< client->getSocket().getFd() << "]" << std::endl;
     client->response = client->response.substr(length);
-    client->getCharDq().clear();
+    client->resetForNextRequest();
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN, client))
         return (STATUS_ERROR);
     return (STATUS_RE);

@@ -263,6 +263,8 @@ class Client
 
         Request getRequest();
 
+        Request getRequest();
+
         /**
          * @brief InFlag 또는 OutFlag에 해당하는 파이프 끝단을 닫는 함수
          *
@@ -271,6 +273,14 @@ class Client
         void pipeClose(int flag);
         ReqParseResult onReceive();
         bool getShouldClose() const;
+
+        /**
+         * @brief keep-alive 연결에서 응답 송신 완료 후 다음 요청을 받기 위해 상태를 초기화하는 함수
+         *
+         * recDq(수신 버퍼)는 파이프라이닝된 다음 요청의 데이터가 남아있을 수 있으므로 비우지 않고,
+         * 직전 요청에 대한 정보인 request와 statusCode만 초기화합니다. (parser는 onReceive에서 이미 clear됨)
+         */
+        void resetForNextRequest();
 };
 
 

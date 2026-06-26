@@ -11,10 +11,20 @@ bool RequestParser::parseStartline(CharDq& buf)
 {
 	HttpUtils::consumeLeadingCRLF(buf);
 
+<<<<<<< HEAD
 	if (buf.size() > MAX_STARTLINE_LENGTH) { statusCode = STATUS_BAD_REQUEST; return true; }
 
 	size_t crlf = HttpUtils::findCRLF(buf);
 	if (crlf == HttpUtils::npos) return false;
+=======
+	size_t crlf = HttpUtils::findCRLF(buf);
+	if (crlf == HttpUtils::npos)
+	{
+		if (buf.size() > MAX_STARTLINE_LENGTH) { statusCode = STATUS_BAD_REQUEST; return true; }
+		return false;
+	}
+	if (crlf > MAX_STARTLINE_LENGTH) { statusCode = STATUS_BAD_REQUEST; return true; }
+>>>>>>> origin/main
 	std::string startLine = HttpUtils::extractLine(buf, crlf, 2);
 
 	if (!splitStartline(startLine, tmpReqLine)) { statusCode = STATUS_BAD_REQUEST; return true;	}

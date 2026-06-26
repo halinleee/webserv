@@ -153,3 +153,55 @@ bool Client::getShouldClose() const
 {
     return shouldClose;
 }
+
+ReqParseResult Client::onReceive()
+{
+    parser.parse(recDq);
+    ReqParseResult ret = parser.getState();
+    if (ret == REQ_PARSE_ERROR) shouldClose = true;
+    if (ret == REQ_PARSE_INCOMPLETE) return ret;
+    request = parser.getRequest();
+    parser.clear();
+    return ret;
+
+    // REQ_PARSE_DONE   → send 응답 → 정상이면 request.clear() + EPOLLIN 복귀 (TODO)
+    // REQ_PARSE_ERROR → send 에러 (Connection: close 포함) → clientDel
+    // REQ_PARSE_INCOMPLETE    → EPOLLIN 유지 (데이터 더 기다림)
+}
+
+bool Client::getShouldClose() const
+{
+    return shouldClose;
+}
+
+void Client::resetForNextRequest()
+{
+    this->request = Request();
+    this->statusCode = 0;
+}
+
+ReqParseResult Client::onReceive()
+{
+    parser.parse(recDq);
+    ReqParseResult ret = parser.getState();
+    if (ret == REQ_PARSE_ERROR) shouldClose = true;
+    if (ret == REQ_PARSE_INCOMPLETE) return ret;
+    request = parser.getRequest();
+    parser.clear();
+    return ret;
+
+    // REQ_PARSE_DONE   → send 응답 → 정상이면 request.clear() + EPOLLIN 복귀 (TODO)
+    // REQ_PARSE_ERROR → send 에러 (Connection: close 포함) → clientDel
+    // REQ_PARSE_INCOMPLETE    → EPOLLIN 유지 (데이터 더 기다림)
+}
+
+bool Client::getShouldClose() const
+{
+    return shouldClose;
+}
+
+void Client::resetForNextRequest()
+{
+    this->request = Request();
+    this->statusCode = 0;
+}
