@@ -23,8 +23,8 @@ bool Epoll::epollControl(int option, int appendFd, u_int64_t events)
     event.data.fd = appendFd;
     event.events = events;
     if (epoll_ctl(this->epollFd, option, appendFd, &event) < 0)
-        return STATUS_ERROR;
-    return STATUS_OK;
+        return RET_ERROR;
+    return RET_OK;
 }
 
 /**

@@ -32,14 +32,14 @@ int Client::writeCgiPipe()
     ssize_t written = 0;
 
     if (this->body.empty())
-        return STATUS_OK;
+        return RET_OK;
     written = write(this->cgiPipe.getInWriteFd(), &this->body[0], this->body.size());
     if (written < 0)
-        return STATUS_ERROR;
+        return RET_ERROR;
     this->body.erase(this->body.begin(), this->body.begin() + written);
     if (this->body.empty())
-        return STATUS_OK;
-    return STATUS_RE;
+        return RET_OK;
+    return RET_RE;
 }
 
 int Client::readCgiPipe()
@@ -47,12 +47,12 @@ int Client::readCgiPipe()
     char received[4096];
     ssize_t length = read(this->cgiPipe.getOutReadFd(), received, 4095);
     if (length < 0)
-        return STATUS_ERROR;
+        return RET_ERROR;
     if (length == 0)
         return this->checkCgiExited();
     received[length] = '\0';
     this->response.append(received, length);
-    return STATUS_RE;
+    return RET_RE;
 }
 
 void Client::CgiExited()
@@ -68,22 +68,22 @@ RetStatus Client::checkCgiExited(void)
 
     int result = waitpid(this->pid, &status, WNOHANG);
     if (result == 0)
-        return STATUS_RE;
+        return RET_RE;
     if (result < 0)
-        return STATUS_ERROR;
+        return RET_ERROR;
     if (WIFEXITED(status))
     {
         if (WEXITSTATUS(status) == 0)
-            return STATUS_OK;
+            return RET_OK;
         std::cout << "cgi exited with code " << WEXITSTATUS(status) << std::endl;
-        return STATUS_ERROR;
+        return RET_ERROR;
     }
     if (WIFSIGNALED(status))
     {
         std::cout << "cgi killed by signal " << WTERMSIG(status) << std::endl;
-        return STATUS_ERROR;
+        return RET_ERROR;
     }
-    return STATUS_ERROR;
+    return RET_ERROR;
 }
 
 void Client::CharDqAppend(int length, unsigned char *received)

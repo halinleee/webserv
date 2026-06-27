@@ -19,17 +19,17 @@ enum parseStatus
 
 /**
  * @brief 각 status에 대해서 키워드로 관리하기 위해서 enum을 설정 후 사용
- * @var STATUS_ERROR 에러가 발생했을때 status로 숫자로는 0을 가지고 있음
- * @var STATUS_OK 정상 동작했을때 status로 숫자로는 1을 가지고 있음
- * @var STATUS_RE 정상 동작은 했지만 pipe의 총길이 제한, send수 제한 등 한번에 다 보내지 못했을 경우 status로 숫자로는 2를 가지고 있음
+ * @var RET_ERROR 에러가 발생했을때 status로 숫자로는 0을 가지고 있음
+ * @var RET_OK 정상 동작했을때 status로 숫자로는 1을 가지고 있음
+ * @var RET_RE 정상 동작은 했지만 pipe의 총길이 제한, send수 제한 등 한번에 다 보내지 못했을 경우 status로 숫자로는 2를 가지고 있음
  * 
  * @todo 나중에 각 status code에 대해서 확인한 후 status code의 숫자로 지정해 넘겨주도록 변경필요
  */
 enum  RetStatus 
 {
-    STATUS_ERROR = 0,
-    STATUS_OK = 1,
-    STATUS_RE = 2
+    RET_ERROR = 0,
+    RET_OK = 1,
+    RET_RE = 2
 };
 
 /**
@@ -46,14 +46,35 @@ struct timeValue
 
 enum Status
 {
-    STATUS_UNDEFINED = 0, //// 이렇게 해도 되는지 검증 필요
+    STATUS_UNDEFINED = 0,
+
+    // 2xx
+    STATUS_OK = 200,
+    STATUS_CREATED = 201,
+    STATUS_NO_CONTENT = 204,
+
+    // 3xx
+    STATUS_MOVED_PERMANENTLY = 301,
+    STATUS_FOUND = 302,
+    STATUS_SEE_OTHER = 303,
+
+    // 4xx
     STATUS_BAD_REQUEST = 400,
+    STATUS_FORBIDDEN = 403,
     STATUS_NOT_FOUND = 404,
+    STATUS_METHOD_NOT_ALLOWED = 405,
+    STATUS_REQUEST_TIMEOUT = 408,
+    STATUS_PAYLOAD_TOO_LARGE = 413,
     STATUS_URI_LONG = 414,
-    STATUS_NOT_IMPLEMENTED = 501,
-    STATUS_HTTP_VERSION = 505,
     STATUS_HEADER_TOO_LARGE = 431,
-    STATUS_PAYLOAD_TOO_LARGE = 413
+
+    // 5xx
+    STATUS_INTERNAL_SERVER_ERROR = 500,
+    STATUS_NOT_IMPLEMENTED = 501,
+    STATUS_BAD_GATEWAY = 502,
+    STATUS_SERVICE_UNAVAILABLE = 503,
+    STATUS_GATEWAY_TIMEOUT = 504,
+    STATUS_HTTP_VERSION = 505
 };
 
 enum ReqParseResult

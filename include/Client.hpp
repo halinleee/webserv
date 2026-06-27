@@ -161,9 +161,9 @@ class Client
         /**
          * @brief Cgi프로그램에게 넘길 body내용을 Cgi프로그램과 연결되어 있는 파이프에 적는 함수
          * 
-         * @return 0(STATUS_ERROR) 에러 발생
-         * @return 1(STATUS_OK) 정상 동작
-         * @return 1(STATUS_RE) 정상 동작은 했으나 pipe의 크기 제한으로 다시 이 함수를 와야할 경우
+         * @return 0(RET_ERROR) 에러 발생
+         * @return 1(RET_OK) 정상 동작
+         * @return 1(RET_RE) 정상 동작은 했으나 pipe의 크기 제한으로 다시 이 함수를 와야할 경우
         */
         int writeCgiPipe(void);
 
@@ -173,9 +173,9 @@ class Client
          * EOF(pipe write end가 모두 닫힘)을 감지하면 checkCgiExited()를 호출해
          * 자식 프로세스가 실제로 종료됐는지 확인하고 waitpid로 회수(좀비 방지)한다.
          *
-         * @return 0(STATUS_ERROR) 읽기 에러 또는 CGI가 비정상 종료(exit code != 0, signal)
-         * @return 1(STATUS_OK) EOF + CGI 정상 종료 확인 완료(모든 데이터를 다 읽음)
-         * @return 2(STATUS_RE) 아직 읽을 데이터가 남아있음, 또는 EOF 후 자식이 아직 reap되지 않아 재시도 필요
+         * @return 0(RET_ERROR) 읽기 에러 또는 CGI가 비정상 종료(exit code != 0, signal)
+         * @return 1(RET_OK) EOF + CGI 정상 종료 확인 완료(모든 데이터를 다 읽음)
+         * @return 2(RET_RE) 아직 읽을 데이터가 남아있음, 또는 EOF 후 자식이 아직 reap되지 않아 재시도 필요
          */
         int readCgiPipe(void);
 
