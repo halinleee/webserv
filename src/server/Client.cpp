@@ -27,32 +27,40 @@ Client::~Client()
     // cgiPipe 소멸자가 열려있는 fd를 자동으로 닫음
 }
 
-int Client::writeCgiPipe()
+RetStatus Client::writeCgiPipe()
 {
     ssize_t written = 0;
 
     if (this->body.empty())
-        return STATUS_OK;
+        return RET_OK;
     written = write(this->cgiPipe.getInWriteFd(), &this->body[0], this->body.size());
     if (written < 0)
-        return STATUS_ERROR;
+        return RET_ERROR;
     this->body.erase(this->body.begin(), this->body.begin() + written);
     if (this->body.empty())
-        return STATUS_OK;
-    return STATUS_RE;
+        return RET_OK;
+    return RET_RE;
 }
 
-int Client::readCgiPipe()
+RetStatus Client::readCgiPipe()
 {
     char received[4096];
     ssize_t length = read(this->cgiPipe.getOutReadFd(), received, 4095);
-    if (length < 0)
-        return STATUS_ERROR;
-    if (length == 0)
-        return this->checkCgiExited();
     received[length] = '\0';
     this->response.append(received, length);
-    return STATUS_RE;
+    if (length < 0)
+        return RET_ERROR;
+    if (length == 0)
+    {
+        RetStatus ret = this->checkCgiExited();
+        if (ret == RET_OK)
+        {
+            std::cout << "cgi read 끝" << std::endl;
+            return ret;
+        }
+        return ret;
+    }
+    return RET_RE;
 }
 
 void Client::CgiExited()
@@ -68,22 +76,22 @@ RetStatus Client::checkCgiExited(void)
 
     int result = waitpid(this->pid, &status, WNOHANG);
     if (result == 0)
-        return STATUS_RE;
+        return RET_RE;
     if (result < 0)
-        return STATUS_ERROR;
+        return RET_ERROR;
     if (WIFEXITED(status))
     {
         if (WEXITSTATUS(status) == 0)
-            return STATUS_OK;
+            return RET_OK;
         std::cout << "cgi exited with code " << WEXITSTATUS(status) << std::endl;
-        return STATUS_ERROR;
+        return RET_ERROR;
     }
     if (WIFSIGNALED(status))
     {
         std::cout << "cgi killed by signal " << WTERMSIG(status) << std::endl;
-        return STATUS_ERROR;
+        return RET_ERROR;
     }
-    return STATUS_ERROR;
+    return RET_ERROR;
 }
 
 void Client::CharDqAppend(int length, unsigned char *received)
@@ -108,6 +116,8 @@ int Client::getPipeFd(int index)
 
 Pipe &Client::getCgiPipe() { return this->cgiPipe; }
 
+bool Client::getRunCgi() { return this->runCgi; }
+
 pid_t Client::getPid() { return this->pid; }
 
 CharDq &Client::getCharDq(void) { return this->recDq; }
@@ -117,8 +127,6 @@ Socket &Client::getSocket() { return *this->clientSocket; }
 int Client::getStatusCode() { return this->statusCode; }
 
 Request Client::getRequest() {return this->request; }
-
-bool Client::checkRunCgi(void) { return this->runCgi; }
 
 void Client::setRunCgi(bool value) { this->runCgi = value; }
 
@@ -133,6 +141,19 @@ int Client::getListenFd(void) const { return this->listenFd; }
 bool Client::checkAlive(void) { return this->getSocket().checkTimeOut(); }
 
 void Client::timeSet(time_t addTime) { this->clientSocket->setTimeStatus(addTime); }
+
+bool Client::checkRunCgi(LocationConfig config) 
+{
+    if (this->runCgi)
+        return false;
+    if (config.getCgiExtension() == "")
+        return false;
+    if (access(config.getCgiPath().c_str(), X_OK))
+        return false;
+    if (access(config.getRoot().c_str(), X_OK))
+        return false;
+    return true; 
+}
 
 ReqParseResult Client::onReceive()
 {

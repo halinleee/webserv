@@ -42,14 +42,14 @@ bool nonblockingSet(int fd)
     if (flags == -1)
     {
         std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
-        return STATUS_ERROR;
+        return RET_ERROR;
     }
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
     {
         std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
-        return STATUS_ERROR;
+        return RET_ERROR;
     }
-    return STATUS_OK;
+    return RET_OK;
 }
 
 /**

@@ -4,6 +4,7 @@
 #include "type.hpp"
 #include "Utils.hpp"
 #include "LocationConfig.hpp"
+#include "Client.hpp"
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -14,9 +15,10 @@ class Cgi
 {
     private:
         LocationConfig cgiLocation;
+        std::string cgiPrefix;
     public:
         Cgi();
-        Cgi(LocationConfig location);
+        Cgi(std::string prefix, LocationConfig location);
         ~Cgi();
 
         /**
@@ -41,7 +43,9 @@ class Cgi
          * @return 생성된 자식 프로세스의 PID, 실패 시 -1 반환
          *  나중에 Client request에 맞춰서 cgi실행하도록 변경
          */
-        pid_t excute(EnvMap envp, int *in, int *out);
+        pid_t excute(Client *client, EnvMap envp, int *in, int *out);
+
+        void envAppend(Client *client, EnvMap &envp, Request request);
 };
 
 #endif

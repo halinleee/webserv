@@ -19,17 +19,17 @@ enum parseStatus
 
 /**
  * @brief 각 status에 대해서 키워드로 관리하기 위해서 enum을 설정 후 사용
- * @var STATUS_ERROR 에러가 발생했을때 status로 숫자로는 0을 가지고 있음
- * @var STATUS_OK 정상 동작했을때 status로 숫자로는 1을 가지고 있음
- * @var STATUS_RE 정상 동작은 했지만 pipe의 총길이 제한, send수 제한 등 한번에 다 보내지 못했을 경우 status로 숫자로는 2를 가지고 있음
+ * @var RET_ERROR 에러가 발생했을때 status로 숫자로는 0을 가지고 있음
+ * @var RET_OK 정상 동작했을때 status로 숫자로는 1을 가지고 있음
+ * @var RET_RE 정상 동작은 했지만 pipe의 총길이 제한, send수 제한 등 한번에 다 보내지 못했을 경우 status로 숫자로는 2를 가지고 있음
  * 
  * @todo 나중에 각 status code에 대해서 확인한 후 status code의 숫자로 지정해 넘겨주도록 변경필요
  */
 enum  RetStatus 
 {
-    STATUS_ERROR = 0,
-    STATUS_OK = 1,
-    STATUS_RE = 2
+    RET_ERROR = 0,
+    RET_OK = 1,
+    RET_RE = 2
 };
 
 /**

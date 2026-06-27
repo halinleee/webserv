@@ -106,7 +106,7 @@ class Server
          * config에 정의된 포트 개수만큼 반복 호출되어 서버 소켓을 누적시킵니다.
          * @param port 바인딩할 포트 번호
          * @param epoll 이벤트를 관리할 Epoll 객체
-         * @return Error STATUS_ERROR, 정상 동작 STATUS_OK
+         * @return Error RET_ERROR, 정상 동작 RET_OK
          */
         RetStatus serverAdd (in_port_t port, Epoll &epoll, ServerConfig config);
 
@@ -114,7 +114,7 @@ class Server
          * @brief config에 파싱된 모든 포트에 대해 serverAdd를 호출하는 함수
          * @param configs port를 key로 가지는 서버 설정 map
          * @param epoll 이벤트를 관리할 Epoll 객체
-         * @return 하나라도 실패하면 STATUS_ERROR, 모두 성공하면 STATUS_OK
+         * @return 하나라도 실패하면 RET_ERROR, 모두 성공하면 RET_OK
          */
         RetStatus serverAdd (const std::map<in_port_t, ServerConfig> &configs, Epoll &epoll);
 
@@ -166,7 +166,7 @@ class Server
          * @param epoll I/O 이벤트를 관리하는 epoll 객체(오류 발생 및 respose를 보낸 후에 등록했던 이벤트 삭제를 위해 매개변수로 지정)
          * @param currentFd 현재 이벤트가 감지된 FD
          * @param currentEvent 현재 이벤트의 내용
-         * @return loop 동작 중 error발생 여부(발생시 STATUS_ERROR = 0, 아닐 시 STATUS_OK = 1)
+         * @return loop 동작 중 error발생 여부(발생시 RET_ERROR = 0, 아닐 시 RET_OK = 1)
          */
         RetStatus clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent);
 
@@ -240,7 +240,8 @@ class Server
          */
         void checkTimeOutClient(int &index);
         
-        
+        bool checkRunCgi();
+
         /**
          * @brief 특정 클라이언트의 연결을 종료하고 자원을 해제하는 함수
          * 
@@ -266,7 +267,7 @@ class Server
          *
          * epoll_ctl 실패는 대부분 OS 전체 자원고갈이 아니라 fd 라이프사이클 버그 케이스라
          * 해당 client만 정리하고 나머지 서버는 계속 동작하도록 한다.
-         * @return epollControl 성공 시 STATUS_OK, 실패 시 client를 정리하고 STATUS_ERROR
+         * @return epollControl 성공 시 RET_OK, 실패 시 client를 정리하고 RET_ERROR
          */
         RetStatus epollGuard(Epoll &epoll, int op, FD fd, u_int32_t event, Client *client);
 

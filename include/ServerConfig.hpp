@@ -52,6 +52,7 @@ class ServerConfig
 	public:
 		bool matching(const std::string& url);
 		LocationConfig matchLocation;
+		std::string matchPrefix;
 };
 
 #endif
