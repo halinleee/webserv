@@ -17,17 +17,9 @@ CONFIG_DIR  = ./src/config
 CONFIG_SRC  = Config.cpp ServerConfig.cpp LocationConfig.cpp
 CONFIG_OBJ  = $(addprefix $(OBJS_DIR)/, $(CONFIG_SRC:.cpp=.o))
 
-CONFIG_DIR  = ./src/config
-CONFIG_SRC  = Config.cpp ServerConfig.cpp LocationConfig.cpp
-CONFIG_OBJ  = $(addprefix $(OBJS_DIR)/, $(CONFIG_SRC:.cpp=.o))
-
 UTILS_DIR   = ./src/utils
 UTILS_SRC   = Utils.cpp ConfigParsUtil.cpp Pipe.cpp
 UTILS_OBJ   = $(addprefix $(OBJS_DIR)/, $(UTILS_SRC:.cpp=.o))
-
-HTTP_DIR   = ./src/http
-HTTP_SRC   = HttpUtils.cpp RequestParser.cpp
-HTTP_OBJ   = $(addprefix $(OBJS_DIR)/, $(HTTP_SRC:.cpp=.o))
 
 HTTP_DIR   = ./src/http
 HTTP_SRC   = HttpUtils.cpp RequestParser.cpp
