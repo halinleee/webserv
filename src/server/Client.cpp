@@ -46,6 +46,10 @@ RetStatus Client::readCgiPipe()
 {
     char received[4096];
     ssize_t length = read(this->cgiPipe.getOutReadFd(), received, 4095);
+    if (length < 0)
+        return STATUS_ERROR;
+    if (length == 0)
+        return this->checkCgiExited();
     received[length] = '\0';
     this->response.append(received, length);
     if (length < 0)

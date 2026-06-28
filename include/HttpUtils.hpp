@@ -119,6 +119,14 @@ namespace HttpUtils
 	 * @return Vchar/SP/HTAB이면 true, 아니면 false
 	 */
 	bool isVcharSpTab(unsigned char c);
+
+	/**
+	 * @brief HTTP status code에 대응하는 status text를 반환
+	 *
+	 * @param code 변환할 status code
+	 * @return 대응하는 status text, 정의되지 않은 code면 "Unknown"
+	 */
+	std::string getStatusText(Status code);
 }
 
 #endif
