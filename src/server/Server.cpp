@@ -130,12 +130,24 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
     if (currentEvent & EPOLLIN || currentEvent & EPOLLHUP)
     {
         std::cout << "pipe Read in" << std::endl;
-        cgiPipeRead(epoll, pipeClient);
+        if (!cgiPipeRead(epoll, pipeClient))
+        {
+            pipeClient->setRunCgi(false);
+            pipeClient->setStatusCode(500);
+            if (!epollGuard(epoll, EPOLL_CTL_ADD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
+                return RET_ERROR;
+        }
     }
     if (currentEvent & EPOLLOUT)
     {
         std::cout << "pipe Write in" << std::endl;
-        cgiPipeWrite(epoll, pipeClient);
+        if (!cgiPipeWrite(epoll, pipeClient))
+        {
+            pipeClient->setRunCgi(false);
+            pipeClient->setStatusCode(500);
+            if (!epollGuard(epoll, EPOLL_CTL_ADD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
+                return RET_ERROR;
+        }
     }
     return RET_OK;
 }
@@ -281,7 +293,8 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
 {
     unsigned char received[4096];
     int length = recv(client->getSocket().getFd(), received, sizeof(received) -1, 0);
-    client->getSocket().setTimeStatus(this->timeOutValue.readTimeout);
+    if (client->getCharDq().empty())
+        client->getSocket().setTimeStatus(this->timeOutValue.readTimeout);
     ServerConfig *config = &this->configs[client->getListenFd()];
     bool cgiFlag = 0;
     if (length < 0)
