@@ -5,6 +5,8 @@
 #include "Socket.hpp"
 #include "RequestParser.hpp"
 #include "ServerConfig.hpp"
+#include "CgiParser.hpp"
+#include "Response.hpp"
 #include "type.hpp"
 #include <unistd.h>
 #include <iostream>
@@ -98,6 +100,7 @@ class Client
          * 클라이언트가 어느 server 블록(포트)으로 접속했는지 추적해, CGI 등에서 해당 포트의 ServerConfig를 찾아 쓰기 위해 사용됩니다.
          */
         FD listenFd;
+        CgiParser cgiParser;
 
     public:
         /**
@@ -285,6 +288,12 @@ class Client
          * 직전 요청에 대한 정보인 request와 statusCode만 초기화합니다. (parser는 onReceive에서 이미 clear됨)
          */
         void resetForNextRequest();
+
+        /**
+         * @var cgiResponse
+         * @brief CGI stdout을 파싱한 결과(상태 코드, 헤더, 바디)를 담는 구조체
+        */
+        Response cgiResponse;
 };
 
 

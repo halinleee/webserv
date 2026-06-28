@@ -26,7 +26,7 @@ HTTP_SRC   = HttpUtils.cpp RequestParser.cpp
 HTTP_OBJ   = $(addprefix $(OBJS_DIR)/, $(HTTP_SRC:.cpp=.o))
 
 CGI_DIR   = ./src/cgi
-CGI_SRC   = Cgi.cpp
+CGI_SRC   = Cgi.cpp CgiParser.cpp
 CGI_OBJ   = $(addprefix $(OBJS_DIR)/, $(CGI_SRC:.cpp=.o))
 
 OBJS        = $(SOURCES_OBJ) $(SERVER_OBJ) $(UTILS_OBJ) $(CONFIG_OBJ) $(HTTP_OBJ) $(CGI_OBJ)

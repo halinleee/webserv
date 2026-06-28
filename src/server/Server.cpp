@@ -307,7 +307,7 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
         if (ret == REQ_PARSE_INCOMPLETE)
             return (RET_RE);
     }
-    std::cout << received << std::endl;
+    // std::cout << received << std::endl;
     config->matching(client->getRequest().path);
     cgiFlag = client->checkRunCgi(config->matchLocation);
     if (cgiFlag)

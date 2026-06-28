@@ -46,10 +46,6 @@ RetStatus Client::readCgiPipe()
 {
     char received[4096];
     ssize_t length = read(this->cgiPipe.getOutReadFd(), received, 4095);
-    if (length < 0)
-        return STATUS_ERROR;
-    if (length == 0)
-        return this->checkCgiExited();
     received[length] = '\0';
     this->response.append(received, length);
     if (length < 0)
@@ -59,7 +55,7 @@ RetStatus Client::readCgiPipe()
         RetStatus ret = this->checkCgiExited();
         if (ret == RET_OK)
         {
-            std::cout << "cgi read 끝" << std::endl;
+            this->cgiResponse = cgiParser.parseCgiOutput(this->response);
             return ret;
         }
         return ret;
