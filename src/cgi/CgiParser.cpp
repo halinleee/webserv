@@ -1,5 +1,16 @@
 #include "CgiParser.hpp"
 
+bool isStatusLine(const std::string& line)
+{
+	if (line.compare(0, 5, "HTTP/") == 0)
+		return true;
+	
+	if (line.compare(0, 7, "Status:") == 0 || line.compare(0, 7, "status:") == 0)
+		return true;
+
+	return false;
+}
+
 bool CgiParser::parseStatusLine(const std::string& lines, Response& response)
 {
 	std::vector<std::string> statusLine = ftSplit(lines, ' ');
@@ -78,8 +89,21 @@ Response CgiParser::parseCgiOutput(const std::string& cgiOutput)
 		if (!lines[i].empty() && lines[i][lines[i].size() - 1] == '\r')
 			lines[i].erase(lines[i].size() - 1);
 	}
+	
+	for (size_t i = 0; i < lines.size(); ++i)
+	{
+		std::string key, value;
 
-	if (!parseStatusLine(lines[0], response))
-		return Response(STATUS_BAD_GATEWAY);
+		if (isStatusLine(lines[i]))
+		{
+			parseStatusLine(lines[i], response);
+			continue;
+		}
+
+		if (!cgiParseKeyValue(lines[i], key, value))
+			return Response(STATUS_BAD_GATEWAY);
+
+		response.headers[key] = value;
+	}
 	return response;
 }

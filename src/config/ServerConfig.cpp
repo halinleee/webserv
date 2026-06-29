@@ -116,8 +116,8 @@ bool ServerConfig::parseErrorPage(std::vector<std::string> &token)
 	if (!isValidNormalizePath(token[2]))
 		return false;
 	
-	if(!isValidErrorCode(num))
-		return false;
+	if(!isValidErrorCode(num)) // 지원하지 않는 코드는 무시하고 파싱은 계속 진행
+		return true;
 
 	errorPages[num] = token[2];
 	return true;
