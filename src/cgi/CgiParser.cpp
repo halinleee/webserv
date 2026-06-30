@@ -1,4 +1,5 @@
 #include "CgiParser.hpp"
+#include <sstream>
 
 bool isStatusLine(const std::string& line)
 {
@@ -11,23 +12,23 @@ bool isStatusLine(const std::string& line)
 	return false;
 }
 
-bool CgiParser::parseStatusLine(const std::string& lines, Response& response)
+// Status: 200 OK
+// Status: 404 Not Found
+// HTTP/1.1 200 OK
+bool parseStatusLine(const std::string& lines, Response& response)
 {
 	std::vector<std::string> statusLine = ftSplit(lines, ' ');
-	if (statusLine.empty() || statusLine.size() != 3)
+	if (statusLine.size() < 2)
 		return false;
-	if (statusLine[0] == "HTTP/1.1")
-	{
-		size_t num = 0;
-		if (!toInt(statusLine[1], num) || num < 100 || num > 599)
-			return false;
-		response.statusCode = static_cast<Status>(num);
-		response.statusText = HttpUtils::getStatusText(response.statusCode);
-	}
+	size_t num = 0;
+	if (!toInt(statusLine[1], num) || num < 100 || num > 599)
+		return false;
+	response.statusCode = static_cast<Status>(num);
+	response.statusText = HttpUtils::getStatusText(response.statusCode);
 	return true;
 }
 
-bool CgiParser::splitHeaderBody(const std::string& stdout, Response& response, std::string& headers)
+bool splitHeaderBody(const std::string& stdout, Response& response, std::string& headers)
 {
 	size_t pos = stdout.find("\r\n\r\n");
 	size_t sepLen = 4;
@@ -44,7 +45,7 @@ bool CgiParser::splitHeaderBody(const std::string& stdout, Response& response, s
 	return true;
 }
 
-bool CgiParser::cgiParseKeyValue(const std::string& line, std::string& key, std::string& value)
+bool cgiParseKeyValue(const std::string& line, std::string& key, std::string& value)
 {
 	size_t colon = line.find(':');
 	if (colon == std::string::npos || colon == 0) return false;
@@ -84,7 +85,7 @@ Response CgiParser::parseCgiOutput(const std::string& cgiOutput)
 		return Response(STATUS_BAD_GATEWAY);
 
 	std::vector<std::string> lines = ftSplit(headers, '\n');
-	for (int i = 0; i < lines.size(); i++)
+	for (size_t i = 0; i < lines.size(); i++)
 	{
 		if (!lines[i].empty() && lines[i][lines[i].size() - 1] == '\r')
 			lines[i].erase(lines[i].size() - 1);
@@ -96,14 +97,24 @@ Response CgiParser::parseCgiOutput(const std::string& cgiOutput)
 
 		if (isStatusLine(lines[i]))
 		{
-			parseStatusLine(lines[i], response);
+			if (!parseStatusLine(lines[i], response))
+				return Response(STATUS_BAD_GATEWAY);
 			continue;
 		}
 
 		if (!cgiParseKeyValue(lines[i], key, value))
 			return Response(STATUS_BAD_GATEWAY);
 
-		response.headers[key] = value;
+		std::map<std::string, std::string>::iterator it = response.headers.find(key);
+		if (it != response.headers.end())
+			it->second = it->second + ", " + value;
+		else
+			response.headers[key] = value;
 	}
+
+	std::ostringstream oss;
+	oss << response.body.size();
+	response.headers["content-length"] = oss.str();
+
 	return response;
 }
