@@ -17,7 +17,7 @@ class ServerConfig
 		static const size_t TIME_OUT_MAX = 180;
 	
 	private:
-		std::time_t keepAliveTimeout;
+		timeValue timeConfig;
 		size_t clientMaxBodySize;
 		std::map<size_t, std::string> errorPages;
 		std::map<std::string, LocationConfig> locations;
@@ -26,7 +26,7 @@ class ServerConfig
 
 	private:
 		void setPrefixes(void);
-		bool parseKeepAlive(std::vector<std::string>& token);
+		bool parseTimeOut(std::vector<std::string>& token);
 		bool parseErrorPage(std::vector<std::string>& token);
 		bool parseBody(const std::vector<std::string>& token);
 		bool parseServerDirective(std::vector<std::string>& token, std::ifstream& configFile);
@@ -41,13 +41,17 @@ class ServerConfig
 		{
 			clientMaxBodySize = 1000000;
 			statusMessage = "Default Error";
-			keepAliveTimeout = 75;
+			timeConfig.connetionTimeOut = 60;
+			timeConfig.readTimeout = 60;
+			timeConfig.writeTimeout = 60;
+			timeConfig.keepAliveTimeout = 75;
+			timeConfig.cgiTimeout = 60;
 		};
 		const size_t& getClientMaxBodySize() const { return clientMaxBodySize; }
-		std::time_t getKeepAliveTimeout() const { return keepAliveTimeout; }
 		const std::map<size_t, std::string>& getErrorPages() const { return errorPages; }
 		const std::map<std::string, LocationConfig>& getLocations() const { return locations; }
 		const std::string& getStatusMessage() const { return statusMessage; }
+		const timeValue& getTimeConfig() const { return timeConfig; }
 
 	public:
 		bool matching(const std::string& url);

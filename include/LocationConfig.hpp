@@ -11,6 +11,7 @@ class LocationConfig
 {
 	private:
 		std::string root;
+		std::string alias;
 		std::string index;
 		bool autoIndex;
 		std::set<HttpMethod> methods;
@@ -22,10 +23,10 @@ class LocationConfig
 
 	private:
 		bool parseHttpMethod(const std::string& s, HttpMethod& out);
-		bool parseLocationDir(std::vector<std::string>& token);
+		bool parseLocationDir(std::vector<std::string>& token, std::string &prefix);
 	
 	public:
-		bool parseLocationBlock(std::ifstream &configFile);
+		bool parseLocationBlock(std::ifstream &configFile, std::string &prefix);
 
 
 	public:
@@ -45,6 +46,7 @@ class LocationConfig
 		size_t getRedirectCode() const { return redirectCode; }
 		const std::string& getCgiExtension() const { return cgiExtension; }
 		const std::string& getCgiPath() const { return cgiPath; }
+		const std::string& getAlias() const { return alias; }
 };
 
 #endif

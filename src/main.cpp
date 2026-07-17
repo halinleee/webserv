@@ -16,11 +16,7 @@ static void sigIntHandler(int signum)
 int main(int ac, char **av, char **envp)
 {
     timeValue timeValue;
-    timeValue.connetionTimeOut = 60;
-    timeValue.readTimeout = 60;
-    timeValue.writeTimeout = 60;
-    timeValue.keepAliveTimeout = 60;
-    timeValue.cgiTimeout = 5;
+   //server먼저하면 config는 server한테 파싱줘야하는데 어케줌? config가 제일 먼저 하는게 맞지 않나?
     Server server(envp, timeValue);
     Epoll epoll;
     serverPointer = &(server);
