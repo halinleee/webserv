@@ -14,13 +14,18 @@ namespace HttpUtils
 	const size_t npos = static_cast<size_t>(-1);
 
 	/**
-	 * @brief 버퍼 앞 부분에 존재하는 CR/LF 제거
-	 * 
-	 * @param buf leading CR/LF가 제거될 버퍼
-	 * 
-	 * @note HTTP 요청 파싱 전 불필요한 CR/LF 제거 사용
+	 * @brief 버퍼 앞 부분에 존재하는 빈 줄(CRLF) 제거
+	 *
+	 * RFC 7230 §3.5에 따라 request-line 앞의 빈 줄을 일부 허용한다.
+	 * 단, 온전한 "\r\n" 쌍만 제거하며(단독 LF는 남겨서 이후 findBareLF가
+	 * 400으로 거부하도록 함), 최대 maxBlankLines줄까지만 건너뛴다.
+	 *
+	 * @param buf leading CRLF가 제거될 버퍼
+	 * @param maxBlankLines 건너뛸 최대 빈 줄 개수 (호출부의 파싱 정책)
+	 *
+	 * @note HTTP 요청 파싱 전 불필요한 CRLF 제거 사용
 	 */
-	void consumeLeadingCRLF(CharDq& buf);
+	void consumeLeadingCRLF(CharDq& buf, size_t maxBlankLines);
 
 	/**
 	 * @brief 버퍼에서 줄바꿈(CRLF)의 시작 인덱스를 찾아 반환
@@ -41,6 +46,21 @@ namespace HttpUtils
 	 * @note buf 크기가 4 미만이면 CRLFCRLF가 존재할 수 없음
 	 */
 	size_t findCRLFCRLF(const CharDq& buf);
+
+	/**
+	 * @brief 버퍼에서 첫 번째 줄바꿈 문자(\n)가 단독 LF인지 확인
+	 *
+	 * 버퍼를 앞에서부터 검사해 처음 등장하는 '\n'의 위치를 찾고,
+	 * 그 앞 문자가 '\r'이 아니면(=단독 LF) 해당 위치를 반환한다.
+	 * 첫 '\n'이 정상적인 CRLF의 일부라면(앞 문자가 '\r') npos를 반환한다.
+	 *
+	 * @param buf 단독 LF가 있는지 검사할 CharDq 버퍼
+	 * @return 단독 LF의 인덱스, 없으면 HttpUtils::npos
+	 *
+	 * @note 버퍼 맨 앞 줄(아직 파싱되지 않은 한 줄)만 검사하므로
+	 *       바디처럼 줄 구분과 무관한 데이터가 뒤섞여 있어도 안전하다.
+	 */
+	size_t findBareLF(const CharDq& buf);
 
 	/**
 	 * @brief 버퍼에서 줄바꿈 전까지만 추출하여 반환

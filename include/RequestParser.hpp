@@ -12,6 +12,7 @@
 #define MAX_HEADER_LINE_LENGTH 1024
 #define MAX_HEADER_SECTION_LENGTH (16 * 1024)
 #define MAX_CLIENT_BODY_LENGTH 1000000			// 가을이가 파싱한 value 이용(TODO)
+#define MAX_LEADING_BLANK_LINES 5
 
 /**
  * @brief HTTP 요청 파싱 상태를 나타내는 열거형

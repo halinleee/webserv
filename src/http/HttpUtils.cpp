@@ -1,17 +1,13 @@
 #include "HttpUtils.hpp"
 #include <cctype>
 
-void HttpUtils::consumeLeadingCRLF(CharDq& buf)
+void HttpUtils::consumeLeadingCRLF(CharDq& buf, size_t maxBlankLines)
 {
-	while (!buf.empty())
+	for (size_t skipped = 0; skipped < maxBlankLines; ++skipped)
 	{
-		unsigned char c = buf.front();
-		if (c == '\r' || c == '\n')
-		{
-			buf.pop_front();
-			continue ;
-		}
-		break ;
+		if (buf.size() < 2 || buf[0] != '\r' || buf[1] != '\n')
+			break ;
+		buf.erase(buf.begin(), buf.begin() + 2);
 	}
 }
 
@@ -32,11 +28,24 @@ size_t HttpUtils::findCRLFCRLF(const CharDq& buf)
 {
 	if (buf.size() < 4)
 		return (HttpUtils::npos);
-	
+
 	for(size_t i = 0; i + 3 < buf.size(); ++i)
 	{
 		if (buf[i] == '\r' && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n')
 			return (i);
+	}
+	return HttpUtils::npos;
+}
+
+size_t HttpUtils::findBareLF(const CharDq& buf)
+{
+	for (size_t i = 0; i < buf.size(); ++i)
+	{
+		if (buf[i] != '\n')
+			continue;
+		if (i == 0 || buf[i - 1] != '\r')
+			return i;
+		return HttpUtils::npos;
 	}
 	return HttpUtils::npos;
 }
