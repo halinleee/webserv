@@ -132,6 +132,7 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
         std::cout << "pipe Read in" << std::endl;
         if (!cgiPipeRead(epoll, pipeClient))
         {
+            reapCgiChild(pipeClient->getPid());
             pipeClient->setRunCgi(false);
             pipeClient->setStatusCode(500);
             if (!epollGuard(epoll, EPOLL_CTL_ADD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
@@ -143,6 +144,7 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
         std::cout << "pipe Write in" << std::endl;
         if (!cgiPipeWrite(epoll, pipeClient))
         {
+            reapCgiChild(pipeClient->getPid());
             pipeClient->setRunCgi(false);
             pipeClient->setStatusCode(500);
             if (!epollGuard(epoll, EPOLL_CTL_ADD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
@@ -358,27 +360,17 @@ RetStatus Server::cgiRun(Epoll &epoll, Client *client)
 
     if (!epollGuard(epoll, EPOLL_CTL_DEL, eventSocket, EPOLLOUT, client))
     {
-        pipe.closeInWrite();
-        pipe.closeOutRead();
-        kill(tmpPid, SIGKILL);
-        waitpid(tmpPid, NULL, 0);
+        reapCgiChild(tmpPid);
         return RET_ERROR;
     }
     if (!epollGuard(epoll, EPOLL_CTL_ADD, inWriteFd, EPOLLOUT, client))
     {
-        pipe.closeInWrite();
-        pipe.closeOutRead();
-        kill(tmpPid, SIGKILL);
-        waitpid(tmpPid, NULL, 0);
+        reapCgiChild(tmpPid);
         return RET_ERROR;
     }
     if (!epollGuard(epoll, EPOLL_CTL_ADD, outReadFd, EPOLLIN, client))
     {
-        epollGuard(epoll, EPOLL_CTL_DEL, inWriteFd, 0, client);
-        pipe.closeInWrite();
-        pipe.closeOutRead();
-        kill(tmpPid, SIGKILL);
-        waitpid(tmpPid, NULL, 0);
+        reapCgiChild(tmpPid);
         return RET_ERROR;
     }
     client->setPid(tmpPid);
@@ -488,6 +480,15 @@ void Server::deleteClient(int deleteFd)
         this->inClientVec.erase(it);
     delete this->client[deleteFd];
     this->client[deleteFd] = NULL;
+}
+
+void Server::reapCgiChild(pid_t pid)
+{
+    if (waitpid(pid, NULL, WNOHANG) == 0)
+    {
+        kill(pid, SIGKILL);
+        waitpid(pid, NULL, 0);
+    }
 }
 
 bool Server::clientExist(int fd)

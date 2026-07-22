@@ -69,8 +69,9 @@ void Cgi::envAppend(Client *client, EnvMap &envp, Request request)
 {
     std::stringstream ss;
 
+    std::string temp = request.path.substr(this->cgiPrefix.length());
+
     envp["REQUEST_METHOD"] = methodToString(request.method);
-    envp["SCRIPT_NAME"] = request.path;
     envp["QUERY_STRING"] = request.query;
     envp["SERVER_PROTOCOL"] = "HTTP/1.1";
     envp["GATEWAY_INTERFACE"] = "CGI/1.1";
@@ -80,6 +81,10 @@ void Cgi::envAppend(Client *client, EnvMap &envp, Request request)
     envp["SERVER_PORT"] = ss.str();
     ss.clear();
 
+    if (temp.find("/") != std::string::npos)
+        envp["SCRIPT_NAME"] = this->cgiPrefix + temp.substr(0, temp.find("/"));
+    else
+        envp["SCRIPT_NAME"] = this->cgiPrefix + temp;
     if (request.contentLength >= 0)
     {
         ss << request.contentLength;

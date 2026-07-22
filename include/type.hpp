@@ -141,11 +141,4 @@ typedef std::map<std::string, std::string> EnvMap;
  */
 typedef std::vector<std::string> strVec;
 
-/**
- * @brief string 객체를 원소로 갖는 vector
- *
- * request header의 값들을 임시로 저장하기 위해 사용
- */
-typedef std::vector<std::string> strVec;
-
 #endif

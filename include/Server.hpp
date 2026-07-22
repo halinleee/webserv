@@ -240,8 +240,6 @@ class Server
          */
         void checkTimeOutClient(int &index);
         
-        bool checkRunCgi();
-
         /**
          * @brief 특정 클라이언트의 연결을 종료하고 자원을 해제하는 함수
          * 
@@ -275,6 +273,17 @@ class Server
          * @brief signal handler에서 서버를 close하기 위해서 호출되는 함수
          */
         void serverClose();
+
+        /**
+         * @brief CGI 파이프 read/write 에러 경로에서 자식 프로세스를 무조건 회수(reap)하는 함수
+         *
+         * cgiPipeRead/cgiPipeWrite가 에러로 실패하면 호출측(cgiEventLoop)이 setRunCgi(false)를 호출하는데,
+         * deleteClient의 fallback reap은 getRunCgi()가 true일 때만 waitpid를 시도하므로 그 시점 이후로는
+         * 영영 회수되지 않는다(자식이 아직 안 끝났든 이미 끝났든). 에러 발생 직후, runCgi 플래그와 무관하게
+         * 한 번 더 회수를 시도해서 좀비를 방지한다.
+         * @param client 에러가 발생한 클라이언트 객체
+         */
+        void reapCgiChild(pid_t pid);
 };
 
 #endif

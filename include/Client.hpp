@@ -12,13 +12,13 @@
 #include <sys/types.h>
 
 /**
- * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 http의 요청에서 body을 전달하는 inPipe의 쓰기 끝을 반환하는 flag
+ * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 http의 요청에서 body을 요청할때 사용하는 flag
  */
-#define InFlag 0
-/**
- * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 생성된 http요청을 받는 OutPipe의 읽기 끝을 반환하는 flag
- */
-#define OutFlag 1
+enum PipeFlag
+{
+    InFlag = 0,
+    OutFlag = 1
+};
 
 /**
  * @brief 서버에 연결된 단일 클라이언트의 정보와 상태를 관리하는 클래스
@@ -82,14 +82,6 @@ class Client
         RequestParser parser;
         Request request;
         bool shouldClose;
-
-        /**
-         * @var body 
-         * @brief 클라이언트가 보낸 http메세지에서 CGI에 넘길 body내용을 담은 vector
-         * 
-         * 현재 임시로 만들어뒀는데 나중에 http파싱이 끝나서 구조체가 넘어오게 되면 그떄 수정필요
-        */
-        bodyVec body;
 
         /**
          * @var listenFd
@@ -156,13 +148,6 @@ class Client
          * @brief 클라이언트의 keepAlive시간을 초기화하는 함수
         */
         void timeSet(time_t addTime);
-
-        /**
-         * @brief Cgi에 대해서 sigkill을 하는 함수
-         * 
-         * cgi timeOut에 사용
-         */
-        void CgiExited();
 
         /**
          * @brief Cgi프로그램에게 넘길 body내용을 Cgi프로그램과 연결되어 있는 파이프에 적는 함수

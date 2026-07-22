@@ -31,13 +31,13 @@ RetStatus Client::writeCgiPipe()
 {
     ssize_t written = 0;
 
-    if (this->body.empty())
+    if (this->request.body.empty())
         return RET_OK;
-    written = write(this->cgiPipe.getInWriteFd(), &this->body[0], this->body.size());
+    written = write(this->cgiPipe.getInWriteFd(), &this->request.body[0], this->request.body.size());
     if (written < 0)
         return RET_ERROR;
-    this->body.erase(this->body.begin(), this->body.begin() + written);
-    if (this->body.empty())
+    this->request.body.erase(this->request.body.begin(), this->request.body.begin() + written);
+    if (this->request.body.empty())
         return RET_OK;
     return RET_RE;
 }
@@ -48,26 +48,11 @@ RetStatus Client::readCgiPipe()
     ssize_t length = read(this->cgiPipe.getOutReadFd(), received, 4095);
     received[length] = '\0';
     this->response.append(received, length);
-    if (length < 0)
+    if (length < 0 || this->response.size() > MAX_CLIENT_BODY_LENGTH)
         return RET_ERROR;
     if (length == 0)
-    {
-        RetStatus ret = this->checkCgiExited();
-        if (ret == RET_OK)
-        {
-            std::cout << "cgi read 끝" << std::endl;
-            return ret;
-        }
-        return ret;
-    }
+        return this->checkCgiExited();
     return RET_RE;
-}
-
-void Client::CgiExited()
-{
-    kill(this->pid, SIGKILL);
-    waitpid(this->pid, NULL, 0);
-    std::cout << "cgi timeOut kill" << std::endl;
 }
 
 RetStatus Client::checkCgiExited(void)
