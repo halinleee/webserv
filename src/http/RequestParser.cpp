@@ -9,7 +9,9 @@
 
 bool RequestParser::parseStartline(CharDq& buf)
 {
-	HttpUtils::consumeLeadingCRLF(buf);
+	HttpUtils::consumeLeadingCRLF(buf, MAX_LEADING_BLANK_LINES);
+
+	if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
 
 	if (buf.size() > MAX_STARTLINE_LENGTH) { statusCode = STATUS_BAD_REQUEST; return true; }
 
@@ -147,6 +149,8 @@ bool RequestParser::parseHeaders(CharDq& buf)
 		return true;
 	}
 
+	if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
+
 	size_t crlfcrlf = HttpUtils::findCRLFCRLF(buf);
 	if (crlfcrlf == HttpUtils::npos)
 	{
@@ -162,6 +166,8 @@ bool RequestParser::parseHeaders(CharDq& buf)
 
 	while (!headers.empty())
 	{
+		if (HttpUtils::findBareLF(headers) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
+
 		size_t end = HttpUtils::findCRLF(headers);
 		if (end == HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
 
@@ -367,6 +373,8 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 	{
 		if (inTrailer)
 		{
+			if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
+
 			size_t trailerEnd = HttpUtils::findCRLF(buf);
 			if (trailerEnd == HttpUtils::npos) return false;
 			buf.erase(buf.begin(), buf.begin() + trailerEnd + 2);
@@ -380,6 +388,8 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 
 		if (chunkRemaining == 0)
 		{
+			if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
+
 			size_t crlf = HttpUtils::findCRLF(buf);
 			if (crlf == HttpUtils::npos) return false;
 
