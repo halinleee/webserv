@@ -17,7 +17,7 @@ int main(int ac, char **av, char **envp)
 {
     timeValue timeValue;
    //server먼저하면 config는 server한테 파싱줘야하는데 어케줌? config가 제일 먼저 하는게 맞지 않나?
-    Server server(envp, timeValue);
+   Server server(envp, timeValue);
     Epoll epoll;
     serverPointer = &(server);
 
