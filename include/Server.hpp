@@ -258,7 +258,7 @@ class Server
         /**
          * @brief error가 발생했을때 client의 statuscode를 수정하고 epollOut을 활성화하는 함수
          */
-        RetStatus errorHandling(Client *client, Epoll eopll, int statusCode);
+        RetStatus errorHandling(Client *client, Epoll &eopll, int statusCode);
 
         /**
          * @brief epollControl 실패를 한 곳에서 처리하기 위한 함수

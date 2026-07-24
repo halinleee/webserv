@@ -497,7 +497,7 @@ bool Server::clientExist(int fd)
     return this->client[fd] != NULL;
 }
 
-RetStatus Server::errorHandling(Client *client, Epoll epoll, int statusCode)
+RetStatus Server::errorHandling(Client *client, Epoll &epoll, int statusCode)
 {
     client->setStatusCode(statusCode);
     epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client);

@@ -79,8 +79,8 @@ void Cgi::envAppend(Client *client, EnvMap &envp, Request request)
     envp["REMOTE_ADDR"] = inet_ntoa(client->getSocket().getAddr().sin_addr);
     ss << request.port;
     envp["SERVER_PORT"] = ss.str();
-    ss.str("");
     ss.clear();
+    ss.str("");
 
     if (temp.find("/") != std::string::npos)
         envp["SCRIPT_NAME"] = this->cgiPrefix + temp.substr(0, temp.find("/"));
