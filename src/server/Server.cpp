@@ -208,7 +208,7 @@ RetStatus Server::serverSend(Epoll &epoll, Client *client)
         if (client->getShouldClose()) // (TODO: 구현 미완성)
         {
             std::cout << "클라이언트 연결 종료 : Client["<< client->getSocket().getFd() << "]" << std::endl;
-            if (epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client))
+            if (!epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client))
                 return (RET_ERROR);
             this->deleteClient(client->getSocket().getFd());
             return (RET_OK);
