@@ -261,11 +261,12 @@ class Server
         RetStatus errorHandling(Client *client, Epoll &eopll, int statusCode);
 
         /**
-         * @brief epollControl 실패를 한 곳에서 처리하기 위한 함수
+         * @brief epollControl 실패를 한 곳(로그)에서 처리하기 위한 순수 wrapper 함수
          *
-         * epoll_ctl 실패는 대부분 OS 전체 자원고갈이 아니라 fd 라이프사이클 버그 케이스라
-         * 해당 client만 정리하고 나머지 서버는 계속 동작하도록 한다.
-         * @return epollControl 성공 시 RET_OK, 실패 시 client를 정리하고 RET_ERROR
+         * epoll_ctl 성공/실패 여부만 그대로 반환하며 client를 delete하는 등의 부수효과는 없다.
+         * 실패 시 호출부가 반환값을 확인하고 필요한 정리(파이프 close, map erase, deleteClient 등)를
+         * 직접 수행해야 한다.
+         * @return epollControl 성공 시 RET_OK, 실패 시 RET_ERROR (client는 그대로 유지됨)
          */
         RetStatus epollGuard(Epoll &epoll, int op, FD fd, u_int32_t event, Client *client);
 
