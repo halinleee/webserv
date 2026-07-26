@@ -112,18 +112,18 @@ RetStatus Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
 
 RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u_int32_t currentEvent)
 {
-    if (currentEvent & EPOLLERR)
-    {
-        epollGuard(epoll, EPOLL_CTL_DEL, currentFd, 0, pipeClient);
-        deleteClient(pipeClient->getSocket().getFd());
-        return RET_ERROR;
-    }
     if (currentFd == pipeClient->getPipeFd(InFlag) && (currentEvent & EPOLLHUP))
     {
         epollGuard(epoll, EPOLL_CTL_DEL, currentFd, 0, pipeClient);
         this->pipeToClientMap.erase(currentFd);
         pipeClient->pipeClose(InFlag);
         return RET_OK;
+    }
+    if (currentEvent & EPOLLERR)
+    {
+        epollGuard(epoll, EPOLL_CTL_DEL, currentFd, 0, pipeClient);
+        deleteClient(pipeClient->getSocket().getFd());
+        return RET_ERROR;
     }
     if (currentEvent & EPOLLIN || currentEvent & EPOLLHUP)
     {

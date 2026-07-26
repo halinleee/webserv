@@ -50,7 +50,7 @@ RetStatus Client::readCgiPipe()
         return RET_ERROR;
     received[length] = '\0';
     this->response.append(received, length);
-    if (length < 0 || this->response.size() > MAX_CLIENT_BODY_LENGTH)
+    if (this->response.size() > MAX_CLIENT_BODY_LENGTH)
         return RET_ERROR;
     if (length == 0)
         return this->checkCgiExited();
