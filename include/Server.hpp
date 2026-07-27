@@ -238,10 +238,8 @@ class Server
         /**
          * @brief 클라이언트의 요청을 보낸 시간이 keep-alive 시간을 지났는지 확인하고 지났을 경우 해제하는 함수
          */
-        void checkTimeOutClient(int &index);
+        void checkTimeOutClient(Epoll &epoll, int &index);
         
-        bool checkRunCgi();
-
         /**
          * @brief 특정 클라이언트의 연결을 종료하고 자원을 해제하는 함수
          * 
@@ -260,14 +258,15 @@ class Server
         /**
          * @brief error가 발생했을때 client의 statuscode를 수정하고 epollOut을 활성화하는 함수
          */
-        RetStatus errorHandling(Client *client, Epoll eopll, int statusCode);
+        RetStatus errorHandling(Client *client, Epoll &eopll, int statusCode);
 
         /**
-         * @brief epollControl 실패를 한 곳에서 처리하기 위한 함수
+         * @brief epollControl 실패를 한 곳(로그)에서 처리하기 위한 순수 wrapper 함수
          *
-         * epoll_ctl 실패는 대부분 OS 전체 자원고갈이 아니라 fd 라이프사이클 버그 케이스라
-         * 해당 client만 정리하고 나머지 서버는 계속 동작하도록 한다.
-         * @return epollControl 성공 시 RET_OK, 실패 시 client를 정리하고 RET_ERROR
+         * epoll_ctl 성공/실패 여부만 그대로 반환하며 client를 delete하는 등의 부수효과는 없다.
+         * 실패 시 호출부가 반환값을 확인하고 필요한 정리(파이프 close, map erase, deleteClient 등)를
+         * 직접 수행해야 한다.
+         * @return epollControl 성공 시 RET_OK, 실패 시 RET_ERROR (client는 그대로 유지됨)
          */
         RetStatus epollGuard(Epoll &epoll, int op, FD fd, u_int32_t event, Client *client);
 
@@ -275,6 +274,22 @@ class Server
          * @brief signal handler에서 서버를 close하기 위해서 호출되는 함수
          */
         void serverClose();
+
+        /**
+         * @brief CGI 파이프 read/write 에러 경로에서 자식 프로세스를 무조건 회수(reap)하는 함수
+         *
+         * cgiPipeRead/cgiPipeWrite가 에러로 실패하면 호출측(cgiEventLoop)이 setRunCgi(false)를 호출하는데,
+         * deleteClient의 fallback reap은 getRunCgi()가 true일 때만 waitpid를 시도하므로 그 시점 이후로는
+         * 영영 회수되지 않는다(자식이 아직 안 끝났든 이미 끝났든). 에러 발생 직후, runCgi 플래그와 무관하게
+         * 한 번 더 회수를 시도해서 좀비를 방지한다.
+         * @param client 에러가 발생한 클라이언트 객체
+         */
+        void reapCgiChild(pid_t pid);
+
+        /**
+         * @brief cgiRun의 epoll 등록 실패 롤백 공통 로직 (좀비 회수 + 파이프 정리)
+         */
+        void cgiRollback(Client *client, pid_t pid);
 };
 
 #endif

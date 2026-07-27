@@ -45,7 +45,7 @@ class Cgi
          */
         pid_t excute(Client *client, EnvMap envp, int *in, int *out);
 
-        void envAppend(Client *client, EnvMap &envp, Request request);
+        void envAppend(Client *client, EnvMap &envp, Request request, const std::string &scriptPath);
 };
 
 #endif

@@ -1,5 +1,5 @@
-# ifndef UTIL_HPP
-# define UTIL_HPP
+# ifndef CONFIGPARSEUTILS_HPP
+# define CONFIGPARSEUTILS_HPP
 
 #include <string>
 #include <vector>
