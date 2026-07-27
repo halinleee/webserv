@@ -22,7 +22,7 @@ UTILS_SRC   = Utils.cpp ConfigParsUtil.cpp Pipe.cpp
 UTILS_OBJ   = $(addprefix $(OBJS_DIR)/, $(UTILS_SRC:.cpp=.o))
 
 HTTP_DIR   = ./src/http
-HTTP_SRC   = HttpUtils.cpp RequestParser.cpp
+HTTP_SRC   = HttpUtils.cpp RequestParser.cpp Router.cpp Handler.cpp MultipartParser.cpp
 HTTP_OBJ   = $(addprefix $(OBJS_DIR)/, $(HTTP_SRC:.cpp=.o))
 
 CGI_DIR   = ./src/cgi

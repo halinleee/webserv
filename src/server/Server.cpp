@@ -1,6 +1,9 @@
 #include "Server.hpp"
 #include "Pipe.hpp"
 #include "main.hpp"
+#include "Response.hpp"
+#include "Router.hpp"
+#include "Handler.hpp"
 
 Server::Server(char **envp, timeValue timeValue) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue(timeValue) {}
 
@@ -140,31 +143,65 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
     return RET_OK;
 }
 
-/**
- * @todo response 빌더 완성되면 만드는 reponse빌드 부분 로직 추가해서 보내도록 변경해야함
- * @todo recv로 내용을 다 담기 전까지 response가 생성되기 전에 보내지 않고 return하는 로직을 추가해야함
- */
 RetStatus Server::clientResponse(Epoll &epoll, Client *client)
 {
-    std::string html_body = "<html><body>";
-    html_body += "<h1>Received HTTP Request:</h1>";
-    html_body += "<pre>" + client->getRequest().path + "</pre>";
-    html_body += "</body></html>";
-    
-    std::stringstream ss;
-    ss << html_body.length();
-    std::string response = "";
-    response += "HTTP/1.1 200 OK\r\n";
-    response += "Content-Type: text/html; charset=utf-8\r\n"; 
-    response += "Content-Length: " + ss.str() + "\r\n";
-    response += "\r\n";
-    response += html_body;
+    std::string response;
 
-    // response 빌드 (에러면 Connection: close 포함)
-    // clientResponse()가 호출되는 경우는 에러 혹은 정상 응답을 내보낼 때. recv로 더 읽을 때는 호출되지 않음.
-    // std::string response = buildResponse(client->getRequest(), client->getShouldClose()); (TODO: 구현 미완성)
+    // 에러 페이지 커스터마이징 (TODO)
+    if (client->getRequest().status != STATUS_UNDEFINED)
+    {
+        Response err(client->getRequest().status);
+        std::stringstream codess;
+        codess << static_cast<int>(err.statusCode);
 
-    if (client->response.empty())
+        std::string html_body = "<html><body><h1>" + codess.str() + " " + err.statusText + "</h1></body></html>";
+        std::stringstream lenss;
+        lenss << html_body.length();
+
+        response += "HTTP/1.1 " + codess.str() + " " + err.statusText + "\r\n";
+        response += "Content-Type: text/html; charset=utf-8\r\n";
+        response += "Content-Length: " + lenss.str() + "\r\n";
+        if (client->getShouldClose())
+            response += "Connection: close\r\n";
+        response += "\r\n";
+        response += html_body;
+    }
+    else
+    {
+        const RouteResult &route = client->getRouteResult();
+        Response res;
+
+        switch (route.action)
+        {
+            case ACTION_STATIC:
+                res = Handler::serve(route, client->getRequest());
+                break;
+            case ACTION_REDIRECT:
+                res = Response(static_cast<Status>(route.redirectCode));
+                res.headers["Location"] = route.redirectPath;
+                break;
+            case ACTION_CGI:
+                break;
+            case ACTION_ERROR:
+            default:
+                res = Response(static_cast<Status>(route.errorCode));
+                if (route.errorCode == STATUS_METHOD_NOT_ALLOWED)
+                {
+                    std::string allow;
+                    for (std::set<HttpMethod>::const_iterator it = route.allowedMethods.begin(); it != route.allowedMethods.end(); ++it)
+                    {
+                        if (!allow.empty())
+                            allow += ", ";
+                        allow += HttpUtils::getMethodName(*it);
+                    }
+                    res.headers["Allow"] = allow;
+                }
+                break;
+        }
+        response = res.toString(client->getShouldClose());
+    }
+
+    if (client->response.empty()) // cgi
         client->response = response;
     int sendStatus = serverSend(epoll, client);
     if (sendStatus == RET_ERROR) 
@@ -285,7 +322,7 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
     unsigned char received[4096];
     int length = recv(client->getSocket().getFd(), received, sizeof(received) -1, 0);
     client->getSocket().setTimeStatus(this->timeOutValue.readTimeout);
-    ServerConfig config = this->configs[client->getListenFd()];
+    ServerConfig &config = this->configs[client->getListenFd()];
     if (length < 0)
     {
         if (!epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client))
@@ -305,16 +342,22 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
         received[length] = '\0';
         std::cout << "클라이언트 연결 : Client["<< client->getSocket().getFd() << "]" << std::endl;
         client->CharDqAppend(length, received);
+        client->setMaxBodyLength(config.getClientMaxBodySize());
         ReqParseResult ret = client->onReceive();
         if (ret == REQ_PARSE_INCOMPLETE)
             return (RET_RE);
     }
-    config.matching(client->getRequest().path);
-    if (!(config.matchLocation.getCgiExtension() == "") && (!client->checkRunCgi()))
+    
+    if (client->getRequest().status == STATUS_UNDEFINED)
     {
-        if (!cgiRun(epoll, client))
-            return errorHandling(client, epoll, 500);
-        return RET_OK; // cgiRun이 소켓 fd를 epoll에서 이미 DEL했으므로 아래 MOD를 건너뜀
+        RouteResult route = Router::route(config, client->getRequest());
+        client->setRouteResult(route);
+        if (route.action == ACTION_CGI && !client->checkRunCgi())
+        {
+            if (!cgiRun(epoll, client))
+                return errorHandling(client, epoll, 500);
+            return RET_OK;
+        }
     }
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
             return errorHandling(client, epoll, 500);
@@ -324,7 +367,6 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
 RetStatus Server::cgiRun(Epoll &epoll, Client *client)
 {
     ServerConfig &serverConfig = this->configs[client->getListenFd()];
-    serverConfig.matching("/cgi_bin");
     Cgi cgi(serverConfig.matchLocation);
     pid_t tmpPid;
     Pipe &pipe = client->getCgiPipe();

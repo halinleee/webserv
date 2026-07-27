@@ -1,4 +1,6 @@
 #include "Client.hpp"
+#include "HttpUtils.hpp"
+#include <sstream>
 
 Client::Client()
 {
@@ -141,6 +143,36 @@ ReqParseResult Client::onReceive()
     if (ret == REQ_PARSE_ERROR) shouldClose = true;
     if (ret == REQ_PARSE_INCOMPLETE) return ret;
     request = parser.getRequest();
+    if (ret == REQ_PARSE_DONE)
+    {
+        // HTTP/1.1 기본값은 keep-alive이므로, Connection 헤더가 없거나
+        // "close" 토큰이 없으면 shouldClose는 false로 유지된다.
+        // 헤더 key는 RequestParser::transferHeaders()에서 이미 소문자로
+        // 정규화되어 저장되므로 "connection"으로 조회하면 되지만,
+        // value는 그대로 보존되므로 비교 시 대소문자를 무시해야 한다.
+        // Connection 헤더 값은 RFC 7230 §6.1에 따라 콤마로 구분된 토큰
+        // 리스트일 수 있으므로(예: "keep-alive, close"), 값 전체를
+        // "close"와 완전일치 비교하지 않고 RequestParser::validateTransferEncoding()과
+        // 동일한 방식으로 토큰 단위로 분리해 trim + 소문자 비교한다.
+        std::map<std::string, std::string>::const_iterator it = request.headers.find("connection");
+        shouldClose = false;
+        if (it != request.headers.end())
+        {
+            std::stringstream ss(it->second);
+            std::string token;
+            while (std::getline(ss, token, ','))
+            {
+                size_t s = token.find_first_not_of(" \t");
+                size_t e = token.find_last_not_of(" \t");
+                if (s == std::string::npos) continue;
+                if (HttpUtils::toLower(token.substr(s, e - s + 1)) == "close")
+                {
+                    shouldClose = true;
+                    break;
+                }
+            }
+        }
+    }
     parser.clear();
     return ret;
 
@@ -159,4 +191,14 @@ void Client::resetForNextRequest()
     this->request = Request();
     this->statusCode = 0;
     this->response.clear();
+    this->routeResult = RouteResult();
+}
+
+void Client::setRouteResult(const RouteResult &result) { this->routeResult = result; }
+
+const RouteResult &Client::getRouteResult() const { return this->routeResult; }
+
+void Client::setMaxBodyLength(size_t length)
+{
+    this->parser.setMaxBodyLength(length);
 }

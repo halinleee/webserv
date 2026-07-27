@@ -4,6 +4,7 @@
 #include "Pipe.hpp"
 #include "Socket.hpp"
 #include "RequestParser.hpp"
+#include "RouteResult.hpp"
 #include "type.hpp"
 #include <iostream>
 #include <sys/wait.h>
@@ -96,6 +97,15 @@ class Client
          * 클라이언트가 어느 server 블록(포트)으로 접속했는지 추적해, CGI 등에서 해당 포트의 ServerConfig를 찾아 쓰기 위해 사용됩니다.
          */
         FD listenFd;
+
+        /**
+         * @var routeResult
+         * @brief clientRequest 단계에서 Router::route()로 계산된 라우팅 결과
+         *
+         * clientRequest(EPOLLIN)와 clientResponse(EPOLLOUT)가 서로 다른 epoll 이벤트 턴에서
+         * 호출되므로, 요청 단계에서 계산한 라우팅 결과를 응답 단계까지 들고 있기 위해 사용합니다.
+         */
+        RouteResult routeResult;
 
     public:
         /**
@@ -273,10 +283,30 @@ class Client
         bool getShouldClose() const;
 
         /**
+         * @brief 이 클라이언트가 속한 리스닝 소켓의 ServerConfig에서 조회한 client_max_body_size를
+         * 요청 파서에 반영하는 함수
+         * @param length 허용할 최대 body 길이(바이트)
+         */
+        void setMaxBodyLength(size_t length);
+
+        /**
+         * @brief clientRequest 단계에서 계산된 라우팅 결과(RouteResult)를 저장하는 함수
+         * @param result Router::route()가 반환한 라우팅 결과
+         */
+        void setRouteResult(const RouteResult &result);
+
+        /**
+         * @brief clientRequest 단계에서 저장해둔 라우팅 결과(RouteResult)를 반환하는 함수
+         * @return clientResponse에서 분기 처리에 사용할 RouteResult 참조
+         */
+        const RouteResult &getRouteResult() const;
+
+        /**
          * @brief keep-alive 연결에서 응답 송신 완료 후 다음 요청을 받기 위해 상태를 초기화하는 함수
          *
          * recDq(수신 버퍼)는 파이프라이닝된 다음 요청의 데이터가 남아있을 수 있으므로 비우지 않고,
          * 직전 요청에 대한 정보인 request와 statusCode만 초기화합니다. (parser는 onReceive에서 이미 clear됨)
+         * routeResult도 이전 요청의 라우팅 결과가 다음 요청에 잘못 사용되지 않도록 함께 초기화합니다.
          */
         void resetForNextRequest();
 };

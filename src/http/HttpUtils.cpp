@@ -148,3 +148,115 @@ std::string HttpUtils::getStatusText(Status code)
 		case STATUS_UNDEFINED: default: return "Unknown";
 	}
 }
+
+std::string HttpUtils::getMethodName(HttpMethod method)
+{
+	switch (method)
+	{
+		case METHOD_GET: return "GET";
+		case METHOD_POST: return "POST";
+		case METHOD_DELETE: return "DELETE";
+		case METHOD_PUT: return "PUT";
+		case METHOD_PATCH: return "PATCH";
+		case METHOD_HEAD: return "HEAD";
+		case METHOD_OPTIONS: return "OPTIONS";
+		case METHOD_TRACE: return "TRACE";
+		case METHOD_CONNECT: return "CONNECT";
+		case METHOD_INVALID: default: return "";
+	}
+}
+
+std::string HttpUtils::getMimeType(const std::string& path)
+{
+	size_t slash = path.find_last_of('/');
+	size_t dot = path.find_last_of('.');
+
+	if (dot == std::string::npos || (slash != std::string::npos && dot < slash))
+		return "application/octet-stream";
+
+	std::string ext = path.substr(dot + 1);
+	for (size_t i = 0; i < ext.size(); ++i)
+		ext[i] = std::tolower(static_cast<unsigned char>(ext[i]));
+
+	if (ext == "html" || ext == "htm") return "text/html";
+	if (ext == "css") return "text/css";
+	if (ext == "js") return "application/javascript";
+	if (ext == "json") return "application/json";
+	if (ext == "txt") return "text/plain";
+	if (ext == "png") return "image/png";
+	if (ext == "jpg" || ext == "jpeg") return "image/jpeg";
+	if (ext == "gif") return "image/gif";
+	if (ext == "svg") return "image/svg+xml";
+	if (ext == "ico") return "image/x-icon";
+	if (ext == "pdf") return "application/pdf";
+
+	return "application/octet-stream";
+}
+
+std::string HttpUtils::toLower(const std::string& s)
+{
+	std::string result = s;
+	for (size_t i = 0; i < result.size(); ++i)
+		result[i] = std::tolower(static_cast<unsigned char>(result[i]));
+	return result;
+}
+
+std::string HttpUtils::htmlEscape(const std::string& s)
+{
+	std::string result;
+	for (size_t i = 0; i < s.size(); ++i)
+	{
+		switch (s[i])
+		{
+			case '&': result += "&amp;"; break;
+			case '<': result += "&lt;"; break;
+			case '>': result += "&gt;"; break;
+			case '"': result += "&quot;"; break;
+			case '\'': result += "&#39;"; break;
+			default: result += s[i];
+		}
+	}
+	return result;
+}
+
+std::string HttpUtils::urlEncode(const std::string& s)
+{
+	static const char* hexDigits = "0123456789ABCDEF";
+	std::string result;
+
+	for (size_t i = 0; i < s.size(); ++i)
+	{
+		unsigned char c = static_cast<unsigned char>(s[i]);
+		bool unreserved = std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~';
+
+		if (unreserved)
+			result += static_cast<char>(c);
+		else
+		{
+			result += '%';
+			result += hexDigits[(c >> 4) & 0x0F];
+			result += hexDigits[c & 0x0F];
+		}
+	}
+	return result;
+}
+
+std::string HttpUtils::joinPath(const std::string& base, const std::string& tail)
+{
+	bool baseEndsSlash = !base.empty() && base[base.size() - 1] == '/';
+	bool tailStartsSlash = !tail.empty() && tail[0] == '/';
+
+	std::string joined = base;
+
+	if (baseEndsSlash && tailStartsSlash)
+		joined += tail.substr(1);
+	else if (!baseEndsSlash && !tailStartsSlash && !tail.empty())
+	{
+		joined += "/";
+		joined += tail;
+	}
+	else
+		joined += tail;
+
+	return joined;
+}
