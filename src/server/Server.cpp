@@ -133,7 +133,7 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
             reapCgiChild(pipeClient->getPid());
             pipeClient->setRunCgi(false);
             pipeClient->setStatusCode(500);
-            if (!epollGuard(epoll, EPOLL_CTL_ADD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
+            if (!epollGuard(epoll, EPOLL_CTL_MOD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
             {
                 deleteClient(pipeClient->getSocket().getFd());
                 return RET_ERROR;
@@ -148,7 +148,7 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
             reapCgiChild(pipeClient->getPid());
             pipeClient->setRunCgi(false);
             pipeClient->setStatusCode(500);
-            if (!epollGuard(epoll, EPOLL_CTL_ADD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
+            if (!epollGuard(epoll, EPOLL_CTL_MOD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
             {
                 deleteClient(pipeClient->getSocket().getFd());
                 return RET_ERROR;
@@ -306,7 +306,6 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
     bool cgiFlag = 0;
     if (length < 0)
     {
-        // DEL 성공/실패와 무관하게 연결을 끊어야 하므로 client를 정리한다.
         epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client);
         this->deleteClient(client->getSocket().getFd());
         return RET_ERROR;
@@ -363,7 +362,7 @@ RetStatus Server::cgiRun(Epoll &epoll, Client *client)
     FD inWriteFd = pipe.getInWriteFd();
     FD outReadFd = pipe.getOutReadFd();
 
-    if (!epollGuard(epoll, EPOLL_CTL_DEL, eventSocket, EPOLLOUT, client))
+    if (!epollGuard(epoll, EPOLL_CTL_MOD, eventSocket, 0, client))
     {
         reapCgiChild(tmpPid);
         // client는 살려두되(errorHandling에서 500 응답을 만들 수 있도록), 열려있는 부모 쪽 파이프는 직접 닫아 fd 누수를 막는다.
@@ -404,7 +403,6 @@ RetStatus Server::cgiPipeRead(Epoll &epoll, Client *client)
     {
         client->setStatusCode(500);
         FD outFd = client->getPipeFd(OutFlag);
-        // epollGuard 실패 여부와 무관하게 map erase/파이프 close는 반드시 수행한다.
         epollGuard(epoll, EPOLL_CTL_DEL, outFd, EPOLLIN, client);
         this->pipeToClientMap.erase(outFd);
         client->pipeClose(OutFlag);
@@ -417,7 +415,7 @@ RetStatus Server::cgiPipeRead(Epoll &epoll, Client *client)
         this->pipeToClientMap.erase(client->getPipeFd(OutFlag));
         client->pipeClose(OutFlag);
         client->setRunCgi(false);
-        return epollGuard(epoll, EPOLL_CTL_ADD, client->getSocket().getFd(), EPOLLOUT, client);
+        return epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client);
     }
     return RET_OK;
 }
@@ -512,7 +510,8 @@ bool Server::clientExist(int fd)
 RetStatus Server::errorHandling(Client *client, Epoll &epoll, int statusCode)
 {
     client->setStatusCode(statusCode);
-    epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client);
+    if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
+        deleteClient(client->getSocket().getFd());
     return RET_ERROR;
 }
 

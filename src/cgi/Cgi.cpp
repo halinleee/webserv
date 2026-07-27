@@ -36,10 +36,14 @@ pid_t Cgi::excute(Client *client, EnvMap envp, int *in, int *out)
     else if (pid == 0)
     {
         if (!dupSetting(in, out))
+        {
+            pipeClose(in);
+            pipeClose(out);
             exit (-1);
-        envAppend(client, envp, request);
+        }    
+        std::string path = request.path.substr(this->cgiPrefix.length());
+        envAppend(client, envp, request, path);
         env = mapToEnvp(envp);
-        std::string path = client->getRequest().path.substr(this->cgiPrefix.length());
         std::string cgiPath = this->cgiLocation.getRoot() + path;
         cmd[0] = const_cast<char *>(this->cgiLocation.getCgiPath().c_str()); 
         cmd[1] = const_cast<char *>(cgiPath.c_str());
@@ -65,11 +69,9 @@ static std::string methodToString(HttpMethod method)
     }
 }
 
-void Cgi::envAppend(Client *client, EnvMap &envp, Request request)
+void Cgi::envAppend(Client *client, EnvMap &envp, Request request, const std::string &scriptPath)
 {
     std::stringstream ss;
-
-    std::string temp = request.path.substr(this->cgiPrefix.length());
 
     envp["REQUEST_METHOD"] = methodToString(request.method);
     envp["QUERY_STRING"] = request.query;
@@ -82,10 +84,8 @@ void Cgi::envAppend(Client *client, EnvMap &envp, Request request)
     ss.clear();
     ss.str("");
 
-    if (temp.find("/") != std::string::npos)
-        envp["SCRIPT_NAME"] = this->cgiPrefix + temp.substr(0, temp.find("/"));
-    else
-        envp["SCRIPT_NAME"] = this->cgiPrefix + temp;
+    std::string::size_type slashPos = scriptPath.find("/");
+    envp["SCRIPT_NAME"] = this->cgiPrefix + scriptPath.substr(0, slashPos);
     if (request.contentLength >= 0)
     {
         ss << request.contentLength;
