@@ -51,7 +51,7 @@ class ServerConfig
 		const std::map<size_t, std::string>& getErrorPages() const { return errorPages; }
 		const std::map<std::string, LocationConfig>& getLocations() const { return locations; }
 		const std::string& getStatusMessage() const { return statusMessage; }
-		const timeValue& getTimeConfig() const { return timeConfig; }
+		const timeValue getTimeConfig() const { return timeConfig; }
 
 	public:
 		bool matching(const std::string& url);

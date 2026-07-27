@@ -90,7 +90,7 @@ class Server
          * 서버 초기화 단계에서 메모리를 확보하고 envp를 맵 형태로 변환하여 보관합니다.
          * @param envp 메인 함수에서 전달받은 환경변수
          */
-        Server(char **envp, timeValue timeValue);
+        Server(char **envp);
 
         /**
          * @brief Client 맵과 serverSocket으로 할당받은 자원회수

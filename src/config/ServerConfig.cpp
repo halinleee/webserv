@@ -175,9 +175,8 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 		bool hasRoot = !locConfig.getRoot().empty();
 		bool hasReturn = !locConfig.getRedirectPath().empty();
 		bool hasAlias = !locConfig.getAlias().empty();
-		bool hasUploads = !locConfig.getUploadDir().empty();
 
-		if (!hasRoot && !hasReturn && !hasAlias && !hasUploads)
+		if (!hasRoot && !hasReturn && !hasAlias)
 			return false;
 		if (hasRoot && hasAlias)
 			return false;

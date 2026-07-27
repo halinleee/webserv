@@ -2,7 +2,7 @@
 #include "Pipe.hpp"
 #include "main.hpp"
 
-Server::Server(char **envp, timeValue timeValue) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue(timeValue) {}
+Server::Server(char **envp) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue() {}
 
 Server::~Server()
 {
@@ -18,6 +18,7 @@ RetStatus Server::serverAdd(in_port_t port, Epoll &epoll, ServerConfig config)
     Socket *tmpSocket;
     if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {return RET_ERROR;}
     tmpSocket = new Socket(socketFd, port);
+    this->timeOutValue = config.getTimeConfig();
     if (!serverSetting(tmpSocket)) {return RET_ERROR;}
     if (!epoll.epollControl(EPOLL_CTL_ADD, tmpSocket->getFd(), EPOLLIN))
     {

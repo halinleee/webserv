@@ -15,7 +15,6 @@ class LocationConfig
 		std::string index;
 		bool autoIndex;
 		std::set<HttpMethod> methods;
-		std::string uploadDir;
 		std::string redirectPath;
 		size_t redirectCode;
 		std::string cgiExtension;
@@ -41,7 +40,6 @@ class LocationConfig
 		const std::string& getIndex() const { return index; }
 		bool getAutoIndex() const { return autoIndex; }
 		const std::set<HttpMethod>& getMethods() const { return methods; }
-		const std::string& getUploadDir() const { return uploadDir; }
 		const std::string& getRedirectPath() const { return redirectPath; }
 		size_t getRedirectCode() const { return redirectCode; }
 		const std::string& getCgiExtension() const { return cgiExtension; }

@@ -68,15 +68,6 @@ bool LocationConfig::parseLocationDir(std::vector<std::string>& token, std::stri
 		else
 			return false;
 	}
-	else if (token[0] == "upload_dir")
-	{
-		if (token.size() != 2)
-			return false;
-
-		if (!isValidNormalizePath(token[1]))
-			return false;
-		uploadDir = token[1];
-	}
 	else if (token[0] == "return")
 	{
 		if (token.size() != 3)
