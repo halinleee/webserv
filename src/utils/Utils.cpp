@@ -1,4 +1,7 @@
 #include "Utils.hpp"
+#include <fcntl.h>
+#include <iostream>
+#include <cstring>
 
 /**
  * @fn EnvMap envpParsing(char **envp)
@@ -23,7 +26,30 @@ EnvMap envpParsing(char **envp)
         }
         i++;
     }
-    return (env);
+    return env;
+}
+
+/**
+ * @brief 특정 파일 디스크립터를 논블로킹(Non-blocking) 모드로 설정하는 함수
+ * 
+ * fcntl 함수를 통해 기존 플래그를 읽어온 후, O_NONBLOCK 플래그를 비트 연산으로 추가하여 커널 I/O 작업(recv, send 등) 시 대기(Block) 상태에 빠지지 않도록 처리합니다.
+ * @param fd 설정할 파일 디스크립터
+ * @return Error 발생시 0, 정상 동작시 1반환 (현재 enum을 통해서 type.hpp에 정의)
+ */
+bool nonblockingSet(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1)
+    {
+        std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
+        return RET_ERROR;
+    }
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
+        std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
+        return RET_ERROR;
+    }
+    return RET_OK;
 }
 
 /**
@@ -45,7 +71,7 @@ char **mapToEnvp(const EnvMap &env)
         i++;
     }
     envp[i] = NULL;
-    return (envp);
+    return envp;
 }
 
 /**

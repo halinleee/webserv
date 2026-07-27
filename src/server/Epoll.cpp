@@ -1,5 +1,6 @@
 
 #include "Epoll.hpp"
+#include "main.hpp"
 
 /**
  * @brief Epoll 객체 생성자. epoll 인스턴스를 생성합니다.
@@ -22,8 +23,8 @@ bool Epoll::epollControl(int option, int appendFd, u_int64_t events)
     event.data.fd = appendFd;
     event.events = events;
     if (epoll_ctl(this->epollFd, option, appendFd, &event) < 0)
-        return (STATUS_ERROR);
-    return (STATUS_OK);
+        return RET_ERROR;
+    return RET_OK;
 }
 
 /**
@@ -50,7 +51,7 @@ int Epoll::getEpollFd()
  */
 epoll_event &Epoll::operator[] (unsigned int i)
 {
-    return (events[i]);
+    return events[i];
 }
 
 /**
@@ -59,8 +60,8 @@ epoll_event &Epoll::operator[] (unsigned int i)
  */
 int Epoll::epWait(void)
 {
-    int eventCount = epoll_wait(this->epollFd, this->events, 50, 0);
+    int eventCount = epoll_wait(this->epollFd, this->events, 50, 20);
     if (eventCount < 0)
-        return (-1);
-    return (eventCount);
+        return -1;
+    return eventCount;
 }

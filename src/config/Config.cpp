@@ -76,27 +76,14 @@ parseStatus Config::parseServerBlock(std::ifstream &configFile)
 		return PARSE_ERROR;
 }
 
-bool Config::parseConfig()
+bool Config::parseConfig(int argc, char **argv)
 {
-	/* todo
-	std::string configPath;
-    if (argc == 2)
-        configPath = argv[1];
-    else
-        configPath = "./config/webserv.conf"; // default
-    std::ifstream configFile(configPath.c_str());
-    if (!configFile.is_open())
-    {
-        std::cerr << "Failed to open config file: " << configPath << std::endl;
-        return 1;
-    }
-	*/
+	std::string configPath = (argc == 2) ? argv[1] : "./webserv.conf";
 
-	//main 연결할때까지 인자값 받았다 치고 임시로 이 코드 돌려유
-	std::ifstream configFile("./webserv.conf");
+	std::ifstream configFile(configPath.c_str());
 	if (!configFile.is_open())
 	{
-		statusMessage = "Failed to open file: ./webserv.conf";
+		statusMessage = "Failed to open file: " + configPath;
 		return false;
 	}
 

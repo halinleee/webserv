@@ -13,6 +13,8 @@ bool RequestParser::parseStartline(CharDq& buf)
 
 	if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
 
+	if (buf.size() > MAX_STARTLINE_LENGTH) { statusCode = STATUS_BAD_REQUEST; return true; }
+
 	size_t crlf = HttpUtils::findCRLF(buf);
 	if (crlf == HttpUtils::npos)
 	{

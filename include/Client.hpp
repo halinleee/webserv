@@ -1,18 +1,24 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
 
-#include "main.hpp" // 차후에 main.hpp를 제거하고 필요한 client에 관련된 헤더파일은 hpp에서 직접 include 하도록 수정
+#include "Pipe.hpp"
 #include "Socket.hpp"
 #include "RequestParser.hpp"
+#include "ServerConfig.hpp"
+#include "type.hpp"
+#include <unistd.h>
+#include <iostream>
+#include <sys/wait.h>
+#include <sys/types.h>
 
 /**
- * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 http의 요청에서 body을 전달하는 inPipe의 쓰기 끝을 반환하는 flag
+ * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 http의 요청에서 body을 요청할때 사용하는 flag
  */
-#define InFlag 0
-/**
- * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 생성된 http요청을 받는 OutPipe의 읽기 끝을 반환하는 flag
- */
-#define OutFlag 1
+enum PipeFlag
+{
+    InFlag = 0,
+    OutFlag = 1
+};
 
 /**
  * @brief 서버에 연결된 단일 클라이언트의 정보와 상태를 관리하는 클래스
@@ -31,6 +37,14 @@ class Client
          * accept() 성공 시 동적 할당되며, 클라이언트의 port, ip주소등 클라이언테에 대한 정보를 가지고 있습니다.
          */
         Socket *clientSocket;
+
+        /**
+         * @var runCgi
+         * @brief Cgi의 동작여부를 담고있는 bool 변수
+         * 
+         * TimeOut, Cgi분기s에서 사용
+         */
+        bool runCgi;
         /**
          * @var recVec
          * @brief recv로 수신받은 HTTP 요청 원본 데이터를 누적해서 담고 있는 deque<char> 버퍼
@@ -46,15 +60,10 @@ class Client
          */
         EnvMap env;
         /**
-         * @var inPipe
-         * @brief Server -> CGI 프로그램 방향으로 데이터를 전달하기 위한 pipe FD 배열 (크기 2)
+         * @var cgiPipe
+         * @brief CGI 통신용 파이프 쌍. Client 소멸 시 ~Pipe()가 자동으로 fd를 정리합니다.
          */
-        int inPipe[2];
-        /**
-         * @var outPipe
-         * @brief CGI 프로그램 -> Server 방향으로 실행 결과를 받아오기 위한 pipe FD 배열 (크기 2)
-         */
-        int outPipe[2];
+        Pipe cgiPipe;
         /**
          * @var statusCode
          * @brief HTTP 응답을 생성할 때 기준이 되는 상태 코드 (ex: 200, 404, 500)
@@ -73,7 +82,15 @@ class Client
         RequestParser parser;
         Request request;
         bool shouldClose;
-    
+
+        /**
+         * @var listenFd
+         * @brief 이 클라이언트가 accept된 리스닝 소켓(서버 포트)의 FD
+         *
+         * 클라이언트가 어느 server 블록(포트)으로 접속했는지 추적해, CGI 등에서 해당 포트의 ServerConfig를 찾아 쓰기 위해 사용됩니다.
+         */
+        FD listenFd;
+
     public:
         /**
          * @brief Client의 기본 생성자
@@ -100,6 +117,61 @@ class Client
         ~Client();
 
         /**
+         * @var response 
+         * @brief 클라이언트에게 전송할 최종 HTTP 응답 메세지를 담는 임시 문자열
+         * 
+         * CGI 프로세스의 실행 결과(파이프 출력을 통해 읽어온 데이터)를 조립하여 저장하는 데 사용됩니다.
+         * 
+         * 차후에 response 빌더가 완성이 되면 수정해야함
+        */
+        std::string response;
+
+        /** 
+         * @brief cgi(child 프로세스)가 정상 종료가 되었는지 확인하는 함수
+         * 
+        */
+        RetStatus checkCgiExited(void);
+        
+        /**
+         * @brief 이 클라이언트의 keep-alive가 유지를 하는지 확인하는 함수
+        */
+        bool checkAlive(void);
+
+        /**
+         * @brief 이 클라이언트의 cgi가 실행이 가능한지 확인하는 함수
+        */
+        bool checkRunCgi(LocationConfig config);
+
+        bool getRunCgi();
+
+        /**
+         * @brief 클라이언트의 keepAlive시간을 초기화하는 함수
+        */
+        void timeSet(time_t addTime);
+
+        /**
+         * @brief Cgi프로그램에게 넘길 body내용을 Cgi프로그램과 연결되어 있는 파이프에 적는 함수
+         * 
+         * @return 0(RET_ERROR) 에러 발생
+         * @return 1(RET_OK) 정상 동작
+         * @return 1(RET_RE) 정상 동작은 했으나 pipe의 크기 제한으로 다시 이 함수를 와야할 경우
+        */
+        RetStatus writeCgiPipe(void);
+
+        /**
+         * @brief Cgi프로그램이 보낸 결과를 파이프에서 읽어오는 함수
+         *
+         * EOF(pipe write end가 모두 닫힘)을 감지하면 checkCgiExited()를 호출해
+         * 자식 프로세스가 실제로 종료됐는지 확인하고 waitpid로 회수(좀비 방지)한다.
+         *
+         * @return 0(RET_ERROR) 읽기 에러 또는 CGI가 비정상 종료(exit code != 0, signal)
+         * @return 1(RET_OK) EOF + CGI 정상 종료 확인 완료(모든 데이터를 다 읽음)
+         * @return 2(RET_RE) 아직 읽을 데이터가 남아있음, 또는 EOF 후 자식이 아직 reap되지 않아 재시도 필요
+         */
+        RetStatus readCgiPipe(void);
+
+        void setRunCgi(bool value);
+        /**
          * @brief CGI 실행 시 할당된 자식 프로세스의 PID를 설정하는 함수
          * 
          * fork()를 통해 CGI를 실행한 후, 부모 프로세스(Server)에서 반환받은 자식의 PID를 저장합니다.
@@ -108,13 +180,23 @@ class Client
         void setPid(pid_t pid);
 
         /**
-         * @brief CGI 통신을 위한 파이프 FD를 설정하는 함수
-         * 
-         * CGI통신을 위한 파이프세팅, 자원회수를 위해 pipe() 시스템 콜로 생성된 두 개의 파이프를 Client 객체에 저장하는 함수입니다.
-         * @param inPipe 입력용 파이프 배열
-         * @param outPipe 출력용 파이프 배열
+         * @brief 클라이언트가 accept된 리스닝 소켓의 FD를 설정하는 함수
+         * @param fd 리스닝 소켓의 FD
          */
-        void setPipeFd(int inPipe[2], int outPipe[2]);
+        void setListenFd(int fd);
+
+        /**
+         * @brief 클라이언트가 accept된 리스닝 소켓의 FD를 반환하는 함수
+         * @return 리스닝 소켓의 FD
+         */
+        int getListenFd(void) const;
+
+        /**
+         * @brief CGI 파이프 객체의 참조를 반환합니다.
+         *
+         * Server::cgiRun에서 init(), excute 인자 전달, closeChildSide() 등을 직접 호출하기 위해 사용합니다.
+         */
+        Pipe &getCgiPipe();
 
         /**
          * @brief 클라이언트의 statuscode를 설정하는 함수
@@ -170,13 +252,14 @@ class Client
          */
         int getPipeFd(int index);
 
-        /**
-         * @brief pipe를 close하는 함수
-         * @param pipe pipeFD를 담고 있는 size 2인 int 배열
-         * @details CGI 실행이 종료되거나 에러가 발생하여 더 이상 필요 없는 파이프의 읽기/쓰기 끝단을 모두 닫을 때 사용합니다.
-         */
-        void pipeClose(int *pipe);
+        Request getRequest();
 
+        /**
+         * @brief InFlag 또는 OutFlag에 해당하는 파이프 끝단을 닫는 함수
+         *
+         * @param flag InFlag = inWriteFd 닫기, OutFlag = outReadFd 닫기
+         */
+        void pipeClose(int flag);
         ReqParseResult onReceive();
         bool getShouldClose() const;
 

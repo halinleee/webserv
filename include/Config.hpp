@@ -20,7 +20,7 @@ class Config
 		std::string statusMessage;
 
 	public:
-		bool parseConfig();
+		bool parseConfig(int argc, char **argv);
 
 	private:
 		bool isValidListen(const std::vector<std::string>& token, size_t& num);

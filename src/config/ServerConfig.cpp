@@ -50,6 +50,7 @@ bool ServerConfig::matching(const std::string& url)
         {
             highScore = prefixLen;
             matchLocation = locations.find(prefix)->second;
+			matchPrefix = prefix;
             match = true;
         }
     }
@@ -60,6 +61,7 @@ bool ServerConfig::matching(const std::string& url)
         if (it == locations.end())
             return false;
         matchLocation = it->second;
+		matchPrefix = it ->first;
     }
     return true;
 }

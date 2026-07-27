@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>게시판</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<header>
+    <a href="/">게시판</a>
+    <nav><a href="/upload.html">글쓰기</a></nav>
+</header>
+<main>
+    <ul class="post-list" id="post-list"></ul>
+    <p class="empty" id="empty-msg" style="display:none;">아직 게시글이 없습니다.</p>
+</main>
+<script>
+fetch('/data/posts.json')
+    .then(function (res) { return res.json(); })
+    .then(function (posts) {
+        var list = document.getElementById('post-list');
+        if (!posts || posts.length === 0) {
+            document.getElementById('empty-msg').style.display = 'block';
+            return;
+        }
+        posts.forEach(function (post) {
+            var li = document.createElement('li');
+            li.innerHTML =
+                (post.image ? '<img class="thumb" src="' + post.image + '">' : '') +
+                '<div><div class="title">' + post.title + '</div>' +
+                '<div class="meta">' + (post.date || '') + '</div></div>';
+            list.appendChild(li);
+        });
+    })
+    .catch(function () {
+        document.getElementById('empty-msg').style.display = 'block';
+    });
+</script>
+</body>
+</html>
