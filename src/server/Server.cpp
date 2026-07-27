@@ -2,7 +2,7 @@
 #include "Pipe.hpp"
 #include "main.hpp"
 
-Server::Server(char **envp, timeValue timeValue) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue(timeValue) {}
+Server::Server(char **envp) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue() {}
 
 Server::~Server()
 {
@@ -18,6 +18,7 @@ RetStatus Server::serverAdd(in_port_t port, Epoll &epoll, ServerConfig config)
     Socket *tmpSocket;
     if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {return RET_ERROR;}
     tmpSocket = new Socket(socketFd, port);
+    this->timeOutValue = config.getTimeConfig();
     if (!serverSetting(tmpSocket)) {return RET_ERROR;}
     if (!epoll.epollControl(EPOLL_CTL_ADD, tmpSocket->getFd(), EPOLLIN))
     {
@@ -67,7 +68,7 @@ RetStatus Server::eventProcess(Epoll &epoll)
                 continue;
         }
         if (this->inClientVec.size() > 0)
-            checkTimeOutClient(index);
+            checkTimeOutClient(epoll, index);
     }
     return RET_OK;
 }
@@ -326,7 +327,7 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
         if (ret == REQ_PARSE_INCOMPLETE)
             return (RET_RE);
     }
-    std::cout << received << std::endl;
+    // std::cout << received << std::endl;
     config->matching(client->getRequest().path);
     cgiFlag = client->checkRunCgi(config->matchLocation);
     if (cgiFlag)
@@ -364,24 +365,17 @@ RetStatus Server::cgiRun(Epoll &epoll, Client *client)
 
     if (!epollGuard(epoll, EPOLL_CTL_MOD, eventSocket, 0, client))
     {
-        reapCgiChild(tmpPid);
-        // client는 살려두되(errorHandling에서 500 응답을 만들 수 있도록), 열려있는 부모 쪽 파이프는 직접 닫아 fd 누수를 막는다.
-        client->pipeClose(InFlag);
-        client->pipeClose(OutFlag);
+        cgiRollback(client, tmpPid);
         return RET_ERROR;
     }
     if (!epollGuard(epoll, EPOLL_CTL_ADD, inWriteFd, EPOLLOUT, client))
     {
-        reapCgiChild(tmpPid);
-        client->pipeClose(InFlag);
-        client->pipeClose(OutFlag);
+        cgiRollback(client, tmpPid);
         return RET_ERROR;
     }
     if (!epollGuard(epoll, EPOLL_CTL_ADD, outReadFd, EPOLLIN, client))
     {
-        reapCgiChild(tmpPid);
-        client->pipeClose(InFlag);
-        client->pipeClose(OutFlag);
+        cgiRollback(client, tmpPid);
         return RET_ERROR;
     }
     client->setPid(tmpPid);
@@ -442,7 +436,7 @@ RetStatus Server::cgiPipeWrite(Epoll &epoll, Client *client)
     }
 }
 
-void Server::checkTimeOutClient(int &index)
+void Server::checkTimeOutClient(Epoll &epoll, int &index)
 {
     int i = 0;
     int numClient = static_cast<int>(this->inClientVec.size());
@@ -459,7 +453,8 @@ void Server::checkTimeOutClient(int &index)
         else if (this->client[fd]->checkAlive())
         {
             std::cout << "timeout delete [" << fd << "]" << std::endl;
-            deleteClient(fd); // inClientVec에서도 erase되므로 index는 그대로 두고 재검사
+            epollGuard(epoll, EPOLL_CTL_DEL, fd, 0, this->client[fd]);
+            deleteClient(fd);
             numClient = static_cast<int>(this->inClientVec.size());
         }
         else
@@ -521,6 +516,13 @@ RetStatus Server::epollGuard(Epoll &epoll, int op, FD fd, u_int32_t event, Clien
         return RET_OK;
     std::cerr << "epoll_ctl 실패 FD: " << fd << " (Client[" << client->getSocket().getFd() << "])" << std::endl;
     return RET_ERROR;
+}
+
+void Server::cgiRollback(Client *client, pid_t pid)
+{
+    this->reapCgiChild(pid);
+    client->pipeClose(InFlag);
+    client->pipeClose(OutFlag);
 }
 
 void Server::serverClose()

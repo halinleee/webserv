@@ -1,5 +1,5 @@
 #include "LocationConfig.hpp"
-#include "Util.hpp"
+#include "ConfigParseUtils.hpp"
 #include <fstream>
 
 bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)
@@ -22,7 +22,7 @@ bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)
 	return false;
 }
 
-bool LocationConfig::parseLocationDir(std::vector<std::string>& token)
+bool LocationConfig::parseLocationDir(std::vector<std::string>& token, std::string &prefix)
 {
 	if (token[0] == "root")
 	{
@@ -68,15 +68,6 @@ bool LocationConfig::parseLocationDir(std::vector<std::string>& token)
 		else
 			return false;
 	}
-	else if (token[0] == "upload_dir")
-	{
-		if (token.size() != 2)
-			return false;
-
-		if (!isValidNormalizePath(token[1]))
-			return false;
-		uploadDir = token[1];
-	}
 	else if (token[0] == "return")
 	{
 		if (token.size() != 3)
@@ -107,13 +98,28 @@ bool LocationConfig::parseLocationDir(std::vector<std::string>& token)
 		cgiExtension = token[1];
 		cgiPath = token[2];
 	}
+
+	else if (token[0] == "alias")
+	{
+		if (token.size() != 2)
+			return false;
+		
+		if (!isValidNormalizePath(token[1]))
+			return false;
+
+		if ((prefix[prefix.size() - 1] == '/') != (token[1][token[1].size() - 1] == '/'))
+			return false;
+		
+		alias = token[1];
+	}
+
 	else
 		return false;
 
 	return true;
 }
 
-bool LocationConfig::parseLocationBlock(std::ifstream &configFile)
+bool LocationConfig::parseLocationBlock(std::ifstream &configFile, std::string &prefix)
 {
 	std::string line;
 
@@ -142,7 +148,7 @@ bool LocationConfig::parseLocationBlock(std::ifstream &configFile)
 		if (token.empty())
 			return false;
 
-		if (!parseLocationDir(token))
+		if (!parseLocationDir(token, prefix))
 			return false;
 	}
 	return false;

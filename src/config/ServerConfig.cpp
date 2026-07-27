@@ -1,5 +1,5 @@
 #include "ServerConfig.hpp"
-#include "Util.hpp"
+#include "ConfigParseUtils.hpp"
 #include "type.hpp"
 #include <fstream>
 
@@ -66,12 +66,9 @@ bool ServerConfig::matching(const std::string& url)
     return true;
 }
 
-bool ServerConfig::parseKeepAlive(std::vector<std::string>& token)
+bool ServerConfig::parseTimeOut(std::vector<std::string>& token)
 {
 	if (token.size() != 2)
-		return false;
-
-	if (token[0] != "keepalive_timeout")
 		return false;
 
 	size_t num = 0;
@@ -81,8 +78,18 @@ bool ServerConfig::parseKeepAlive(std::vector<std::string>& token)
 
 	if (num == 0 || num > TIME_OUT_MAX)
 		return false;
-
-	keepAliveTimeout = static_cast<std::time_t>(num);
+		
+	if (token[0] == "connetionTimeOut")
+		timeConfig.connetionTimeOut = static_cast<std::time_t>(num);
+	else if (token[0] == "readTimeout")
+		timeConfig.readTimeout = static_cast<std::time_t>(num);
+	else if (token[0] == "writeTimeout")
+		timeConfig.writeTimeout = static_cast<std::time_t>(num);
+	else if (token[0] == "keepAliveTimeout")
+		timeConfig.keepAliveTimeout = static_cast<std::time_t>(num);
+	else if (token[0] == "cgiTimeout")
+		timeConfig.cgiTimeout = static_cast<std::time_t>(num);
+	
 
 	return true;
 }
@@ -116,8 +123,8 @@ bool ServerConfig::parseErrorPage(std::vector<std::string> &token)
 	if (!isValidNormalizePath(token[2]))
 		return false;
 	
-	if(!isValidErrorCode(num))
-		return false;
+	if(!isValidErrorCode(num)) // 지원하지 않는 코드는 무시하고 파싱은 계속 진행
+		return true;
 
 	errorPages[num] = token[2];
 	return true;
@@ -151,16 +158,29 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 		return parseBody(token);
 	else if (token[0] == "error_page")
 		return parseErrorPage(token);
-	else if (token[0] == "keepalive_timeout")
-		return parseKeepAlive(token);
+
+	else if (token[0] == "connetionTimeOut" || token[0] == "readTimeout" || token[0] == "writeTimeout"
+			|| token[0] == "keepAliveTimeout" || token[0] == "cgiTimeout")
+		return parseTimeOut(token);
+
 	else if (token[0] == "location")
 	{
 		if (token.size() != 2 || !isValidNormalizePath(token[1]))
 			return false;
 		
 		LocationConfig locConfig;
-		if (!locConfig.parseLocationBlock(configFile))
+		if (!locConfig.parseLocationBlock(configFile, token[1]))
 			return false;
+
+		bool hasRoot = !locConfig.getRoot().empty();
+		bool hasReturn = !locConfig.getRedirectPath().empty();
+		bool hasAlias = !locConfig.getAlias().empty();
+
+		if (!hasRoot && !hasReturn && !hasAlias)
+			return false;
+		if (hasRoot && hasAlias)
+			return false;
+		
 		locations[token[1]] = locConfig; //prefix key값에 value 대입
 		return true;
 	}

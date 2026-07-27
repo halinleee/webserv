@@ -90,7 +90,7 @@ class Server
          * 서버 초기화 단계에서 메모리를 확보하고 envp를 맵 형태로 변환하여 보관합니다.
          * @param envp 메인 함수에서 전달받은 환경변수
          */
-        Server(char **envp, timeValue timeValue);
+        Server(char **envp);
 
         /**
          * @brief Client 맵과 serverSocket으로 할당받은 자원회수
@@ -238,7 +238,7 @@ class Server
         /**
          * @brief 클라이언트의 요청을 보낸 시간이 keep-alive 시간을 지났는지 확인하고 지났을 경우 해제하는 함수
          */
-        void checkTimeOutClient(int &index);
+        void checkTimeOutClient(Epoll &epoll, int &index);
         
         /**
          * @brief 특정 클라이언트의 연결을 종료하고 자원을 해제하는 함수
@@ -285,6 +285,11 @@ class Server
          * @param client 에러가 발생한 클라이언트 객체
          */
         void reapCgiChild(pid_t pid);
+
+        /**
+         * @brief cgiRun의 epoll 등록 실패 롤백 공통 로직 (좀비 회수 + 파이프 정리)
+         */
+        void cgiRollback(Client *client, pid_t pid);
 };
 
 #endif

@@ -11,10 +11,10 @@ class LocationConfig
 {
 	private:
 		std::string root;
+		std::string alias;
 		std::string index;
 		bool autoIndex;
 		std::set<HttpMethod> methods;
-		std::string uploadDir;
 		std::string redirectPath;
 		size_t redirectCode;
 		std::string cgiExtension;
@@ -22,10 +22,10 @@ class LocationConfig
 
 	private:
 		bool parseHttpMethod(const std::string& s, HttpMethod& out);
-		bool parseLocationDir(std::vector<std::string>& token);
+		bool parseLocationDir(std::vector<std::string>& token, std::string &prefix);
 	
 	public:
-		bool parseLocationBlock(std::ifstream &configFile);
+		bool parseLocationBlock(std::ifstream &configFile, std::string &prefix);
 
 
 	public:
@@ -40,11 +40,11 @@ class LocationConfig
 		const std::string& getIndex() const { return index; }
 		bool getAutoIndex() const { return autoIndex; }
 		const std::set<HttpMethod>& getMethods() const { return methods; }
-		const std::string& getUploadDir() const { return uploadDir; }
 		const std::string& getRedirectPath() const { return redirectPath; }
 		size_t getRedirectCode() const { return redirectCode; }
 		const std::string& getCgiExtension() const { return cgiExtension; }
 		const std::string& getCgiPath() const { return cgiPath; }
+		const std::string& getAlias() const { return alias; }
 };
 
 #endif
