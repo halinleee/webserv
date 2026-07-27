@@ -144,9 +144,10 @@ bool Client::checkRunCgi(LocationConfig config)
         return false;
     if (access(config.getCgiPath().c_str(), X_OK))
         return false;
-    if (access(config.getRoot().c_str(), X_OK))
+    const std::string &base = config.getAlias().empty() ? config.getRoot() : config.getAlias();
+    if (access(base.c_str(), X_OK))
         return false;
-    return true; 
+    return true;
 }
 
 ReqParseResult Client::onReceive()
