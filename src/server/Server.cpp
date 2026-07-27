@@ -5,7 +5,7 @@
 #include "Router.hpp"
 #include "Handler.hpp"
 
-Server::Server(char **envp, timeValue timeValue) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue(timeValue) {}
+Server::Server(char **envp) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue() {}
 
 Server::~Server()
 {
@@ -21,6 +21,7 @@ RetStatus Server::serverAdd(in_port_t port, Epoll &epoll, ServerConfig config)
     Socket *tmpSocket;
     if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {return RET_ERROR;}
     tmpSocket = new Socket(socketFd, port);
+    this->timeOutValue = config.getTimeConfig();
     if (!serverSetting(tmpSocket)) {return RET_ERROR;}
     if (!epoll.epollControl(EPOLL_CTL_ADD, tmpSocket->getFd(), EPOLLIN))
     {
@@ -50,7 +51,7 @@ RetStatus Server::eventProcess(Epoll &epoll)
     int index = 0;
     while(serverActive)
     {
-        if ((eventCount = epoll.epWait()) < 0) 
+        if ((eventCount = epoll.epWait()) < 0)
         {
             if (!serverActive)
                 return RET_OK;
@@ -70,7 +71,7 @@ RetStatus Server::eventProcess(Epoll &epoll)
                 continue;
         }
         if (this->inClientVec.size() > 0)
-            checkTimeOutClient(index);
+            checkTimeOutClient(epoll, index);
     }
     return RET_OK;
 }
@@ -103,7 +104,7 @@ RetStatus Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
             if (!clientRequest(epoll, this->client[currentFd]))
                 std::cerr << "clientRequest Error" << std::endl;
         }
-        if (currentEvent & EPOLLOUT) 
+        if (currentEvent & EPOLLOUT)
         {
             std::cout << currentFd << "EPOLL_OUT" << std::endl;
             if (!clientResponse(epoll, this->client[currentFd]))
@@ -115,30 +116,48 @@ RetStatus Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
 
 RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u_int32_t currentEvent)
 {
-    if (currentEvent & EPOLLERR)
-    {
-        if (!epollGuard(epoll, EPOLL_CTL_DEL, currentFd, 0, pipeClient))
-            return RET_ERROR;
-        deleteClient(pipeClient->getSocket().getFd());
-        return RET_ERROR;
-    }
     if (currentFd == pipeClient->getPipeFd(InFlag) && (currentEvent & EPOLLHUP))
     {
-        if (!epollGuard(epoll, EPOLL_CTL_DEL, currentFd, 0, pipeClient))
-            return RET_ERROR;
+        epollGuard(epoll, EPOLL_CTL_DEL, currentFd, 0, pipeClient);
         this->pipeToClientMap.erase(currentFd);
         pipeClient->pipeClose(InFlag);
         return RET_OK;
     }
+    if (currentEvent & EPOLLERR)
+    {
+        epollGuard(epoll, EPOLL_CTL_DEL, currentFd, 0, pipeClient);
+        deleteClient(pipeClient->getSocket().getFd());
+        return RET_ERROR;
+    }
     if (currentEvent & EPOLLIN || currentEvent & EPOLLHUP)
     {
         std::cout << "pipe Read in" << std::endl;
-        cgiPipeRead(epoll, pipeClient);
+        if (!cgiPipeRead(epoll, pipeClient))
+        {
+            reapCgiChild(pipeClient->getPid());
+            pipeClient->setRunCgi(false);
+            pipeClient->setStatusCode(500);
+            if (!epollGuard(epoll, EPOLL_CTL_MOD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
+            {
+                deleteClient(pipeClient->getSocket().getFd());
+                return RET_ERROR;
+            }
+        }
     }
     if (currentEvent & EPOLLOUT)
     {
         std::cout << "pipe Write in" << std::endl;
-        cgiPipeWrite(epoll, pipeClient);
+        if (!cgiPipeWrite(epoll, pipeClient))
+        {
+            reapCgiChild(pipeClient->getPid());
+            pipeClient->setRunCgi(false);
+            pipeClient->setStatusCode(500);
+            if (!epollGuard(epoll, EPOLL_CTL_MOD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
+            {
+                deleteClient(pipeClient->getSocket().getFd());
+                return RET_ERROR;
+            }
+        }
     }
     return RET_OK;
 }
@@ -204,14 +223,19 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
     if (client->response.empty()) // cgi
         client->response = response;
     int sendStatus = serverSend(epoll, client);
-    if (sendStatus == RET_ERROR) 
+    if (sendStatus == RET_ERROR)
     {
         deleteClient(client->getSocket().getFd());
         return RET_ERROR;
     }
     if (sendStatus == RET_RE) {return RET_OK;}
-    if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN, client))
-        return RET_ERROR;
+    if (client->getShouldClose())
+    {
+        std::cout << "클라이언트 연결 종료 : Client["<< client->getSocket().getFd() << "]" << std::endl;
+        epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client);
+        deleteClient(client->getSocket().getFd());
+        return RET_OK;
+    }
     client->timeSet(this->timeOutValue.keepAliveTimeout);
     return RET_OK;
 }
@@ -228,14 +252,6 @@ RetStatus Server::serverSend(Epoll &epoll, Client *client)
         return RET_ERROR;
     if (length == targetSize)
     {
-        if (client->getShouldClose()) // (TODO: 구현 미완성)
-        {
-            std::cout << "클라이언트 연결 종료 : Client["<< client->getSocket().getFd() << "]" << std::endl;
-            if (epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client))
-                return (RET_ERROR);
-            this->deleteClient(client->getSocket().getFd());
-            return (RET_OK);
-        }
         if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN, client))
             return (RET_ERROR);
         client->resetForNextRequest();
@@ -243,14 +259,12 @@ RetStatus Server::serverSend(Epoll &epoll, Client *client)
     }
     std::cout << "클라이언트 연결 유지 : Client["<< client->getSocket().getFd() << "]" << std::endl;
     client->response = client->response.substr(length);
-    if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN, client))
-        return (RET_ERROR);
     return (RET_RE);
 }
 
 /**
  * @brief 서버 소켓의 바인딩 및 리슨을 설정하는 함수
- * 
+ *
  * TIME_WAIT 방지를 위해 SO_REUSEADDR를 설정하고 커널에 지정된 포트로 bind를 요청한 후, 클라이언트의 연결을 큐에 쌓기 시작하는 listen()과 논블로킹 설정을 호출합니다.
  * @param serverSocket 설정할 서버 Socket 객체
  * @return Error 발생시 0, 정상 동작시 1반환 (현재 enum을 통해서 type.hpp에 정의)
@@ -279,7 +293,7 @@ RetStatus Server::clientAccept(Epoll &epoll, Socket *socket)
     Socket *tmpSocket;
     struct sockaddr_in clientAddr;
     socklen_t clientLen = sizeof(clientAddr);
-    
+
     tmpFd = accept(socket->getFd(), (sockaddr *)&clientAddr, &clientLen);
     if (tmpFd < 0)
     {
@@ -310,7 +324,10 @@ RetStatus Server::clientAccept(Epoll &epoll, Socket *socket)
     this->client[tmpFd]->setListenFd(socket->getFd());
     this->inClientVec.push_back(tmpFd);
     if (!epollGuard(epoll, EPOLL_CTL_ADD, tmpFd, EPOLLIN, this->client[tmpFd]))
-            return RET_ERROR;
+    {
+        this->deleteClient(tmpFd);
+        return RET_ERROR;
+    }
     return RET_OK;
 }
 
@@ -321,12 +338,12 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
 {
     unsigned char received[4096];
     int length = recv(client->getSocket().getFd(), received, sizeof(received) -1, 0);
-    client->getSocket().setTimeStatus(this->timeOutValue.readTimeout);
+    if (client->getCharDq().empty())
+        client->getSocket().setTimeStatus(this->timeOutValue.readTimeout);
     ServerConfig &config = this->configs[client->getListenFd()];
     if (length < 0)
     {
-        if (!epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client))
-            return RET_ERROR;
+        epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client);
         this->deleteClient(client->getSocket().getFd());
         return RET_ERROR;
     }
@@ -337,7 +354,7 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
         this->deleteClient(client->getSocket().getFd());
         return RET_OK;
     }
-    else 
+    else
     {
         received[length] = '\0';
         std::cout << "클라이언트 연결 : Client["<< client->getSocket().getFd() << "]" << std::endl;
@@ -347,12 +364,11 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
         if (ret == REQ_PARSE_INCOMPLETE)
             return (RET_RE);
     }
-    
     if (client->getRequest().status == STATUS_UNDEFINED)
     {
         RouteResult route = Router::route(config, client->getRequest());
         client->setRouteResult(route);
-        if (route.action == ACTION_CGI && !client->checkRunCgi())
+        if (route.action == ACTION_CGI && client->checkRunCgi(config.matchLocation))
         {
             if (!cgiRun(epoll, client))
                 return errorHandling(client, epoll, 500);
@@ -367,7 +383,7 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
 RetStatus Server::cgiRun(Epoll &epoll, Client *client)
 {
     ServerConfig &serverConfig = this->configs[client->getListenFd()];
-    Cgi cgi(serverConfig.matchLocation);
+    Cgi cgi(serverConfig.getMatchedPrefix(), serverConfig.matchLocation);
     pid_t tmpPid;
     Pipe &pipe = client->getCgiPipe();
     int eventSocket = client->getSocket().getFd();
@@ -376,7 +392,7 @@ RetStatus Server::cgiRun(Epoll &epoll, Client *client)
         return RET_ERROR;
 
     // fork는 4개 fd 모두 유효한 상태에서 먼저 실행
-    tmpPid = cgi.excute(this->env, pipe.getInPipeArr(), pipe.getOutPipeArr());
+    tmpPid = cgi.excute(client, this->env, pipe.getInPipeArr(), pipe.getOutPipeArr());
     if (static_cast<int>(tmpPid) < 0)
     {
         pipe.detach();  // excute가 fork 실패 시 내부에서 이미 close함
@@ -386,34 +402,21 @@ RetStatus Server::cgiRun(Epoll &epoll, Client *client)
     FD inWriteFd = pipe.getInWriteFd();
     FD outReadFd = pipe.getOutReadFd();
 
-    if (!epollGuard(epoll, EPOLL_CTL_DEL, eventSocket, EPOLLOUT, client))
+    if (!epollGuard(epoll, EPOLL_CTL_MOD, eventSocket, 0, client))
     {
-        pipe.closeInWrite();
-        pipe.closeOutRead();
-        kill(tmpPid, SIGKILL);
-        waitpid(tmpPid, NULL, 0);
+        cgiRollback(client, tmpPid);
         return RET_ERROR;
     }
     if (!epollGuard(epoll, EPOLL_CTL_ADD, inWriteFd, EPOLLOUT, client))
     {
-        pipe.closeInWrite();
-        pipe.closeOutRead();
-        kill(tmpPid, SIGKILL);
-        waitpid(tmpPid, NULL, 0);
+        cgiRollback(client, tmpPid);
         return RET_ERROR;
     }
     if (!epollGuard(epoll, EPOLL_CTL_ADD, outReadFd, EPOLLIN, client))
     {
-        epollGuard(epoll, EPOLL_CTL_DEL, inWriteFd, 0, client);
-        pipe.closeInWrite();
-        pipe.closeOutRead();
-        kill(tmpPid, SIGKILL);
-        waitpid(tmpPid, NULL, 0);
+        cgiRollback(client, tmpPid);
         return RET_ERROR;
     }
-
-    // 성공: cgiPipe 멤버가 fd를 소유, Client 소멸 시 자동 정리됨
-    std::cout << "cgi in" << std::endl;
     client->setPid(tmpPid);
     client->setRunCgi(true);
     client->getSocket().setTimeStatus(this->timeOutValue.cgiTimeout);
@@ -433,8 +436,7 @@ RetStatus Server::cgiPipeRead(Epoll &epoll, Client *client)
     {
         client->setStatusCode(500);
         FD outFd = client->getPipeFd(OutFlag);
-        if (!epollGuard(epoll, EPOLL_CTL_DEL, outFd, EPOLLIN, client))
-            return RET_ERROR; // epollGuard 실패 시 client가 이미 삭제됨
+        epollGuard(epoll, EPOLL_CTL_DEL, outFd, EPOLLIN, client);
         this->pipeToClientMap.erase(outFd);
         client->pipeClose(OutFlag);
         return RET_ERROR;
@@ -446,7 +448,7 @@ RetStatus Server::cgiPipeRead(Epoll &epoll, Client *client)
         this->pipeToClientMap.erase(client->getPipeFd(OutFlag));
         client->pipeClose(OutFlag);
         client->setRunCgi(false);
-        return epollGuard(epoll, EPOLL_CTL_ADD, client->getSocket().getFd(), EPOLLOUT, client);
+        return epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client);
     }
     return RET_OK;
 }
@@ -473,7 +475,7 @@ RetStatus Server::cgiPipeWrite(Epoll &epoll, Client *client)
     }
 }
 
-void Server::checkTimeOutClient(int &index)
+void Server::checkTimeOutClient(Epoll &epoll, int &index)
 {
     int i = 0;
     int numClient = static_cast<int>(this->inClientVec.size());
@@ -490,7 +492,8 @@ void Server::checkTimeOutClient(int &index)
         else if (this->client[fd]->checkAlive())
         {
             std::cout << "timeout delete [" << fd << "]" << std::endl;
-            deleteClient(fd); // inClientVec에서도 erase되므로 index는 그대로 두고 재검사
+            epollGuard(epoll, EPOLL_CTL_DEL, fd, 0, this->client[fd]);
+            deleteClient(fd);
             numClient = static_cast<int>(this->inClientVec.size());
         }
         else
@@ -507,7 +510,7 @@ void Server::deleteClient(int deleteFd)
         return;
     Client *client = this->client[deleteFd];
     pid_t pid = client->getPid();
-    if (client->checkRunCgi() && waitpid(pid, NULL, WNOHANG) == 0)
+    if (client->getRunCgi() && waitpid(pid, NULL, WNOHANG) == 0)
     {
         kill(pid, SIGKILL);
         waitpid(pid, NULL, 0);
@@ -523,16 +526,26 @@ void Server::deleteClient(int deleteFd)
     this->client[deleteFd] = NULL;
 }
 
+void Server::reapCgiChild(pid_t pid)
+{
+    if (waitpid(pid, NULL, WNOHANG) == 0)
+    {
+        kill(pid, SIGKILL);
+        waitpid(pid, NULL, 0);
+    }
+}
+
 bool Server::clientExist(int fd)
 {
     if (fd < 0 || static_cast<size_t>(fd) >= this->client.size()) {return false;}
     return this->client[fd] != NULL;
 }
 
-RetStatus Server::errorHandling(Client *client, Epoll epoll, int statusCode)
+RetStatus Server::errorHandling(Client *client, Epoll &epoll, int statusCode)
 {
     client->setStatusCode(statusCode);
-    epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client);
+    if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
+        deleteClient(client->getSocket().getFd());
     return RET_ERROR;
 }
 
@@ -540,9 +553,15 @@ RetStatus Server::epollGuard(Epoll &epoll, int op, FD fd, u_int32_t event, Clien
 {
     if (epoll.epollControl(op, fd, event))
         return RET_OK;
-    std::cerr << "epoll_ctl 실패 FD: " << fd << std::endl;
-    deleteClient(client->getSocket().getFd());
+    std::cerr << "epoll_ctl 실패 FD: " << fd << " (Client[" << client->getSocket().getFd() << "])" << std::endl;
     return RET_ERROR;
+}
+
+void Server::cgiRollback(Client *client, pid_t pid)
+{
+    this->reapCgiChild(pid);
+    client->pipeClose(InFlag);
+    client->pipeClose(OutFlag);
 }
 
 void Server::serverClose()

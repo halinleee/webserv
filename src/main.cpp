@@ -3,6 +3,7 @@
 #include "Server.hpp"
 #include "Epoll.hpp"
 #include "Config.hpp"
+#include "ServerConfig.hpp"
 
 Server *serverPointer;
 
@@ -15,22 +16,16 @@ static void sigIntHandler(int signum)
 
 int main(int ac, char **av, char **envp)
 {
-    timeValue timeValue;
-    timeValue.connetionTimeOut = 60;
-    timeValue.readTimeout = 60;
-    timeValue.writeTimeout = 60;
-    timeValue.keepAliveTimeout = 60;
-    timeValue.cgiTimeout = 5;
-    Server server(envp, timeValue);
-    Epoll epoll;
-    serverPointer = &(server);
-
     Config config;
     if (!config.parseConfig(ac, av))
     {
         std::cerr << config.getStatusMessage() << std::endl;
         return 1;
     }
+    Server server(envp);
+    Epoll epoll;
+    serverPointer = &(server);
+  
     signal(SIGINT, sigIntHandler);
     signal(SIGPIPE, SIG_IGN);
     if (epoll.getEpollFd() == -1)

@@ -22,10 +22,10 @@ class LocationConfig
 
 	private:
 		bool parseHttpMethod(const std::string& s, HttpMethod& out);
-		bool parseLocationDir(std::vector<std::string>& token);
+		bool parseLocationDir(std::vector<std::string>& token, std::string &prefix);
 	
 	public:
-		bool parseLocationBlock(std::ifstream &configFile);
+		bool parseLocationBlock(std::ifstream &configFile, std::string &prefix);
 
 
 	public:

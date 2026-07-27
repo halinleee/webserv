@@ -60,7 +60,7 @@ epoll_event &Epoll::operator[] (unsigned int i)
  */
 int Epoll::epWait(void)
 {
-    int eventCount = epoll_wait(this->epollFd, this->events, 50, 0);
+    int eventCount = epoll_wait(this->epollFd, this->events, 50, 20);
     if (eventCount < 0)
         return -1;
     return eventCount;

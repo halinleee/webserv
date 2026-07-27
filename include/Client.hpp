@@ -5,19 +5,23 @@
 #include "Socket.hpp"
 #include "RequestParser.hpp"
 #include "RouteResult.hpp"
+#include "ServerConfig.hpp"
+#include "CgiParser.hpp"
+#include "Response.hpp"
 #include "type.hpp"
+#include <unistd.h>
 #include <iostream>
 #include <sys/wait.h>
 #include <sys/types.h>
 
 /**
- * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 http의 요청에서 body을 전달하는 inPipe의 쓰기 끝을 반환하는 flag
+ * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 http의 요청에서 body을 요청할때 사용하는 flag
  */
-#define InFlag 0
-/**
- * @brief getPipeFd 함수에서 이 플레그를 전달해 CGI에서 생성된 http요청을 받는 OutPipe의 읽기 끝을 반환하는 flag
- */
-#define OutFlag 1
+enum PipeFlag
+{
+    InFlag = 0,
+    OutFlag = 1
+};
 
 /**
  * @brief 서버에 연결된 단일 클라이언트의 정보와 상태를 관리하는 클래스
@@ -83,20 +87,13 @@ class Client
         bool shouldClose;
 
         /**
-         * @var body 
-         * @brief 클라이언트가 보낸 http메세지에서 CGI에 넘길 body내용을 담은 vector
-         * 
-         * 현재 임시로 만들어뒀는데 나중에 http파싱이 끝나서 구조체가 넘어오게 되면 그떄 수정필요
-        */
-        bodyVec body;
-
-        /**
          * @var listenFd
          * @brief 이 클라이언트가 accept된 리스닝 소켓(서버 포트)의 FD
          *
          * 클라이언트가 어느 server 블록(포트)으로 접속했는지 추적해, CGI 등에서 해당 포트의 ServerConfig를 찾아 쓰기 위해 사용됩니다.
          */
         FD listenFd;
+        CgiParser cgiParser;
 
         /**
          * @var routeResult
@@ -147,26 +144,23 @@ class Client
          * 
         */
         RetStatus checkCgiExited(void);
+        
         /**
          * @brief 이 클라이언트의 keep-alive가 유지를 하는지 확인하는 함수
         */
         bool checkAlive(void);
+
         /**
-         * @brief 이 클라이언트의 cgi가 돌아가고 있는지 확인하는 함수
+         * @brief 이 클라이언트의 cgi가 실행이 가능한지 확인하는 함수
         */
-        bool checkRunCgi(void);
+        bool checkRunCgi(LocationConfig config);
+
+        bool getRunCgi();
 
         /**
          * @brief 클라이언트의 keepAlive시간을 초기화하는 함수
         */
         void timeSet(time_t addTime);
-
-        /**
-         * @brief Cgi에 대해서 sigkill을 하는 함수
-         * 
-         * cgi timeOut에 사용
-         */
-        void CgiExited();
 
         /**
          * @brief Cgi프로그램에게 넘길 body내용을 Cgi프로그램과 연결되어 있는 파이프에 적는 함수
@@ -175,7 +169,7 @@ class Client
          * @return 1(RET_OK) 정상 동작
          * @return 1(RET_RE) 정상 동작은 했으나 pipe의 크기 제한으로 다시 이 함수를 와야할 경우
         */
-        int writeCgiPipe(void);
+        RetStatus writeCgiPipe(void);
 
         /**
          * @brief Cgi프로그램이 보낸 결과를 파이프에서 읽어오는 함수
@@ -187,7 +181,7 @@ class Client
          * @return 1(RET_OK) EOF + CGI 정상 종료 확인 완료(모든 데이터를 다 읽음)
          * @return 2(RET_RE) 아직 읽을 데이터가 남아있음, 또는 EOF 후 자식이 아직 reap되지 않아 재시도 필요
          */
-        int readCgiPipe(void);
+        RetStatus readCgiPipe(void);
 
         void setRunCgi(bool value);
         /**
@@ -309,6 +303,12 @@ class Client
          * routeResult도 이전 요청의 라우팅 결과가 다음 요청에 잘못 사용되지 않도록 함께 초기화합니다.
          */
         void resetForNextRequest();
+
+        /**
+         * @var cgiResponse
+         * @brief CGI stdout을 파싱한 결과(상태 코드, 헤더, 바디)를 담는 구조체
+        */
+        Response cgiResponse;
 };
 
 
