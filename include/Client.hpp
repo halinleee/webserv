@@ -153,7 +153,7 @@ class Client
         /**
          * @brief 이 클라이언트의 cgi가 실행이 가능한지 확인하는 함수
         */
-        bool checkRunCgi(LocationConfig config);
+        bool checkRunCgi(const LocationConfig &config, const std::string &resolvedPath, bool &notFound);
 
         bool getRunCgi();
 
@@ -217,6 +217,17 @@ class Client
          * 요청 파싱 결과에 따라 200 OK, 400 Bad Request 등 클라이언트의 현재 요청 상태를 기록합니다.
          */
         void setStatusCode(int statusCode);
+
+        /**
+         * @brief 요청 파싱이 끝나기 전에 서버가 강제로 요청의 상태를 확정할 때 쓰는 함수
+         *
+         * readTimeout 등으로 요청을 끝까지 받지 못한 채 응답을 보내야 할 때 사용합니다.
+         * clientResponse가 STATUS_UNDEFINED 여부로 라우팅 필요 유무를 판단하므로, 이 함수로
+         * request.status를 채워 라우팅 없이 바로 에러 응답이 만들어지도록 하고, 이후 keep-alive를
+         * 이어가지 않도록 shouldClose도 함께 true로 설정합니다.
+         * @param status 확정할 상태 코드 (ex: STATUS_REQUEST_TIMEOUT)
+         */
+        void setRequestStatus(int status);
 
         /**
          * @brief recv로 수신된 데이터를 버퍼(recDq<char> 디큐)에 추가하는 함수

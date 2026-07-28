@@ -126,6 +126,12 @@ void Client::setRunCgi(bool value) { this->runCgi = value; }
 
 void Client::setStatusCode(int statusCode) { this->statusCode = statusCode; }
 
+void Client::setRequestStatus(int status)
+{
+    this->request.status = static_cast<Status>(status);
+    this->shouldClose = true;
+}
+
 void Client::setPid(pid_t pid) { this->pid = pid; }
 
 void Client::setListenFd(int fd) { this->listenFd = fd; }
@@ -136,17 +142,19 @@ bool Client::checkAlive(void) { return this->getSocket().checkTimeOut(); }
 
 void Client::timeSet(time_t addTime) { this->clientSocket->setTimeStatus(addTime); }
 
-bool Client::checkRunCgi(LocationConfig config) 
+bool Client::checkRunCgi(const LocationConfig &config, const std::string &resolvedPath, bool &notFound)
 {
-    if (this->runCgi)
-        return false;
-    if (config.getCgiExtension() == "")
-        return false;
+    notFound = false;
     if (access(config.getCgiPath().c_str(), X_OK))
         return false;
     const std::string &base = config.getAlias().empty() ? config.getRoot() : config.getAlias();
     if (access(base.c_str(), X_OK))
         return false;
+    if (access(resolvedPath.c_str(), R_OK))
+    {
+        notFound = true;
+        return false;
+    }
     return true;
 }
 
@@ -159,15 +167,6 @@ ReqParseResult Client::onReceive()
     request = parser.getRequest();
     if (ret == REQ_PARSE_DONE)
     {
-        // HTTP/1.1 기본값은 keep-alive이므로, Connection 헤더가 없거나
-        // "close" 토큰이 없으면 shouldClose는 false로 유지된다.
-        // 헤더 key는 RequestParser::transferHeaders()에서 이미 소문자로
-        // 정규화되어 저장되므로 "connection"으로 조회하면 되지만,
-        // value는 그대로 보존되므로 비교 시 대소문자를 무시해야 한다.
-        // Connection 헤더 값은 RFC 7230 §6.1에 따라 콤마로 구분된 토큰
-        // 리스트일 수 있으므로(예: "keep-alive, close"), 값 전체를
-        // "close"와 완전일치 비교하지 않고 RequestParser::validateTransferEncoding()과
-        // 동일한 방식으로 토큰 단위로 분리해 trim + 소문자 비교한다.
         std::map<std::string, std::string>::const_iterator it = request.headers.find("connection");
         shouldClose = false;
         if (it != request.headers.end())
@@ -189,10 +188,6 @@ ReqParseResult Client::onReceive()
     }
     parser.clear();
     return ret;
-
-    // REQ_PARSE_DONE   → send 응답 → 정상이면 request.clear() + EPOLLIN 복귀 (TODO)
-    // REQ_PARSE_ERROR → send 에러 (Connection: close 포함) → clientDel
-    // REQ_PARSE_INCOMPLETE    → EPOLLIN 유지 (데이터 더 기다림)
 }
 
 bool Client::getShouldClose() const

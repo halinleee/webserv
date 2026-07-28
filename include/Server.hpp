@@ -236,7 +236,15 @@ class Server
         RetStatus cgiPipeWrite(Epoll &epoll, Client *client);
 
         /**
-         * @brief 클라이언트의 요청을 보낸 시간이 keep-alive 시간을 지났는지 확인하고 지났을 경우 해제하는 함수
+         * @brief 클라이언트별 데드라인(connection/read/write/keep-alive/cgi timeout)이 지났는지 확인하고
+         * 각 상황에 맞게 정리하는 함수
+         *
+         * Socket은 타임아웃 종류마다 별도 타이머를 두지 않고 timeState.timeOut 하나만 재사용하므로,
+         * 만료 시점에 클라이언트가 어느 단계에 있었는지로 분기한다.
+         * - CGI 실행 중(getRunCgi()) → cgiTimeoutAbort로 자식 프로세스 정리 후 504 예약
+         * - 이미 응답을 보내다 멈춘 상태(response가 비어있지 않음, write_timeout) → 재시도 없이 즉시 종료
+         *   (클라이언트가 이미 읽기를 멈춘 상태라 에러 페이지를 새로 써도 전달되지 않는다)
+         * - 아직 응답을 보내기 전(connection/read/keep-alive timeout) → readTimeoutAbort로 408 예약
          */
         void checkTimeOutClient(Epoll &epoll, int &index);
         
@@ -290,6 +298,32 @@ class Server
          * @brief cgiRun의 epoll 등록 실패 롤백 공통 로직 (좀비 회수 + 파이프 정리)
          */
         void cgiRollback(Client *client, pid_t pid);
+
+        /**
+         * @brief CGI 실행 중 타임아웃이 발생한 클라이언트를 정리하고 504 응답을 예약하는 함수
+         *
+         * checkTimeOutClient에서 getRunCgi()가 true인 클라이언트가 타임아웃되면 호출된다.
+         * 자식 프로세스를 강제 종료/회수하고, 열려 있는 파이프 fd를 epoll/pipeToClientMap에서
+         * 정리한 뒤 request.status를 504(Gateway Timeout)로 설정해(setRequestStatus) clientResponse가
+         * html body가 있는 에러 응답을 만들고 연결을 닫도록 하고, 클라이언트 소켓을 EPOLLOUT으로
+         * 전환한다. CGI는 서버 입장에서 upstream 프로세스이므로, 클라이언트 요청 자체의 지연을
+         * 뜻하는 408이 아니라 504가 맞는 코드다.
+         * @return epoll 등록 실패 시 RET_ERROR, 그 외 RET_OK
+         */
+        RetStatus cgiTimeoutAbort(Epoll &epoll, Client *client);
+
+        /**
+         * @brief 요청을 다 받지 못한 채 readTimeout이 발생한 클라이언트에게 408 응답을 예약하는 함수
+         *
+         * checkTimeOutClient에서 getRunCgi()가 false이고 아직 응답을 보내기 전(response가 비어있는)
+         * 클라이언트가 타임아웃되면 호출된다. 요청 파싱이 끝나지 않아 RouteResult가 아직 계산되지
+         * 않았으므로, request.status를 STATUS_REQUEST_TIMEOUT으로 설정해 clientResponse가 라우팅을
+         * 거치지 않고 바로 에러 응답을 만들도록 하고, 클라이언트 소켓을 EPOLLOUT으로 전환한다.
+         * cgiTimeoutAbort와 마찬가지로 keepAliveTimeout으로 데드라인을 다시 미뤄, 408 응답이
+         * 전송되기 전에 checkTimeOutClient가 같은 클라이언트를 매 스윕마다 재호출하는 것을 막는다.
+         * @return epoll 등록 실패 시 RET_ERROR, 그 외 RET_OK
+         */
+        RetStatus readTimeoutAbort(Epoll &epoll, Client *client);
 };
 
 #endif
