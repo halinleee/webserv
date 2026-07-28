@@ -310,7 +310,7 @@ RetStatus Server::clientAccept(Epoll &epoll, Socket *socket)
         std::cerr << "Client Accept Failed" << std::endl;
         return RET_ERROR;
     }
-    tmpSocket->setTimeStatus(this->timeOutValue.connetionTimeOut);
+    tmpSocket->setTimeStatus(this->timeOutValue.connectionTimeOut);
     std::cout << "Client " << tmpFd <<"(" << tmpSocket->getAddr().sin_addr.s_addr << ") port " << tmpSocket->getAddr().sin_port << " " << std::endl;
     if (tmpFd >= 8192)
     {

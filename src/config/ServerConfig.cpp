@@ -79,15 +79,15 @@ bool ServerConfig::parseTimeOut(std::vector<std::string>& token)
 	if (num == 0 || num > TIME_OUT_MAX)
 		return false;
 		
-	if (token[0] == "connetionTimeOut")
-		timeConfig.connetionTimeOut = static_cast<std::time_t>(num);
-	else if (token[0] == "readTimeout")
+	if (token[0] == "connection_timeout")
+		timeConfig.connectionTimeOut = static_cast<std::time_t>(num);
+	else if (token[0] == "read_timeout")
 		timeConfig.readTimeout = static_cast<std::time_t>(num);
-	else if (token[0] == "writeTimeout")
+	else if (token[0] == "write_timeout")
 		timeConfig.writeTimeout = static_cast<std::time_t>(num);
-	else if (token[0] == "keepAliveTimeout")
+	else if (token[0] == "keep_alive_timeout")
 		timeConfig.keepAliveTimeout = static_cast<std::time_t>(num);
-	else if (token[0] == "cgiTimeout")
+	else if (token[0] == "cgi_timeout")
 		timeConfig.cgiTimeout = static_cast<std::time_t>(num);
 	
 
@@ -159,8 +159,8 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 	else if (token[0] == "error_page")
 		return parseErrorPage(token);
 
-	else if (token[0] == "connetionTimeOut" || token[0] == "readTimeout" || token[0] == "writeTimeout"
-			|| token[0] == "keepAliveTimeout" || token[0] == "cgiTimeout")
+	else if (token[0] == "connection_timeout" || token[0] == "read_timeout" || token[0] == "write_timeout"
+			|| token[0] == "keep_alive_timeout" || token[0] == "cgi_timeout")
 		return parseTimeOut(token);
 
 	else if (token[0] == "location")

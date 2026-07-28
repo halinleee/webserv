@@ -41,7 +41,7 @@ class ServerConfig
 		{
 			clientMaxBodySize = 1000000;
 			statusMessage = "Default Error";
-			timeConfig.connetionTimeOut = 60;
+			timeConfig.connectionTimeOut = 60;
 			timeConfig.readTimeout = 60;
 			timeConfig.writeTimeout = 60;
 			timeConfig.keepAliveTimeout = 75;

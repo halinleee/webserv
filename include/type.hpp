@@ -37,7 +37,7 @@ enum  RetStatus
  */
 struct timeValue
 {
-    time_t connetionTimeOut;
+    time_t connectionTimeOut;
     time_t readTimeout;
     time_t writeTimeout;
     time_t keepAliveTimeout;
