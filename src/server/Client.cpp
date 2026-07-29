@@ -52,7 +52,7 @@ RetStatus Client::readCgiPipe()
         return RET_ERROR;
     received[length] = '\0';
     this->cgiRawOutput.append(received, length);
-    if (this->cgiRawOutput.size() > MAX_CLIENT_BODY_LENGTH)
+    if (this->cgiRawOutput.size() > MAX_CGI_OUTPUT_LENGTH)
         return RET_ERROR;
     if (length == 0)
     {

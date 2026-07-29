@@ -74,12 +74,12 @@ bool LocationConfig::parseLocationDir(std::vector<std::string>& token, std::stri
 			return false;
 
 		size_t num = 0;
-		if (!toInt(token[1], num))
+		if (!toInt(token[1], num) || num < 100 || num > 599)
 			return false;
 
 		if (!isValidNormalizePath(token[2]))
 			return false;
-		
+
 		redirectCode = num;
 		redirectPath = token[2];
 	}
