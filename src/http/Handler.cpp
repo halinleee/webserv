@@ -373,8 +373,6 @@ Response Handler::handlePost(const RouteResult& route, const Request& req)
 		return Response(STATUS_BAD_REQUEST);
 
 	Response res(STATUS_CREATED);
-	// 파일이 하나만 저장된 경우에만 그 파일을 가리키는 Location을 준다.
-	// 여러 파일이면 단일 자원을 가리킬 수 없어 생략한다(RFC 7231 §7.1.2: Location은 SHOULD).
 	if (savedCount == 1)
 		res.headers["Location"] = lastSavedUri;
 	return res;

@@ -51,17 +51,27 @@ RetStatus Client::readCgiPipe()
     if (length < 0)
         return RET_ERROR;
     received[length] = '\0';
-    this->response.append(received, length);
-    if (this->response.size() > MAX_CLIENT_BODY_LENGTH)
+    this->cgiRawOutput.append(received, length);
+    if (this->cgiRawOutput.size() > MAX_CLIENT_BODY_LENGTH)
         return RET_ERROR;
     if (length == 0)
     {
         RetStatus ret = this->checkCgiExited();
         if (ret == RET_OK)
-            this->cgiResponse = cgiParser.parseCgiOutput(this->response);
+            this->cgiResponse = cgiParser.parseCgiOutput(this->cgiRawOutput);
         return ret;
     }
     return RET_RE;
+}
+
+void Client::clearCgiRawOutput(void)
+{
+    this->cgiRawOutput.clear();
+}
+
+const Response &Client::getCgiResponse() const
+{
+    return this->cgiResponse;
 }
 
 RetStatus Client::checkCgiExited(void)
@@ -200,6 +210,7 @@ void Client::resetForNextRequest()
     this->request = Request();
     this->statusCode = 0;
     this->response.clear();
+    this->cgiRawOutput.clear();
     this->routeResult = RouteResult();
 }
 

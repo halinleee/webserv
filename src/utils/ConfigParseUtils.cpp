@@ -1,4 +1,5 @@
 #include "ConfigParseUtils.hpp"
+#include "HttpUtils.hpp"
 #include <sys/stat.h>
 #include <sstream>
 #include <unistd.h>
@@ -44,6 +45,10 @@ bool isValidNormalizePath(std::string &path)
 		str.push_back(path[i]);
 	}
 	path.swap(str);
+
+	if (HttpUtils::hasDotSegments(path))//alias/root에 "."·".." 경로 세그먼트 포함 시 거부
+		return false;
+
 	return true;
 }
 

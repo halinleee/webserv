@@ -203,6 +203,8 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
             case ACTION_CGI:
                 if (client->getStatusCode() != 0)
                     res = Response(static_cast<Status>(client->getStatusCode()));
+                else
+                    res = client->getCgiResponse();
                 break;
             case ACTION_ERROR:
             default:
@@ -223,8 +225,7 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
         response = res.toString(client->getShouldClose());
     }
 
-    if (client->response.empty()) // cgi
-        client->response = response;
+    client->response = response;
     int sendStatus = serverSend(epoll, client);
     if (sendStatus == RET_ERROR)
     {
@@ -453,7 +454,7 @@ RetStatus Server::cgiPipeRead(Epoll &epoll, Client *client)
     if (status == RET_ERROR) //cgi문제로 인한 오류 routing
     {
         client->setStatusCode(500);
-        client->response.clear();
+        client->clearCgiRawOutput();
         FD outFd = client->getPipeFd(OutFlag);
         epollGuard(epoll, EPOLL_CTL_DEL, outFd, EPOLLIN, client);
         this->pipeToClientMap.erase(outFd);
@@ -476,10 +477,10 @@ RetStatus Server::cgiPipeWrite(Epoll &epoll, Client *client)
 {
     std::cout << "Pipe Write : Client[" << client->getSocket().getFd() << "]" << std::endl;
     int status = client->writeCgiPipe();
-    if (status == RET_ERROR) // response 빌더 완성되면 에러 발생시 바로 response 보내기
+    if (status == RET_ERROR)
     {
         client->setStatusCode(500);
-        client->response.clear();
+        client->clearCgiRawOutput();
         epollGuard(epoll, EPOLL_CTL_DEL, client->getPipeFd(InFlag), EPOLLOUT, client);
         this->pipeToClientMap.erase(client->getPipeFd(InFlag));
         client->pipeClose(InFlag);
@@ -623,7 +624,7 @@ RetStatus Server::cgiTimeoutAbort(Epoll &epoll, Client *client)
     }
     client->setRunCgi(false);
     client->setRequestStatus(STATUS_GATEWAY_TIMEOUT);
-    client->response.clear();
+    client->clearCgiRawOutput();
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
         return RET_ERROR;
     return RET_OK;

@@ -82,6 +82,21 @@ class Client
          */
         pid_t pid;
 
+        /**
+         * @var cgiRawOutput
+         * @brief CGI 파이프에서 읽은 stdout 원본 바이트를 파싱 전까지 누적하는 임시 버퍼
+         *
+         * readCgiPipe()가 EOF까지 누적한 뒤 CgiParser로 파싱해 cgiResponse에 저장하고 나면
+         * 더 이상 필요 없는 값입니다. response(최종 송신 버퍼)와는 별개입니다.
+         */
+        std::string cgiRawOutput;
+
+        /**
+         * @var cgiResponse
+         * @brief CGI stdout을 파싱한 결과(상태 코드, 헤더, 바디)를 담는 구조체
+        */
+        Response cgiResponse;
+
         RequestParser parser;
         Request request;
         bool shouldClose;
@@ -130,12 +145,11 @@ class Client
         ~Client();
 
         /**
-         * @var response 
-         * @brief 클라이언트에게 전송할 최종 HTTP 응답 메세지를 담는 임시 문자열
-         * 
-         * CGI 프로세스의 실행 결과(파이프 출력을 통해 읽어온 데이터)를 조립하여 저장하는 데 사용됩니다.
-         * 
-         * 차후에 response 빌더가 완성이 되면 수정해야함
+         * @var response
+         * @brief 클라이언트에게 전송할 최종 HTTP 응답 메세지를 담는 문자열
+         *
+         * STATIC/REDIRECT/ERROR/CGI 처리 결과를 Response::toString()으로 직렬화한 값이 저장되며,
+         * serverSend()가 이 버퍼를 그대로 소켓에 씁니다.
         */
         std::string response;
 
@@ -182,6 +196,11 @@ class Client
          * @return 2(RET_RE) 아직 읽을 데이터가 남아있음, 또는 EOF 후 자식이 아직 reap되지 않아 재시도 필요
          */
         RetStatus readCgiPipe(void);
+
+        /**
+         * @brief CGI 파이프 읽기 실패/타임아웃 시 누적 중이던 raw stdout 버퍼를 비우는 함수
+         */
+        void clearCgiRawOutput(void);
 
         void setRunCgi(bool value);
         /**
@@ -316,10 +335,10 @@ class Client
         void resetForNextRequest();
 
         /**
-         * @var cgiResponse
-         * @brief CGI stdout을 파싱한 결과(상태 코드, 헤더, 바디)를 담는 구조체
-        */
-        Response cgiResponse;
+         * @brief readCgiPipe()가 파싱해둔 CGI 응답(상태 코드, 헤더, 바디)을 반환하는 함수
+         * @return clientResponse에서 ACTION_CGI 분기 처리에 사용할 Response 참조
+         */
+        const Response &getCgiResponse() const;
 };
 
 
