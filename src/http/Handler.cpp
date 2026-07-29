@@ -149,6 +149,19 @@ namespace
 		return true;
 	}
 
+	const std::string DEFAULT_ERROR_PAGE_PATH = "./www/error/default.html";
+
+	std::string replaceAll(std::string s, const std::string& from, const std::string& to)
+	{
+		size_t pos = 0;
+		while ((pos = s.find(from, pos)) != std::string::npos)
+		{
+			s.replace(pos, from.size(), to);
+			pos += to.size();
+		}
+		return s;
+	}
+
 	enum WriteOutcome
 	{
 		WRITE_OK,
@@ -387,4 +400,33 @@ Response Handler::serve(const RouteResult& route, const Request& req)
 		case METHOD_DELETE: return handleDelete(route);
 		default: return Response(STATUS_METHOD_NOT_ALLOWED);
 	}
+}
+
+Response Handler::buildErrorPage(Status code, const std::map<size_t, std::string>& errorPages)
+{
+	Response res(code);
+	std::string body;
+	int err = 0;
+
+	std::map<size_t, std::string>::const_iterator it = errorPages.find(static_cast<size_t>(code));
+	if (it != errorPages.end() && readFile(it->second, body, err))
+	{
+		setBody(res, body, "text/html");
+		return res;
+	}
+
+	if (readFile(DEFAULT_ERROR_PAGE_PATH, body, err))
+	{
+		std::ostringstream codess;
+		codess << static_cast<int>(code);
+		body = replaceAll(body, "{{CODE}}", codess.str());
+		body = replaceAll(body, "{{MESSAGE}}", res.statusText);
+		setBody(res, body, "text/html");
+		return res;
+	}
+
+	std::ostringstream codess;
+	codess << static_cast<int>(code);
+	setBody(res, "<html><body><h1>" + codess.str() + " " + res.statusText + "</h1></body></html>", "text/html");
+	return res;
 }

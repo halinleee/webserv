@@ -20,18 +20,15 @@ bool isValidFileName(const std::string &file)
 }
 
 
-bool isValidNormalizePath(std::string &path)
+static bool normalizeSlashes(std::string &path)
 {
-	if (path.empty() || path[0] != '/')//경로가 '/'로 시작하지 않으면 에러로 처리함
-		return false;
-	
 	std::string str;
 	bool prevSlash = false;
 	for (size_t i = 0; i < path.size(); ++i)
 	{
 		const unsigned char ch = static_cast<unsigned char>(path[i]);
 
-		if (std::isspace(ch)) 
+		if (std::isspace(ch))
 			return false;
 
 		if (path[i] == '/')
@@ -45,8 +42,38 @@ bool isValidNormalizePath(std::string &path)
 		str.push_back(path[i]);
 	}
 	path.swap(str);
+	return true;
+}
 
-	if (HttpUtils::hasDotSegments(path))//alias/root에 "."·".." 경로 세그먼트 포함 시 거부
+// location prefix, redirect target(return) 등 URL 경로 검증용: 반드시 '/'로 시작해야 함
+bool isValidNormalizePath(std::string &path)
+{
+	if (path.empty() || path[0] != '/')//경로가 '/'로 시작하지 않으면 에러로 처리함
+		return false;
+
+	if (!normalizeSlashes(path))
+		return false;
+
+	if (HttpUtils::hasDotSegments(path))
+		return false;
+
+	return true;
+}
+
+// root/alias/cgi_ext/error_page 등 파일시스템 경로 검증용: cwd 기준 상대경로("./www/..")도 허용
+bool isValidFileSystemPath(std::string &path)
+{
+	if (path.empty())
+		return false;
+
+	if (!normalizeSlashes(path))
+		return false;
+
+	std::string checkTarget = path;
+	if (checkTarget.compare(0, 2, "./") == 0)//맨 앞의 "./"는 트래버설이 아니므로 검사 대상에서 제외
+		checkTarget = checkTarget.substr(2);
+
+	if (HttpUtils::hasDotSegments(checkTarget))//나머지 구간에 "."·".." 세그먼트가 있으면 거부(경로 순회 방어)
 		return false;
 
 	return true;

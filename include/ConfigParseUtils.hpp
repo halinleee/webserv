@@ -6,6 +6,7 @@
 
 bool isValidFileName(const std::string &file);
 bool isValidNormalizePath(std::string& path);
+bool isValidFileSystemPath(std::string& path);
 void removeIndent (std::string& value, char delim);
 int countIndent(const std::string& line);
 bool isBlankLine(const std::string& line);

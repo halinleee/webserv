@@ -167,29 +167,15 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
     std::string response;
 
     client->timeSet(this->timeOutValue.writeTimeout);
-    // 에러 페이지 커스터마이징 (TODO)
+
+    Response res;
     if (client->getRequest().status != STATUS_UNDEFINED)
     {
-        Response err(client->getRequest().status);
-        std::stringstream codess;
-        codess << static_cast<int>(err.statusCode);
-
-        std::string html_body = "<html><body><h1>" + codess.str() + " " + err.statusText + "</h1></body></html>";
-        std::stringstream lenss;
-        lenss << html_body.length();
-
-        response += "HTTP/1.1 " + codess.str() + " " + err.statusText + "\r\n";
-        response += "Content-Type: text/html; charset=utf-8\r\n";
-        response += "Content-Length: " + lenss.str() + "\r\n";
-        if (client->getShouldClose())
-            response += "Connection: close\r\n";
-        response += "\r\n";
-        response += html_body;
+        res = Response(client->getRequest().status);
     }
     else
     {
         const RouteResult &route = client->getRouteResult();
-        Response res;
 
         switch (route.action)
         {
@@ -222,8 +208,19 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
                 }
                 break;
         }
-        response = res.toString(client->getShouldClose());
     }
+
+    // 에러 상태인데 body가 비어있으면(라우팅/CGI/파싱 에러 등) errorPages 설정을 확인해
+    // 커스텀 에러 페이지로, 없으면 webserv 기본 에러 페이지로 body를 채운다.
+    if (static_cast<int>(res.statusCode) >= 400 && res.body.empty())
+    {
+        ServerConfig &config = this->configs[client->getListenFd()];
+        Response errPage = Handler::buildErrorPage(res.statusCode, config.getErrorPages());
+        for (std::map<std::string, std::string>::const_iterator it = res.headers.begin(); it != res.headers.end(); ++it)
+            errPage.headers[it->first] = it->second;
+        res = errPage;
+    }
+    response = res.toString(client->getShouldClose());
 
     client->response = response;
     int sendStatus = serverSend(epoll, client);

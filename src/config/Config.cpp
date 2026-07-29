@@ -78,6 +78,12 @@ parseStatus Config::parseServerBlock(std::ifstream &configFile)
 
 bool Config::parseConfig(int argc, char **argv)
 {
+	if (argc > 2)
+	{
+		statusMessage = "Usage: " + std::string(argv[0]) + " [config_file]";
+		return false;
+	}
+
 	std::string configPath = (argc == 2) ? argv[1] : "./webserv.conf";
 
 	std::ifstream configFile(configPath.c_str());
