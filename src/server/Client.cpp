@@ -1,6 +1,7 @@
 #include "Client.hpp"
 #include "HttpUtils.hpp"
 #include <sstream>
+#include <cerrno>
 
 Client::Client()
 {
@@ -162,7 +163,7 @@ bool Client::checkRunCgi(const LocationConfig &config, const std::string &resolv
         return false;
     if (access(resolvedPath.c_str(), R_OK))
     {
-        notFound = true;
+        notFound = (errno != EACCES);
         return false;
     }
     return true;

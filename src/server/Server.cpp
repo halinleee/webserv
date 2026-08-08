@@ -165,72 +165,79 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
 
 RetStatus Server::clientResponse(Epoll &epoll, Client *client)
 {
-    std::string response;
-
     client->timeSet(this->timeOutValue.writeTimeout);
 
-    Response res;
-    if (client->getRequest().status != STATUS_UNDEFINED)
+    // client->response가 비어있지 않다면 이전 호출에서 send()가 일부만 전송되어
+    // 남은 바이트를 이어 보내야 하는 "이어보내기 모드"이다. 이 경우 라우팅/핸들러/
+    // 에러페이지 생성 로직(중복 실행 시 재업로드, 이중 삭제 등 부작용 발생)을 건너뛰고
+    // 곧바로 serverSend부터 재시도한다.
+    if (client->response.empty())
     {
-        res = Response(client->getRequest().status);
-    }
-    else
-    {
-        const RouteResult &route = client->getRouteResult();
+        std::string response;
 
-        switch (route.action)
+        Response res;
+        if (client->getRequest().status != STATUS_UNDEFINED)
         {
-            case ACTION_STATIC:
-                res = Handler::serve(route, client->getRequest());
-                break;
-            case ACTION_REDIRECT:
-                res = Response(static_cast<Status>(route.redirectCode));
-                res.headers["Location"] = route.redirectPath;
-                break;
-            case ACTION_CGI:
-                if (client->getStatusCode() != 0)
-                    res = Response(static_cast<Status>(client->getStatusCode()));
-                else
-                    res = client->getCgiResponse();
-                break;
-            case ACTION_ERROR:
-            default:
-                res = Response(static_cast<Status>(route.errorCode));
-                if (route.errorCode == STATUS_METHOD_NOT_ALLOWED)
-                {
-                    std::string allow;
-                    for (std::set<HttpMethod>::const_iterator it = route.allowedMethods.begin(); it != route.allowedMethods.end(); ++it)
+            res = Response(client->getRequest().status);
+        }
+        else
+        {
+            const RouteResult &route = client->getRouteResult();
+
+            switch (route.action)
+            {
+                case ACTION_STATIC:
+                    res = Handler::serve(route, client->getRequest());
+                    break;
+                case ACTION_REDIRECT:
+                    res = Response(static_cast<Status>(route.redirectCode));
+                    res.headers["Location"] = route.redirectPath;
+                    break;
+                case ACTION_CGI:
+                    if (client->getStatusCode() != 0)
+                        res = Response(static_cast<Status>(client->getStatusCode()));
+                    else
+                        res = client->getCgiResponse();
+                    break;
+                case ACTION_ERROR:
+                default:
+                    res = Response(static_cast<Status>(route.errorCode));
+                    if (route.errorCode == STATUS_METHOD_NOT_ALLOWED)
                     {
-                        if (!allow.empty())
-                            allow += ", ";
-                        allow += HttpUtils::getMethodName(*it);
+                        std::string allow;
+                        for (std::set<HttpMethod>::const_iterator it = route.allowedMethods.begin(); it != route.allowedMethods.end(); ++it)
+                        {
+                            if (!allow.empty())
+                                allow += ", ";
+                            allow += HttpUtils::getMethodName(*it);
+                        }
+                        res.headers["Allow"] = allow;
                     }
-                    res.headers["Allow"] = allow;
-                }
-                break;
+                    break;
+            }
         }
-    }
 
-    // 에러 상태인데 body가 비어있으면(라우팅/CGI/파싱 에러 등) errorPages 설정을 확인해
-    // 커스텀 에러 페이지로, 없으면 webserv 기본 에러 페이지로 body를 채운다.
-    if (static_cast<int>(res.statusCode) >= 400 && res.body.empty())
-    {
-        ServerConfig &config = this->configs[client->getListenFd()];
-        Response errPage = Handler::buildErrorPage(res.statusCode, config.getErrorPages());
-        for (Response::HeaderMap::const_iterator it = res.headers.begin(); it != res.headers.end(); ++it)
+        // 에러 상태인데 body가 비어있으면(라우팅/CGI/파싱 에러 등) errorPages 설정을 확인해
+        // 커스텀 에러 페이지로, 없으면 webserv 기본 에러 페이지로 body를 채운다.
+        if (static_cast<int>(res.statusCode) >= 400 && res.body.empty())
         {
-            std::string lowerKey = it->first;
-            for (size_t i = 0; i < lowerKey.size(); ++i)
-                lowerKey[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(lowerKey[i])));
-            if (lowerKey == "content-type")
-                continue;
-            errPage.headers[it->first] = it->second;
+            ServerConfig &config = this->configs[client->getListenFd()];
+            Response errPage = Handler::buildErrorPage(res.statusCode, config.getErrorPages());
+            for (Response::HeaderMap::const_iterator it = res.headers.begin(); it != res.headers.end(); ++it)
+            {
+                std::string lowerKey = it->first;
+                for (size_t i = 0; i < lowerKey.size(); ++i)
+                    lowerKey[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(lowerKey[i])));
+                if (lowerKey == "content-type")
+                    continue;
+                errPage.headers[it->first] = it->second;
+            }
+            res = errPage;
         }
-        res = errPage;
-    }
-    response = res.toString(client->getShouldClose());
+        response = res.toString(client->getShouldClose());
 
-    client->response = response;
+        client->response = response;
+    }
     int sendStatus = serverSend(epoll, client);
     if (sendStatus == RET_ERROR)
     {
