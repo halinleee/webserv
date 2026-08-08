@@ -260,17 +260,14 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
     return RET_OK;
 }
 
-/*
- * @todo 나중에 response가 vector로 변경되면 erase를 하는 로직 추가
- * @todo send한 내용의 길이를 response의 총 길이와 비교하는 로직 추가(if문 분기는 작성완료, length를 더하는 로직 작성)
- */
 RetStatus Server::serverSend(Epoll &epoll, Client *client)
 {
-    ssize_t targetSize = client->response.size();
-    ssize_t length = send(client->getSocket().getFd(), client->response.c_str(), targetSize, 0);
+    size_t offset = client->getSentOffset();
+    ssize_t remaining = client->response.size() - offset;
+    ssize_t length = send(client->getSocket().getFd(), client->response.c_str() + offset, remaining, 0);
     if (length < 0)
         return RET_ERROR;
-    if (length == targetSize)
+    if (length == remaining)
     {
         if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN, client))
             return (RET_ERROR);
@@ -278,7 +275,7 @@ RetStatus Server::serverSend(Epoll &epoll, Client *client)
         return (RET_OK);
     }
     std::cout << "클라이언트 연결 유지 : Client["<< client->getSocket().getFd() << "]" << std::endl;
-    client->response = client->response.substr(length);
+    client->addSentOffset(length);
     return (RET_RE);
 }
 
@@ -352,9 +349,6 @@ RetStatus Server::clientAccept(Epoll &epoll, Socket *socket)
     return RET_OK;
 }
 
-/**
- * @todo http요청을 다 받은 후에 flag가 넘어오면 그때 EPOLLOUT을 감지하도록 변경
- */
 RetStatus Server::clientRequest(Epoll &epoll, Client *client)
 {
     unsigned char received[4096];
@@ -453,9 +447,6 @@ RetStatus Server::cgiRun(Epoll &epoll, Client *client)
     return RET_OK;
 }
 
-/**
- * @todo cgi가 분기되어 favicon요청 안 들어오면 그거에 마춰서 코드 수정해야함 (pipe가 잘 닫히는지 확인 및 강제로 read 한번 더 호출해서 강제로 pipe를 제거하는 로직 제거 및 오류 확인)
- */
 RetStatus Server::cgiPipeRead(Epoll &epoll, Client *client)
 {
     std::cout << "Pipe Read : Client[" << client->getSocket().getFd() << "]" << std::endl;

@@ -11,6 +11,7 @@ Client::Client()
     this->pid = -1;
     this->shouldClose = false;
     this->listenFd = -1;
+    this->sentOffset = 0;
 }
 
 Client::Client(Socket *socket, EnvMap env)
@@ -22,6 +23,7 @@ Client::Client(Socket *socket, EnvMap env)
     this->pid = -1;
     this->shouldClose = false;
     this->listenFd = -1;
+    this->sentOffset = 0;
 }
 
 Client::~Client()
@@ -211,8 +213,24 @@ void Client::resetForNextRequest()
     this->request = Request();
     this->statusCode = 0;
     this->response.clear();
+    this->sentOffset = 0;
     this->cgiRawOutput.clear();
     this->routeResult = RouteResult();
+}
+
+size_t Client::getSentOffset() const
+{
+    return this->sentOffset;
+}
+
+void Client::addSentOffset(size_t length)
+{
+    this->sentOffset += length;
+}
+
+void Client::resetSentOffset()
+{
+    this->sentOffset = 0;
 }
 
 void Client::setRouteResult(const RouteResult &result) { this->routeResult = result; }

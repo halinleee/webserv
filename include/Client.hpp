@@ -120,6 +120,16 @@ class Client
          */
         RouteResult routeResult;
 
+        /**
+         * @var sentOffset
+         * @brief response 버퍼 중 이미 send()로 전송 완료한 바이트 수
+         *
+         * 논블로킹 소켓에서 send()가 response 전체를 한 번에 다 보내지 못할 때,
+         * 남은 부분을 다시 복사해서 잘라내는 대신 이 오프셋만 전진시켜 다음 EPOLLOUT에서
+         * 이어 보낼 위치를 추적하기 위해 사용합니다.
+         */
+        size_t sentOffset;
+
     public:
         /**
          * @brief Client의 기본 생성자
@@ -340,6 +350,27 @@ class Client
          * @return clientResponse에서 ACTION_CGI 분기 처리에 사용할 Response 참조
          */
         const Response &getCgiResponse() const;
+
+        /**
+         * @brief response 버퍼 중 이미 전송 완료한 바이트 수(sentOffset)를 반환하는 함수
+         */
+        size_t getSentOffset() const;
+
+        /**
+         * @brief sentOffset을 length만큼 전진시키는 함수
+         *
+         * serverSend()에서 send()가 일부만 전송했을 때, 다음 EPOLLOUT에서 이어 보낼
+         * 위치를 갱신하기 위해 사용합니다.
+         */
+        void addSentOffset(size_t length);
+
+        /**
+         * @brief sentOffset을 0으로 초기화하는 함수
+         *
+         * 새 response를 빌드해서 대입할 때(clientResponse, clientAccept) 및
+         * resetForNextRequest()에서 호출합니다.
+         */
+        void resetSentOffset();
 };
 
 
