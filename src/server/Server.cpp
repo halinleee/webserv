@@ -180,45 +180,38 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
         std::string response;
 
         Response res;
-        if (client->getRequest().status != STATUS_UNDEFINED)
-        {
-            res = Response(client->getRequest().status);
-        }
-        else
-        {
-            const RouteResult &route = client->getRouteResult();
+        const RouteResult &route = client->getRouteResult();
 
-            switch (route.action)
-            {
-                case ACTION_STATIC:
-                    res = Handler::serve(route, client->getRequest());
-                    break;
-                case ACTION_REDIRECT:
-                    res = Response(static_cast<Status>(route.redirectCode));
-                    res.headers["Location"] = route.redirectPath;
-                    break;
-                case ACTION_CGI:
-                    if (client->getStatusCode() != 0)
-                        res = Response(static_cast<Status>(client->getStatusCode()));
-                    else
-                        res = client->getCgiResponse();
-                    break;
-                case ACTION_ERROR:
-                default:
-                    res = Response(static_cast<Status>(route.errorCode));
-                    if (route.errorCode == STATUS_METHOD_NOT_ALLOWED)
+        switch (route.action)
+        {
+            case ACTION_STATIC:
+                res = Handler::serve(route, client->getRequest());
+                break;
+            case ACTION_REDIRECT:
+                res = Response(static_cast<Status>(route.redirectCode));
+                res.headers["Location"] = route.redirectPath;
+                break;
+            case ACTION_CGI:
+                if (client->getStatusCode() != STATUS_UNDEFINED)
+                    res = Response(client->getStatusCode());
+                else
+                    res = client->getCgiResponse();
+                break;
+            case ACTION_ERROR:
+            default:
+                res = Response(static_cast<Status>(route.errorCode));
+                if (route.errorCode == STATUS_METHOD_NOT_ALLOWED)
+                {
+                    std::string allow;
+                    for (std::set<HttpMethod>::const_iterator it = route.allowedMethods.begin(); it != route.allowedMethods.end(); ++it)
                     {
-                        std::string allow;
-                        for (std::set<HttpMethod>::const_iterator it = route.allowedMethods.begin(); it != route.allowedMethods.end(); ++it)
-                        {
-                            if (!allow.empty())
-                                allow += ", ";
-                            allow += HttpUtils::getMethodName(*it);
-                        }
-                        res.headers["Allow"] = allow;
+                        if (!allow.empty())
+                            allow += ", ";
+                        allow += HttpUtils::getMethodName(*it);
                     }
-                    break;
-            }
+                    res.headers["Allow"] = allow;
+                }
+                break;
         }
 
         // 에러 상태인데 body가 비어있으면(라우팅/CGI/파싱 에러 등) errorPages 설정을 확인해
@@ -397,6 +390,8 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
         }
         client->setRouteResult(route);
     }
+    else
+        return errorHandling(client, epoll, client->getRequest().status);
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
             return errorHandling(client, epoll, STATUS_INTERNAL_SERVER_ERROR);
     return RET_OK;
@@ -586,7 +581,7 @@ bool Server::clientExist(int fd)
 
 RetStatus Server::errorHandling(Client *client, Epoll &epoll, int statusCode)
 {
-    client->setStatusCode(statusCode);
+    client->setStatusCode(static_cast<Status>(statusCode));
     RouteResult route = client->getRouteResult();
     route.action = ACTION_ERROR;
     route.errorCode = statusCode;

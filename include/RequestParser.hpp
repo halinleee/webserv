@@ -46,7 +46,6 @@ class RequestParser
 {
 	private:
 		ParseState parseState;
-		Status statusCode;
 
 		ReqLine tmpReqLine;
 		std::map<std::string, strVec> tmpHeaders;

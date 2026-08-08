@@ -74,7 +74,7 @@ class Client
          * 
          * 파싱 중 에러 발생, 파일 없음, 권한 부족 등의 예외 상황 시 적절한 에러 페이지를 응답하기 위해 상태를 기록합니다.
          */
-        int statusCode;
+        Status statusCode;
         /**
          * @var pid
          * @brief 실행된 CGI 자식 프로세스의 PID
@@ -246,7 +246,7 @@ class Client
          * 
          * 요청 파싱 결과에 따라 200 OK, 400 Bad Request 등 클라이언트의 현재 요청 상태를 기록합니다.
          */
-        void setStatusCode(int statusCode);
+        void setStatusCode(Status statusCode);
 
         /**
          * @brief 요청 파싱이 끝나기 전에 서버가 강제로 요청의 상태를 확정할 때 쓰는 함수
@@ -296,7 +296,7 @@ class Client
          * @return 클라이언트의 statusCode
          * @details Response 생성 단계에서 상태 코드를 확인하여 적절한 HTTP 헤더와 본문을 구성할 때 사용합니다.
          */
-        int getStatusCode();
+        Status getStatusCode();
 
         /**
          * @brief Pipe의 FD를 반환하는 함수

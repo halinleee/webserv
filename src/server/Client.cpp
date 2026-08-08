@@ -6,7 +6,7 @@
 Client::Client()
 {
     this->clientSocket = 0;
-    this->statusCode = 0;
+    this->statusCode = STATUS_UNDEFINED;
     this->runCgi = false;
     this->pid = -1;
     this->shouldClose = false;
@@ -17,7 +17,7 @@ Client::Client()
 Client::Client(Socket *socket, EnvMap env)
 {
     this->clientSocket = socket;
-    this->statusCode = 0;
+    this->statusCode = STATUS_UNDEFINED;
     this->env = env;
     this->runCgi = false;
     this->pid = -1;
@@ -131,13 +131,13 @@ CharDq &Client::getCharDq(void) { return this->recDq; }
 
 Socket &Client::getSocket() { return *this->clientSocket; }
 
-int Client::getStatusCode() { return this->statusCode; }
+Status Client::getStatusCode() { return this->statusCode; }
 
 Request Client::getRequest() {return this->request; }
 
 void Client::setRunCgi(bool value) { this->runCgi = value; }
 
-void Client::setStatusCode(int statusCode) { this->statusCode = statusCode; }
+void Client::setStatusCode(Status statusCode) { this->statusCode = statusCode; }
 
 void Client::setRequestStatus(int status)
 {
@@ -211,7 +211,7 @@ bool Client::getShouldClose() const
 void Client::resetForNextRequest()
 {
     this->request = Request();
-    this->statusCode = 0;
+    this->statusCode = STATUS_UNDEFINED;
     this->response.clear();
     this->sentOffset = 0;
     this->cgiRawOutput.clear();
