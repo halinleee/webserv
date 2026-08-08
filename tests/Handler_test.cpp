@@ -439,6 +439,42 @@ static void test_post_raw_target_is_directory()
 	report("POST-12 raw POST target is existing directory -> 403, no sibling file", ok, d.str());
 }
 
+// POST 17: multipart 파트 filename이 이미 존재하는 하위 디렉터리와 충돌 -> 403 Forbidden,
+// resolveAvailablePath로 넘어가 "dirname(1)" 형제 파일을 몰래 생성하면 안 됨 (회귀 방지)
+static void test_post_multipart_target_is_directory()
+{
+	std::string dir = g_root + "/mpdirtarget";
+	mkdir(dir.c_str(), 0755);
+	std::string collidingDir = dir + "/collide";
+	mkdir(collidingDir.c_str(), 0755);
+	std::string sibling = dir + "/collide(1)";
+	unlink(sibling.c_str());
+
+	std::string boundary = "----testboundary17";
+	std::string partContent = "should not be written anywhere";
+	std::string body;
+	body += "--" + boundary + "\r\n";
+	body += "Content-Disposition: form-data; name=\"file\"; filename=\"collide\"\r\n";
+	body += "Content-Type: text/plain\r\n";
+	body += "\r\n";
+	body += partContent + "\r\n";
+	body += "--" + boundary + "--\r\n";
+
+	RouteResult route = makeStaticRoute(dir);
+	Request req = makeRequest(METHOD_POST, "/mpdirtarget/");
+	req.body = body;
+	req.headers["content-type"] = "multipart/form-data; boundary=" + boundary;
+
+	Response res = Handler::serve(route, req);
+
+	std::ostringstream d;
+	bool ok = true;
+	if (res.statusCode != STATUS_FORBIDDEN) { ok = false; d << "status=" << res.statusCode << " (want 403); "; }
+	if (!isDir(collidingDir)) { ok = false; d << "colliding directory itself was modified/removed!; "; }
+	if (fileExists(sibling)) { ok = false; d << "BUG: sibling file " << sibling << " was created; "; }
+	report("POST-17 multipart target is existing directory -> 403, no sibling file", ok, d.str());
+}
+
 // DELETE 13: 존재하는 파일 -> 204 + 실제 삭제
 static void test_delete_existing()
 {
@@ -510,6 +546,7 @@ int main()
 	test_post_multipart_broken();      // 11
 	test_post_multipart_missing_trailing_crlf(); // 16
 	test_post_raw_target_is_directory(); // 12
+	test_post_multipart_target_is_directory(); // 17
 	test_delete_existing();            // 13
 	test_delete_missing();             // 14
 	test_delete_directory();           // 15

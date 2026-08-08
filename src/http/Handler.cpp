@@ -36,7 +36,8 @@ namespace
 
 	std::string sanitizeUploadFilename(const std::string& filename)
 	{
-		std::string base = filename.substr(filename.find_last_of("/\\") + 1);
+		size_t pos = filename.find_last_of("/\\");
+		std::string base = (pos == std::string::npos) ? filename : filename.substr(pos + 1);
 		if (base.empty() || base == "." || base == "..")
 			return "";
 		return base;
@@ -366,6 +367,10 @@ Response Handler::handlePost(const RouteResult& route, const Request& req)
 			continue;
 
 		std::string filePath = HttpUtils::joinPath(route.resolvedPath, safeName);
+		struct stat targetSt;
+		if (stat(filePath.c_str(), &targetSt) == 0 && S_ISDIR(targetSt.st_mode))
+			return Response(STATUS_FORBIDDEN);
+
 		std::string usedSuffix;
 		filePath = resolveAvailablePath(filePath, &usedSuffix);
 		if (filePath.empty())
