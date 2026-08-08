@@ -147,6 +147,66 @@ namespace HttpUtils
 	 * @return 대응하는 status text, 정의되지 않은 code면 "Unknown"
 	 */
 	std::string getStatusText(Status code);
+
+	/**
+	 * @brief HttpMethod enum에 대응하는 메소드 이름 문자열을 반환
+	 *
+	 * @param method 변환할 HttpMethod
+	 * @return 대응하는 메소드 이름(예: "GET"), 정의되지 않은 값이면 "" (빈 문자열)
+	 * @note Allow 헤더 등 메소드 이름을 문자열로 표기할 때 사용
+	 */
+	std::string getMethodName(HttpMethod method);
+
+	/**
+	 * @brief 파일 경로의 확장자를 기준으로 MIME 타입을 반환
+	 *
+	 * @param path MIME 타입을 판별할 파일 경로
+	 * @return 대응하는 MIME 타입 문자열, 알 수 없는 확장자면 "application/octet-stream"
+	 */
+	std::string getMimeType(const std::string& path);
+
+	/**
+	 * @brief 문자열을 소문자로 변환한 복사본을 반환
+	 *
+	 * @param s 변환할 문자열
+	 * @return 소문자로 변환된 새 문자열
+	 */
+	std::string toLower(const std::string& s);
+
+	/**
+	 * @brief HTML 특수문자를 엔티티로 이스케이프
+	 *
+	 * &, <, >, ", ' 를 각각 &amp;, &lt;, &gt;, &quot;, &#39;로 치환한다.
+	 * 신뢰할 수 없는 값을 HTML에 삽입할 때 XSS 방지 목적으로 사용한다.
+	 *
+	 * @param s 이스케이프할 문자열
+	 * @return 이스케이프된 새 문자열
+	 */
+	std::string htmlEscape(const std::string& s);
+
+	/**
+	 * @brief 문자열을 percent-encoding하여 URI에 안전하게 삽입 가능한 형태로 변환
+	 *
+	 * RFC 3986의 unreserved characters(A-Z, a-z, 0-9, '-', '_', '.', '~')는 그대로 두고,
+	 * 나머지 모든 바이트는 %XX(대문자 hex 2자리) 형식으로 치환한다.
+	 * 신뢰할 수 없는 값을 href 등 URI 속성에 삽입할 때 사용한다.
+	 *
+	 * @param s 인코딩할 문자열
+	 * @return percent-encoding된 새 문자열
+	 */
+	std::string urlEncode(const std::string& s);
+
+	/**
+	 * @brief 두 경로 조각을 슬래시 중복/누락 없이 이어붙임
+	 *
+	 * base가 '/'로 끝나고 tail이 '/'로 시작하면 슬래시 하나를 제거하고 합치며,
+	 * 반대로 둘 다 '/'로 끝나거나 시작하지 않으면 사이에 '/'를 추가한다.
+	 *
+	 * @param base 앞쪽 경로 조각
+	 * @param tail 뒤쪽 경로 조각
+	 * @return 이어붙인 경로
+	 */
+	std::string joinPath(const std::string& base, const std::string& tail);
 }
 
 #endif

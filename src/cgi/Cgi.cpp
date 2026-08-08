@@ -44,8 +44,8 @@ pid_t Cgi::excute(Client *client, EnvMap envp, int *in, int *out)
         std::string path = request.path.substr(this->cgiPrefix.length());
         envAppend(client, envp, request, path);
         env = mapToEnvp(envp);
-        std::string cgiPath = this->cgiLocation.getRoot() + path;
-        cmd[0] = const_cast<char *>(this->cgiLocation.getCgiPath().c_str()); 
+        std::string cgiPath = client->getRouteResult().resolvedPath;
+        cmd[0] = const_cast<char *>(this->cgiLocation.getCgiPath().c_str());
         cmd[1] = const_cast<char *>(cgiPath.c_str());
         cmd[2] = NULL;
         if (execve(cmd[0], cmd, env) < 0)
@@ -89,6 +89,11 @@ void Cgi::envAppend(Client *client, EnvMap &envp, Request request, const std::st
     if (request.contentLength >= 0)
     {
         ss << request.contentLength;
+        envp["CONTENT_LENGTH"] = ss.str();
+    }
+    else if (request.isChunked)
+    {
+        ss << request.body.size();
         envp["CONTENT_LENGTH"] = ss.str();
     }
 

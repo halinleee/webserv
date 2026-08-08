@@ -6,6 +6,12 @@
 #include "ConfigParseUtils.hpp"
 #include <iostream>
 
+/**
+ * CGI 프로세스의 stdout 출력(cgiRawOutput) 크기 제한 상수
+ * 폭주(무한 루프) 스크립트로부터 서버 메모리를 보호하기 위한 상한
+ */
+const size_t MAX_CGI_OUTPUT_LENGTH = 10 * 1024 * 1024;
+
 class CgiParser
 {
 	public:
@@ -36,6 +42,6 @@ X-Current-Time: 2026-06-28 19:25:53\r\n
 6. Status면 statusCode/statusText 설정 [v]
 7. 그 외 헤더는 Response 헤더에 저장 [v]
 8. Status가 없으면 200 OK 적용 [v]
-9. Content-Length 계산 -> response.body.size()
+9. Content-Length는 Response::toString()에서 항상 body.size() 기준으로 재계산됨 (CgiParser는 관여하지 않음)
 10. 최종 HTTP Response 생성
 */

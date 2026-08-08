@@ -7,13 +7,121 @@
 #include <cctype>
 #include <cstdlib>
 
+namespace
+{
+	// start-line을 공백 기준으로 method/target/version 3개 토큰으로 분리
+	// CR 포함 또는 길이 초과, 공백 개수가 2개가 아니면 실패
+	bool splitStartline(const std::string& line, ReqLine& req)
+	{
+		if (HttpUtils::hasCR(line) || line.size() > MAX_STARTLINE_LENGTH) return false;
+
+		size_t first = line.find(' ');
+		size_t second = line.find(' ', first + 1);
+
+		if (first == std::string::npos || second == std::string::npos) return false;
+		if (line.find(' ', second + 1) != std::string::npos) return false;
+
+		req.method = line.substr(0, first);
+		req.target = line.substr(first + 1, second - first - 1);
+		req.version = line.substr(second + 1);
+
+		return true;
+	}
+
+	// '%' 뒤에 16진수 두 자리가 따라오는지만 검증 (디코딩은 percentDecode가 담당)
+	bool isValidPercentEncoding(const std::string& target)
+	{
+		for(size_t i = 0; i < target.size(); ++i)
+		{
+			if (target[i] == '%')
+			{
+				if (i + 2 >= target.size()) return false;
+				if (!HttpUtils::isHex(target[i + 1]) || !HttpUtils::isHex(target[i + 2])) return false;
+				i += 2;
+			}
+		}
+		return true;
+	}
+
+	// target을 path/query로 분리. fragment('#')가 있으면 거부
+	bool splitURI(const std::string& target, std::string& path, std::string& query)
+	{
+		size_t fragment = target.find('#');
+		if (fragment != std::string::npos) return false;
+
+		size_t pos = target.find('?');
+		if (pos == std::string::npos) path = target;
+		else
+		{
+			path = target.substr(0, pos);
+			query = target.substr(pos + 1);
+		}
+		return true;
+	}
+
+	// 퍼센트 인코딩을 디코딩. 디코딩 결과에 널문자가 있으면 실패
+	bool percentDecode(const std::string& path, std::string& result)
+	{
+		result.reserve(path.size());
+
+		for(size_t i = 0; i < path.size(); ++i)
+		{
+			if (path[i] == '%')
+			{
+				if (i + 2 >= path.size()) return false;
+
+				int first = HttpUtils::hexToInt(path[i + 1]);
+				int second = HttpUtils::hexToInt(path[i + 2]);
+				unsigned char added = static_cast<unsigned char>(first << 4 | second);
+				if (added == '\0') return false;
+				result += added;
+				i += 2;
+			}
+			else result += path[i];
+		}
+
+		return true;
+	}
+
+	// 헤더 한 줄을 key: value로 분리. key는 소문자로 정규화, value는 앞뒤 공백 trim
+	bool parseKeyValue(const std::string& line, std::string& key, std::string& value)
+	{
+		size_t colon = line.find(':');
+		if (colon == std::string::npos || colon == 0) return false;
+
+		key = line.substr(0, colon);
+
+		for(size_t i = 0; i < key.size(); ++i)
+		{
+			unsigned char c = static_cast<unsigned char>(key[i]);
+			if (!HttpUtils::isTchar(c)) return false;
+			key[i] = std::tolower(c);
+		}
+
+		value = line.substr(colon + 1);
+
+		size_t start = value.find_first_not_of(" \t");
+		if (start != std::string::npos) value = value.substr(start);
+		else value.clear();
+
+		size_t end = value.find_last_not_of(" \t");
+		if (end != std::string::npos) value = value.substr(0, end + 1);
+		else value.clear();
+
+		for(size_t i = 0; i < value.size(); ++i)
+		{
+			unsigned char c = static_cast<unsigned char>(value[i]);
+			if (!HttpUtils::isVcharSpTab(c)) return false;
+		}
+		return true;
+	}
+}
+
 bool RequestParser::parseStartline(CharDq& buf)
 {
 	HttpUtils::consumeLeadingCRLF(buf, MAX_LEADING_BLANK_LINES);
 
 	if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
-
-	if (buf.size() > MAX_STARTLINE_LENGTH) { statusCode = STATUS_BAD_REQUEST; return true; }
 
 	size_t crlf = HttpUtils::findCRLF(buf);
 	if (crlf == HttpUtils::npos)
@@ -31,22 +139,6 @@ bool RequestParser::parseStartline(CharDq& buf)
 	return true;
 }
 
-bool RequestParser::splitStartline(const std::string& line, ReqLine& req)
-{
-	if (HttpUtils::hasCR(line) || line.size() > MAX_STARTLINE_LENGTH) return false;
-
-	size_t first = line.find(' ');
-	size_t second = line.find(' ', first + 1);
-
-	if (first == std::string::npos || second == std::string::npos) return false;
-	if (line.find(' ', second + 1) != std::string::npos) return false;
-
-	req.method = line.substr(0, first);
-	req.target = line.substr(first + 1, second - first - 1);
-	req.version = line.substr(second + 1);
-
-	return true;
-}
 bool RequestParser::parseMethod(const std::string& method)
 {
 	if (method == "GET") { parsedReq.method = METHOD_GET; return true; }
@@ -80,55 +172,6 @@ bool RequestParser::parseURI(const std::string& target)
 
 	parsedReq.path = decoded;
 	if (!query.empty()) parsedReq.query = query; // query decoding 및 파싱은 cgi 책임.
-	return true;
-}
-bool RequestParser::isValidPercentEncoding(const std::string& target)
-{
-	for(size_t i = 0; i < target.size(); ++i)
-	{
-		if (target[i] == '%')
-		{
-			if (i + 2 >= target.size()) return false;
-			if (!HttpUtils::isHex(target[i + 1]) || !HttpUtils::isHex(target[i + 2])) return false;
-			i += 2;
-		}
-	}
-	return true;
-}
-bool RequestParser::splitURI(const std::string& target, std::string& path, std::string& query)
-{
-	size_t fragment = target.find('#');
-	if (fragment != std::string::npos) return false;
-
-	size_t pos = target.find('?');
-	if (pos == std::string::npos) path = target;
-	else
-	{
-		path = target.substr(0, pos);
-		query = target.substr(pos + 1);
-	}
-	return true;
-}
-bool RequestParser::percentDecode(const std::string& path, std::string& result)
-{
-	result.reserve(path.size());
-
-	for(size_t i = 0; i < path.size(); ++i)
-	{
-		if (path[i] == '%')
-		{
-			if (i + 2 >= path.size()) return false;
-			
-			int first = HttpUtils::hexToInt(path[i + 1]);
-			int second = HttpUtils::hexToInt(path[i + 2]);
-			unsigned char added = static_cast<unsigned char>(first << 4 | second);
-			if (added == '\0') return false;
-			result += added;
-			i += 2;
-		}
-		else result += path[i];
-	}
-
 	return true;
 }
 bool RequestParser::parseVersion(const std::string& version)
@@ -184,37 +227,6 @@ bool RequestParser::parseHeaders(CharDq& buf)
 	
 	if (!validateHeaders()) return true;
 	transferHeaders();
-	return true;
-}
-bool RequestParser::parseKeyValue(const std::string& line, std::string& key, std::string& value)
-{
-	size_t colon = line.find(':');
-	if (colon == std::string::npos || colon == 0) return false;
-
-	key = line.substr(0, colon);
-
-	for(size_t i = 0; i < key.size(); ++i)
-	{
-		unsigned char c = static_cast<unsigned char>(key[i]);
-		if (!HttpUtils::isTchar(c)) return false;
-		key[i] = std::tolower(c);
-	}
-
-	value = line.substr(colon + 1);
-
-	size_t start = value.find_first_not_of(" \t");
-	if (start != std::string::npos) value = value.substr(start);
-	else value.clear();
-
-	size_t end = value.find_last_not_of(" \t");
-	if (end != std::string::npos) value = value.substr(0, end + 1);
-	else value.clear();
-
-	for(size_t i = 0; i < value.size(); ++i)
-	{
-		unsigned char c = static_cast<unsigned char>(value[i]);
-		if (!HttpUtils::isVcharSpTab(c)) return false;
-	}
 	return true;
 }
 bool RequestParser::validateHeaders()
@@ -299,7 +311,7 @@ bool RequestParser::validateContentLength(const strVec& cl)
 	char* end = NULL;
 	unsigned long n = std::strtoul(values[0].c_str(), &end, 10);
 	if (*end != '\0') { statusCode = STATUS_BAD_REQUEST; return false; }
-	if (n > MAX_CLIENT_BODY_LENGTH)													// TODO
+	if (n > maxBodyLength)
 		{ statusCode = STATUS_PAYLOAD_TOO_LARGE; return false; }
 	parsedReq.contentLength = static_cast<long long>(n);
 	return true;
@@ -319,8 +331,7 @@ bool RequestParser::validateTransferEncoding(const strVec& te)
 			if (s == std::string::npos) { statusCode = STATUS_BAD_REQUEST; return false; }
 			std::string val = tmpStr.substr(s, e - s + 1);
 			if (val.empty()) { statusCode = STATUS_BAD_REQUEST; return false; }
-			for(size_t j = 0; j < val.size(); ++j)
-				val[j] = std::tolower(static_cast<unsigned char>(val[j]));
+			val = HttpUtils::toLower(val);
 			values.push_back(val);
 		}
 	}
@@ -413,7 +424,7 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 			for (size_t i = 0; i < hexStr.size(); ++i)
 			{
 				size = size * 16 + static_cast<unsigned long long>(HttpUtils::hexToInt(hexStr[i]));
-				if (size > MAX_CLIENT_BODY_LENGTH) { statusCode = STATUS_PAYLOAD_TOO_LARGE; return true; }
+				if (size > maxBodyLength) { statusCode = STATUS_PAYLOAD_TOO_LARGE; return true; }
 			}
 
 			if (size == 0)
@@ -421,7 +432,7 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 				inTrailer = true;
 				continue;
 			}
-			if (parsedReq.body.size() + size > MAX_CLIENT_BODY_LENGTH)
+			if (parsedReq.body.size() + size > maxBodyLength)
 				{ statusCode = STATUS_PAYLOAD_TOO_LARGE; return true; }
 			chunkRemaining = static_cast<size_t>(size);
 		}
@@ -457,8 +468,13 @@ void RequestParser::clear()
 	inTrailer = false;
 }
 
-RequestParser::RequestParser() : parseState(REQ_STARTLINE), statusCode(STATUS_UNDEFINED), chunkRemaining(0), inTrailer(false) {}
+RequestParser::RequestParser() : parseState(REQ_STARTLINE), statusCode(STATUS_UNDEFINED), chunkRemaining(0), inTrailer(false), maxBodyLength(MAX_CLIENT_BODY_LENGTH) {}
 RequestParser::~RequestParser() {}
+
+void RequestParser::setMaxBodyLength(size_t length)
+{
+	maxBodyLength = length;
+}
 
 void RequestParser::parse(CharDq& buf)
 {

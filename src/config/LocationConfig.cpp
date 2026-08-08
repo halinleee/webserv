@@ -28,8 +28,8 @@ bool LocationConfig::parseLocationDir(std::vector<std::string>& token, std::stri
 	{
 		if (token.size() != 2)
 			return false;
-		
-		if (!isValidNormalizePath(token[1]))
+
+		if (!isValidFileSystemPath(token[1]))
 			return false;
 
 		root = token[1];
@@ -74,12 +74,12 @@ bool LocationConfig::parseLocationDir(std::vector<std::string>& token, std::stri
 			return false;
 
 		size_t num = 0;
-		if (!toInt(token[1], num))
+		if (!toInt(token[1], num) || num < 100 || num > 599)
 			return false;
 
 		if (!isValidNormalizePath(token[2]))
 			return false;
-		
+
 		redirectCode = num;
 		redirectPath = token[2];
 	}
@@ -91,9 +91,9 @@ bool LocationConfig::parseLocationDir(std::vector<std::string>& token, std::stri
 
 		if (token[1].empty() || token[1][0] != '.')
 			return false;
-		
 
-		if (!isValidNormalizePath(token[2]))
+
+		if (!isValidFileSystemPath(token[2]))
 			return false;
 		cgiExtension = token[1];
 		cgiPath = token[2];
@@ -103,8 +103,8 @@ bool LocationConfig::parseLocationDir(std::vector<std::string>& token, std::stri
 	{
 		if (token.size() != 2)
 			return false;
-		
-		if (!isValidNormalizePath(token[1]))
+
+		if (!isValidFileSystemPath(token[1]))
 			return false;
 
 		if ((prefix[prefix.size() - 1] == '/') != (token[1][token[1].size() - 1] == '/'))

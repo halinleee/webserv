@@ -1,4 +1,7 @@
 #include "Client.hpp"
+#include "HttpUtils.hpp"
+#include <sstream>
+#include <cerrno>
 
 Client::Client()
 {
@@ -49,20 +52,27 @@ RetStatus Client::readCgiPipe()
     if (length < 0)
         return RET_ERROR;
     received[length] = '\0';
-    this->response.append(received, length);
-    if (this->response.size() > MAX_CLIENT_BODY_LENGTH)
+    this->cgiRawOutput.append(received, length);
+    if (this->cgiRawOutput.size() > MAX_CGI_OUTPUT_LENGTH)
         return RET_ERROR;
     if (length == 0)
     {
         RetStatus ret = this->checkCgiExited();
         if (ret == RET_OK)
-        {
-            this->cgiResponse = cgiParser.parseCgiOutput(this->response);
-            return ret;
-        }
+            this->cgiResponse = cgiParser.parseCgiOutput(this->cgiRawOutput);
         return ret;
     }
     return RET_RE;
+}
+
+void Client::clearCgiRawOutput(void)
+{
+    this->cgiRawOutput.clear();
+}
+
+const Response &Client::getCgiResponse() const
+{
+    return this->cgiResponse;
 }
 
 RetStatus Client::checkCgiExited(void)
@@ -127,6 +137,12 @@ void Client::setRunCgi(bool value) { this->runCgi = value; }
 
 void Client::setStatusCode(int statusCode) { this->statusCode = statusCode; }
 
+void Client::setRequestStatus(int status)
+{
+    this->request.status = static_cast<Status>(status);
+    this->shouldClose = true;
+}
+
 void Client::setPid(pid_t pid) { this->pid = pid; }
 
 void Client::setListenFd(int fd) { this->listenFd = fd; }
@@ -137,17 +153,20 @@ bool Client::checkAlive(void) { return this->getSocket().checkTimeOut(); }
 
 void Client::timeSet(time_t addTime) { this->clientSocket->setTimeStatus(addTime); }
 
-bool Client::checkRunCgi(LocationConfig config) 
+bool Client::checkRunCgi(const LocationConfig &config, const std::string &resolvedPath, bool &notFound)
 {
-    if (this->runCgi)
-        return false;
-    if (config.getCgiExtension() == "")
-        return false;
+    notFound = false;
     if (access(config.getCgiPath().c_str(), X_OK))
         return false;
-    if (access(config.getRoot().c_str(), X_OK))
+    const std::string &base = config.getAlias().empty() ? config.getRoot() : config.getAlias();
+    if (access(base.c_str(), X_OK))
         return false;
-    return true; 
+    if (access(resolvedPath.c_str(), R_OK))
+    {
+        notFound = (errno != EACCES);
+        return false;
+    }
+    return true;
 }
 
 ReqParseResult Client::onReceive()
@@ -157,12 +176,29 @@ ReqParseResult Client::onReceive()
     if (ret == REQ_PARSE_ERROR) shouldClose = true;
     if (ret == REQ_PARSE_INCOMPLETE) return ret;
     request = parser.getRequest();
+    if (ret == REQ_PARSE_DONE)
+    {
+        std::map<std::string, std::string>::const_iterator it = request.headers.find("connection");
+        shouldClose = false;
+        if (it != request.headers.end())
+        {
+            std::stringstream ss(it->second);
+            std::string token;
+            while (std::getline(ss, token, ','))
+            {
+                size_t s = token.find_first_not_of(" \t");
+                size_t e = token.find_last_not_of(" \t");
+                if (s == std::string::npos) continue;
+                if (HttpUtils::toLower(token.substr(s, e - s + 1)) == "close")
+                {
+                    shouldClose = true;
+                    break;
+                }
+            }
+        }
+    }
     parser.clear();
     return ret;
-
-    // REQ_PARSE_DONE   → send 응답 → 정상이면 request.clear() + EPOLLIN 복귀 (TODO)
-    // REQ_PARSE_ERROR → send 에러 (Connection: close 포함) → clientDel
-    // REQ_PARSE_INCOMPLETE    → EPOLLIN 유지 (데이터 더 기다림)
 }
 
 bool Client::getShouldClose() const
@@ -175,4 +211,15 @@ void Client::resetForNextRequest()
     this->request = Request();
     this->statusCode = 0;
     this->response.clear();
+    this->cgiRawOutput.clear();
+    this->routeResult = RouteResult();
+}
+
+void Client::setRouteResult(const RouteResult &result) { this->routeResult = result; }
+
+const RouteResult &Client::getRouteResult() const { return this->routeResult; }
+
+void Client::setMaxBodyLength(size_t length)
+{
+    this->parser.setMaxBodyLength(length);
 }

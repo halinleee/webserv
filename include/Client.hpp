@@ -4,6 +4,7 @@
 #include "Pipe.hpp"
 #include "Socket.hpp"
 #include "RequestParser.hpp"
+#include "RouteResult.hpp"
 #include "ServerConfig.hpp"
 #include "CgiParser.hpp"
 #include "Response.hpp"
@@ -81,6 +82,21 @@ class Client
          */
         pid_t pid;
 
+        /**
+         * @var cgiRawOutput
+         * @brief CGI 파이프에서 읽은 stdout 원본 바이트를 파싱 전까지 누적하는 임시 버퍼
+         *
+         * readCgiPipe()가 EOF까지 누적한 뒤 CgiParser로 파싱해 cgiResponse에 저장하고 나면
+         * 더 이상 필요 없는 값입니다. response(최종 송신 버퍼)와는 별개입니다.
+         */
+        std::string cgiRawOutput;
+
+        /**
+         * @var cgiResponse
+         * @brief CGI stdout을 파싱한 결과(상태 코드, 헤더, 바디)를 담는 구조체
+        */
+        Response cgiResponse;
+
         RequestParser parser;
         Request request;
         bool shouldClose;
@@ -93,6 +109,15 @@ class Client
          */
         FD listenFd;
         CgiParser cgiParser;
+
+        /**
+         * @var routeResult
+         * @brief clientRequest 단계에서 Router::route()로 계산된 라우팅 결과
+         *
+         * clientRequest(EPOLLIN)와 clientResponse(EPOLLOUT)가 서로 다른 epoll 이벤트 턴에서
+         * 호출되므로, 요청 단계에서 계산한 라우팅 결과를 응답 단계까지 들고 있기 위해 사용합니다.
+         */
+        RouteResult routeResult;
 
     public:
         /**
@@ -120,12 +145,11 @@ class Client
         ~Client();
 
         /**
-         * @var response 
-         * @brief 클라이언트에게 전송할 최종 HTTP 응답 메세지를 담는 임시 문자열
-         * 
-         * CGI 프로세스의 실행 결과(파이프 출력을 통해 읽어온 데이터)를 조립하여 저장하는 데 사용됩니다.
-         * 
-         * 차후에 response 빌더가 완성이 되면 수정해야함
+         * @var response
+         * @brief 클라이언트에게 전송할 최종 HTTP 응답 메세지를 담는 문자열
+         *
+         * STATIC/REDIRECT/ERROR/CGI 처리 결과를 Response::toString()으로 직렬화한 값이 저장되며,
+         * serverSend()가 이 버퍼를 그대로 소켓에 씁니다.
         */
         std::string response;
 
@@ -143,7 +167,7 @@ class Client
         /**
          * @brief 이 클라이언트의 cgi가 실행이 가능한지 확인하는 함수
         */
-        bool checkRunCgi(LocationConfig config);
+        bool checkRunCgi(const LocationConfig &config, const std::string &resolvedPath, bool &notFound);
 
         bool getRunCgi();
 
@@ -172,6 +196,11 @@ class Client
          * @return 2(RET_RE) 아직 읽을 데이터가 남아있음, 또는 EOF 후 자식이 아직 reap되지 않아 재시도 필요
          */
         RetStatus readCgiPipe(void);
+
+        /**
+         * @brief CGI 파이프 읽기 실패/타임아웃 시 누적 중이던 raw stdout 버퍼를 비우는 함수
+         */
+        void clearCgiRawOutput(void);
 
         void setRunCgi(bool value);
         /**
@@ -207,6 +236,17 @@ class Client
          * 요청 파싱 결과에 따라 200 OK, 400 Bad Request 등 클라이언트의 현재 요청 상태를 기록합니다.
          */
         void setStatusCode(int statusCode);
+
+        /**
+         * @brief 요청 파싱이 끝나기 전에 서버가 강제로 요청의 상태를 확정할 때 쓰는 함수
+         *
+         * readTimeout 등으로 요청을 끝까지 받지 못한 채 응답을 보내야 할 때 사용합니다.
+         * clientResponse가 STATUS_UNDEFINED 여부로 라우팅 필요 유무를 판단하므로, 이 함수로
+         * request.status를 채워 라우팅 없이 바로 에러 응답이 만들어지도록 하고, 이후 keep-alive를
+         * 이어가지 않도록 shouldClose도 함께 true로 설정합니다.
+         * @param status 확정할 상태 코드 (ex: STATUS_REQUEST_TIMEOUT)
+         */
+        void setRequestStatus(int status);
 
         /**
          * @brief recv로 수신된 데이터를 버퍼(recDq<char> 디큐)에 추가하는 함수
@@ -267,18 +307,38 @@ class Client
         bool getShouldClose() const;
 
         /**
+         * @brief 이 클라이언트가 속한 리스닝 소켓의 ServerConfig에서 조회한 client_max_body_size를
+         * 요청 파서에 반영하는 함수
+         * @param length 허용할 최대 body 길이(바이트)
+         */
+        void setMaxBodyLength(size_t length);
+
+        /**
+         * @brief clientRequest 단계에서 계산된 라우팅 결과(RouteResult)를 저장하는 함수
+         * @param result Router::route()가 반환한 라우팅 결과
+         */
+        void setRouteResult(const RouteResult &result);
+
+        /**
+         * @brief clientRequest 단계에서 저장해둔 라우팅 결과(RouteResult)를 반환하는 함수
+         * @return clientResponse에서 분기 처리에 사용할 RouteResult 참조
+         */
+        const RouteResult &getRouteResult() const;
+
+        /**
          * @brief keep-alive 연결에서 응답 송신 완료 후 다음 요청을 받기 위해 상태를 초기화하는 함수
          *
          * recDq(수신 버퍼)는 파이프라이닝된 다음 요청의 데이터가 남아있을 수 있으므로 비우지 않고,
          * 직전 요청에 대한 정보인 request와 statusCode만 초기화합니다. (parser는 onReceive에서 이미 clear됨)
+         * routeResult도 이전 요청의 라우팅 결과가 다음 요청에 잘못 사용되지 않도록 함께 초기화합니다.
          */
         void resetForNextRequest();
 
         /**
-         * @var cgiResponse
-         * @brief CGI stdout을 파싱한 결과(상태 코드, 헤더, 바디)를 담는 구조체
-        */
-        Response cgiResponse;
+         * @brief readCgiPipe()가 파싱해둔 CGI 응답(상태 코드, 헤더, 바디)을 반환하는 함수
+         * @return clientResponse에서 ACTION_CGI 분기 처리에 사용할 Response 참조
+         */
+        const Response &getCgiResponse() const;
 };
 
 
