@@ -9,6 +9,7 @@
 #include <sstream>
 #include <cctype>
 #include <algorithm>
+#include <ctime>
 
 /**
  * @brief HTTP 헤더 필드명은 대소문자를 구분하지 않으므로(RFC 7230 §3.2),
@@ -52,6 +53,19 @@ struct Response
 		statusCode(code), statusText(HttpUtils::getStatusText(code))
 	{}
 
+	/**
+	 * @brief 현재 시각을 RFC 7231 IMF-fixdate 형식("Sun, 06 Nov 1994 08:49:37 GMT")으로 반환
+	 */
+	static std::string httpDate()
+	{
+		std::time_t now = std::time(NULL);
+		std::tm tmResult;
+		gmtime_r(&now, &tmResult);
+		char buf[30];
+		std::strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", &tmResult);
+		return std::string(buf);
+	}
+
 	std::string toString(bool shouldClose) const
 	{
 		HeaderMap outHeaders = headers;
@@ -65,6 +79,10 @@ struct Response
 		}
 		if (shouldClose)
 			outHeaders["Connection"] = "close";
+		else
+			outHeaders["Connection"] = "keep-alive";
+		outHeaders["Date"] = httpDate();
+		outHeaders["Server"] = "webserv/1.0";
 
 		std::ostringstream oss;
 		oss << "HTTP/1.1 " << static_cast<int>(statusCode) << " " << statusText << "\r\n";

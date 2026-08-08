@@ -111,5 +111,8 @@ Response CgiParser::parseCgiOutput(const std::string& cgiOutput)
 			response.headers[key] = value;
 	}
 
+	if (!response.body.empty() && response.headers.find("Content-Type") == response.headers.end())
+		return Response(STATUS_BAD_GATEWAY);
+
 	return response;
 }
