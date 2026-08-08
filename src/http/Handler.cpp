@@ -95,7 +95,11 @@ namespace
 
 	std::string extractBoundary(const std::string& contentType)
 	{
-		size_t pos = contentType.find("boundary=");
+		std::string lowerType = contentType;
+		for (size_t i = 0; i < lowerType.size(); ++i)
+			lowerType[i] = std::tolower(static_cast<unsigned char>(lowerType[i]));
+
+		size_t pos = lowerType.find("boundary=");
 		if (pos == std::string::npos)
 			return "";
 		pos += 9;
