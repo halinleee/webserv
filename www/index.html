@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
+<div class="ocean-bg" id="oceanBg"></div>
 <header>
     <a href="/">게시판</a>
     <nav><a href="/upload.html">글쓰기</a></nav>
@@ -36,5 +37,6 @@ fetch('/data/posts.json')
         document.getElementById('empty-msg').style.display = 'block';
     });
 </script>
+<script src="/assets/bubbles.js"></script>
 </body>
 </html>
