@@ -42,6 +42,6 @@ X-Current-Time: 2026-06-28 19:25:53\r\n
 6. Status면 statusCode/statusText 설정 [v]
 7. 그 외 헤더는 Response 헤더에 저장 [v]
 8. Status가 없으면 200 OK 적용 [v]
-9. Content-Length 계산 -> response.body.size()
+9. Content-Length는 Response::toString()에서 항상 body.size() 기준으로 재계산됨 (CgiParser는 관여하지 않음)
 10. 최종 HTTP Response 생성
 */

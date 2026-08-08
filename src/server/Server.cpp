@@ -4,6 +4,7 @@
 #include "Response.hpp"
 #include "Router.hpp"
 #include "Handler.hpp"
+#include <cctype>
 
 Server::Server(char **envp) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue() {}
 
@@ -216,8 +217,15 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
     {
         ServerConfig &config = this->configs[client->getListenFd()];
         Response errPage = Handler::buildErrorPage(res.statusCode, config.getErrorPages());
-        for (std::map<std::string, std::string>::const_iterator it = res.headers.begin(); it != res.headers.end(); ++it)
+        for (Response::HeaderMap::const_iterator it = res.headers.begin(); it != res.headers.end(); ++it)
+        {
+            std::string lowerKey = it->first;
+            for (size_t i = 0; i < lowerKey.size(); ++i)
+                lowerKey[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(lowerKey[i])));
+            if (lowerKey == "content-type")
+                continue;
             errPage.headers[it->first] = it->second;
+        }
         res = errPage;
     }
     response = res.toString(client->getShouldClose());

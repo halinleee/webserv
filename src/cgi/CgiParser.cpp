@@ -105,16 +105,12 @@ Response CgiParser::parseCgiOutput(const std::string& cgiOutput)
 		if (!cgiParseKeyValue(lines[i], key, value))
 			return Response(STATUS_BAD_GATEWAY);
 
-		std::map<std::string, std::string>::iterator it = response.headers.find(key);
+		Response::HeaderMap::iterator it = response.headers.find(key);
 		if (it != response.headers.end())
 			it->second = it->second + ", " + value;
 		else
 			response.headers[key] = value;
 	}
-
-	std::ostringstream oss;
-	oss << response.body.size();
-	response.headers["content-length"] = oss.str();
 
 	return response;
 }

@@ -91,6 +91,11 @@ void Cgi::envAppend(Client *client, EnvMap &envp, Request request, const std::st
         ss << request.contentLength;
         envp["CONTENT_LENGTH"] = ss.str();
     }
+    else if (request.isChunked)
+    {
+        ss << request.body.size();
+        envp["CONTENT_LENGTH"] = ss.str();
+    }
 
     std::map<std::string, std::string>::const_iterator it = request.headers.find("content-type");
     if (it != request.headers.end())

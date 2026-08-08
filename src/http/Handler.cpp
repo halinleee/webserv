@@ -119,10 +119,6 @@ namespace
 	{
 		res.body = body;
 		res.headers["Content-Type"] = contentType;
-
-		std::ostringstream oss;
-		oss << res.body.size();
-		res.headers["Content-Length"] = oss.str();
 	}
 
 	bool readFile(const std::string& path, std::string& result, int& errOut)
@@ -411,7 +407,7 @@ Response Handler::buildErrorPage(Status code, const std::map<size_t, std::string
 	std::map<size_t, std::string>::const_iterator it = errorPages.find(static_cast<size_t>(code));
 	if (it != errorPages.end() && readFile(it->second, body, err))
 	{
-		setBody(res, body, "text/html");
+		setBody(res, body, HttpUtils::getMimeType(it->second));
 		return res;
 	}
 
