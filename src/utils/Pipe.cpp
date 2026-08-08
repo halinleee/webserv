@@ -1,4 +1,5 @@
 #include "Pipe.hpp"
+
 #include <fcntl.h>
 
 Pipe::Pipe()

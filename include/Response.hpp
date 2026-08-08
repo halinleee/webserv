@@ -1,13 +1,14 @@
 #ifndef RESPONSE_HPP
 #define RESPONSE_HPP
 
+#include "type.hpp"
+#include "HttpUtils.hpp"
+
 #include <string>
 #include <map>
 #include <sstream>
 #include <cctype>
 #include <algorithm>
-#include "type.hpp"
-#include "HttpUtils.hpp"
 
 /**
  * @brief HTTP 헤더 필드명은 대소문자를 구분하지 않으므로(RFC 7230 §3.2),

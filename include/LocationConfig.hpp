@@ -2,6 +2,7 @@
 #define LOCATIONCONFIG_HPP
 
 #include "type.hpp"
+
 #include <iosfwd>
 #include <string>
 #include <vector>

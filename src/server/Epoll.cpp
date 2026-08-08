@@ -1,6 +1,7 @@
-
 #include "Epoll.hpp"
-#include "main.hpp"
+#include "type.hpp"
+
+#include <unistd.h>
 
 /**
  * @brief Epoll 객체 생성자. epoll 인스턴스를 생성합니다.

@@ -1,6 +1,7 @@
 #include "ServerConfig.hpp"
 #include "ConfigParseUtils.hpp"
 #include "type.hpp"
+
 #include <fstream>
 
 void ServerConfig::setPrefixes(void)

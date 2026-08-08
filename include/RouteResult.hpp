@@ -2,6 +2,7 @@
 #define ROUTERESULT_HPP
 
 #include "type.hpp"
+
 #include <string>
 #include <set>
 

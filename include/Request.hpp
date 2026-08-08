@@ -1,10 +1,11 @@
 #ifndef REQUEST_HPP
 #define REQUEST_HPP
 
+#include "type.hpp"
+
 #include <string>
 #include <map>
 #include <netinet/in.h>
-#include "type.hpp"
 
 struct Request
 {

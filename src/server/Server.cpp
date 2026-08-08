@@ -1,10 +1,14 @@
 #include "Server.hpp"
 #include "Pipe.hpp"
-#include "main.hpp"
 #include "Response.hpp"
 #include "Router.hpp"
 #include "Handler.hpp"
+
 #include <cctype>
+#include <csignal>
+#include <iostream>
+#include <sys/socket.h>
+#include <unistd.h>
 
 Server::Server(char **envp) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue() {}
 

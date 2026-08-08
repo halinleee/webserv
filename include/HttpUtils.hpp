@@ -2,6 +2,7 @@
 #define HTTPUTILS_HPP
 
 #include "type.hpp"
+
 #include <string>
 
 namespace HttpUtils

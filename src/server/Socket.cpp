@@ -1,5 +1,7 @@
 #include "Socket.hpp"
-#include "main.hpp"
+
+#include <cstring>
+#include <unistd.h>
 
 Socket::Socket()
 {

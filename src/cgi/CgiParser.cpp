@@ -1,5 +1,4 @@
 #include "CgiParser.hpp"
-#include <sstream>
 
 bool isStatusLine(const std::string& line)
 {
