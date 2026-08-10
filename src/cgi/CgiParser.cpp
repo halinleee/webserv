@@ -55,7 +55,6 @@ bool cgiParseKeyValue(const std::string& line, std::string& key, std::string& va
 	{
 		unsigned char c = static_cast<unsigned char>(key[i]);
 		if (!HttpUtils::isTchar(c)) return false;
-		key[i] = std::tolower(c);
 	}
 
 	value = line.substr(colon + 1);
