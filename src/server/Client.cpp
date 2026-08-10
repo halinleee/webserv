@@ -88,14 +88,10 @@ RetStatus Client::checkCgiExited(void)
     {
         if (WEXITSTATUS(status) == 0)
             return RET_OK;
-        std::cout << "cgi exited with code " << WEXITSTATUS(status) << std::endl;
         return RET_ERROR;
     }
     if (WIFSIGNALED(status))
-    {
-        std::cout << "cgi killed by signal " << WTERMSIG(status) << std::endl;
         return RET_ERROR;
-    }
     return RET_ERROR;
 }
 

@@ -8,11 +8,13 @@
 #include "Client.hpp"
 #include "Cgi.hpp"
 #include "ServerConfig.hpp"
+#include "Logger.hpp"
 
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <algorithm>
+#include <arpa/inet.h>
 #include <map>
 #include <vector>
 
@@ -324,6 +326,8 @@ class Server
          * @return epoll 등록 실패 시 RET_ERROR, 그 외 RET_OK
          */
         RetStatus readTimeoutAbort(Epoll &epoll, Client *client);
+
+        std::string buildAccessLog(Client *client, Status statusCode, size_t bodySize) const;
 };
 
 #endif

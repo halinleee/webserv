@@ -41,3 +41,6 @@
 *.dwo
 
 Webserver
+
+# Logs
+*.log
