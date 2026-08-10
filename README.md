@@ -9,9 +9,11 @@ webserv/
 │   ├── server/
 │   ├── http/
 │   ├── config/
+│   ├── cgi/
 │   └── utils/
 ├── include/
-├── config/
+├── www/
+├── webserv.conf
 ├── tests/
 ├── Makefile
 └── README.md

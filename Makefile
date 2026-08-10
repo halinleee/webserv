@@ -1,6 +1,6 @@
 CC          = c++
 CXXFLAGS    = -Wall -Wextra -Werror -g -std=c++98
-NAME        = Webserver
+NAME        = webserv
 INCLUDES    = -I./include
 
 OBJS_DIR    = ./obj
