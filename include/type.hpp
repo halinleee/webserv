@@ -85,6 +85,18 @@ enum ReqParseResult
 };
 
 /**
+ * @brief 요청 처리 실패를 확정할 때(Client::fail) 연결을 유지할지 끊을지 지정하는 열거형
+ *
+ * @var FAIL_KEEP_ALIVE 요청 자체는 온전히 받았고 연결을 재사용해도 되는 경우 (404, 403, 502 등)
+ * @var FAIL_CLOSE 요청 스트림이 깨져 다음 요청 경계를 신뢰할 수 없는 경우 (파싱 에러, 타임아웃)
+ */
+enum FailMode
+{
+    FAIL_KEEP_ALIVE,
+    FAIL_CLOSE
+};
+
+/**
  * @brief HTTP 요청의 메소드를 구분하는 열거형
  * 
  * @note 서버에서 구현하는 메소드는 GET, POST, DELETE

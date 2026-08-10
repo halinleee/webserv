@@ -264,9 +264,10 @@ class Server
         std::string getResponse(void);
 
         /**
-         * @brief error가 발생했을때 client의 statuscode를 수정하고 epollOut을 활성화하는 함수
+         * @brief error가 발생했을때 Client::fail로 에러 응답을 확정하고 epollOut을 활성화하는 함수
+         * @param mode 연결을 재사용해도 되면 FAIL_KEEP_ALIVE, 요청 스트림이 깨졌으면 FAIL_CLOSE
          */
-        RetStatus errorHandling(Client *client, Epoll &eopll, int statusCode);
+        RetStatus errorHandling(Client *client, Epoll &eopll, int statusCode, FailMode mode);
 
         /**
          * @brief epollControl 실패를 한 곳(로그)에서 처리하기 위한 순수 wrapper 함수
@@ -304,10 +305,10 @@ class Server
          *
          * checkTimeOutClient에서 getRunCgi()가 true인 클라이언트가 타임아웃되면 호출된다.
          * 자식 프로세스를 강제 종료/회수하고, 열려 있는 파이프 fd를 epoll/pipeToClientMap에서
-         * 정리한 뒤 request.status를 504(Gateway Timeout)로 설정해(setRequestStatus) clientResponse가
-         * html body가 있는 에러 응답을 만들고 연결을 닫도록 하고, 클라이언트 소켓을 EPOLLOUT으로
-         * 전환한다. CGI는 서버 입장에서 upstream 프로세스이므로, 클라이언트 요청 자체의 지연을
-         * 뜻하는 408이 아니라 504가 맞는 코드다.
+         * 정리한 뒤 Client::fail(504, FAIL_CLOSE)로 에러 응답을 확정하고 클라이언트 소켓을
+         * EPOLLOUT으로 전환한다. 요청을 처리하다 중단된 상태라 연결은 닫는다.
+         * CGI는 서버 입장에서 upstream 프로세스이므로,
+         * 클라이언트 요청 자체의 지연을 뜻하는 408이 아니라 504가 맞는 코드다.
          * @return epoll 등록 실패 시 RET_ERROR, 그 외 RET_OK
          */
         RetStatus cgiTimeoutAbort(Epoll &epoll, Client *client);
@@ -317,10 +318,11 @@ class Server
          *
          * checkTimeOutClient에서 getRunCgi()가 false이고 아직 응답을 보내기 전(response가 비어있는)
          * 클라이언트가 타임아웃되면 호출된다. 요청 파싱이 끝나지 않아 RouteResult가 아직 계산되지
-         * 않았으므로, request.status를 STATUS_REQUEST_TIMEOUT으로 설정해 clientResponse가 라우팅을
-         * 거치지 않고 바로 에러 응답을 만들도록 하고, 클라이언트 소켓을 EPOLLOUT으로 전환한다.
-         * cgiTimeoutAbort와 마찬가지로 keepAliveTimeout으로 데드라인을 다시 미뤄, 408 응답이
-         * 전송되기 전에 checkTimeOutClient가 같은 클라이언트를 매 스윕마다 재호출하는 것을 막는다.
+         * 않았으므로(기본값 action=ACTION_ERROR, errorCode=0), Client::fail(408, FAIL_CLOSE)로
+         * 라우팅을 거치지 않고 바로 408 에러 응답을 만들도록 하고 클라이언트 소켓을 EPOLLOUT으로
+         * 전환한다. 요청을 끝까지 받지 못해 스트림 경계를 신뢰할 수 없으므로 연결은 닫는다.
+         * cgiTimeoutAbort와 마찬가지로 keepAliveTimeout으로 데드라인을 다시 미뤄, 408
+         * 응답이 전송되기 전에 checkTimeOutClient가 같은 클라이언트를 매 스윕마다 재호출하는 것을 막는다.
          * @return epoll 등록 실패 시 RET_ERROR, 그 외 RET_OK
          */
         RetStatus readTimeoutAbort(Epoll &epoll, Client *client);
