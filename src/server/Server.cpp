@@ -618,6 +618,7 @@ RetStatus Server::cgiTimeoutAbort(Epoll &epoll, Client *client)
     client->fail(STATUS_GATEWAY_TIMEOUT, FAIL_CLOSE);
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
         return RET_ERROR;
+    client->timeSet(this->timeOutValue.keepAliveTimeout);
     return RET_OK;
 }
 
