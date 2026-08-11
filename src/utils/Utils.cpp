@@ -49,6 +49,7 @@ bool nonblockingSet(int fd)
         std::cerr << " Server::nonblockingSet: fcntl(F_GETFL) 실패 " << std::endl;
         return RET_ERROR;
     }
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
     return RET_OK;
 }
 

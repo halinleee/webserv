@@ -45,8 +45,15 @@ pid_t Cgi::excute(Client *client, EnvMap envp, int *in, int *out)
         envAppend(client, envp, request, path);
         env = mapToEnvp(envp);
         std::string cgiPath = client->getRouteResult().resolvedPath;
+        size_t lastSlash = cgiPath.find_last_of('/');
+        std::string scriptFile = cgiPath;
+        if (lastSlash != std::string::npos)
+        {
+            chdir(cgiPath.substr(0, lastSlash).c_str());
+            scriptFile = cgiPath.substr(lastSlash + 1);
+        }
         cmd[0] = const_cast<char *>(this->cgiLocation.getCgiPath().c_str());
-        cmd[1] = const_cast<char *>(cgiPath.c_str());
+        cmd[1] = const_cast<char *>(scriptFile.c_str());
         cmd[2] = NULL;
         if (execve(cmd[0], cmd, env) < 0)
         {
@@ -76,6 +83,7 @@ void Cgi::envAppend(Client *client, EnvMap &envp, Request request, const std::st
     envp["REQUEST_METHOD"] = methodToString(request.method);
     envp["QUERY_STRING"] = request.query;
     envp["SERVER_PROTOCOL"] = "HTTP/1.1";
+    envp["SERVER_SOFTWARE"] = "webserv/1.0";
     envp["GATEWAY_INTERFACE"] = "CGI/1.1";
     envp["SERVER_NAME"] = request.host;
     envp["REMOTE_ADDR"] = inet_ntoa(client->getSocket().getAddr().sin_addr);
@@ -100,10 +108,32 @@ void Cgi::envAppend(Client *client, EnvMap &envp, Request request, const std::st
     std::map<std::string, std::string>::const_iterator it = request.headers.find("content-type");
     if (it != request.headers.end())
         envp["CONTENT_TYPE"] = it->second;
+
+    for (it = request.headers.begin(); it != request.headers.end(); ++it)
+    {
+        if (it->first == "content-type" || it->first == "content-length"
+            || it->first == "transfer-encoding" || it->first == "authorization")
+            continue;
+        envp[changeHeaderEnvkey(it->first)] = it->second;
+    }
 }
 
 void Cgi::pipeClose(int *pipe)
 {
     close(pipe[0]);
     close(pipe[1]);
+}
+
+std::string Cgi::changeHeaderEnvkey(std::string name)
+{
+    std::string key = "HTTP_";
+    for (std::string::const_iterator it = name.begin(); it != name.end(); ++it) 
+    {
+        unsigned char c = *it;
+        if (!std::isalnum(c))
+            key += '_';
+        else
+            key += std::toupper(c);
+    }
+    return key;
 }

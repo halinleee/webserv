@@ -92,7 +92,7 @@ class Server
          * 서버 초기화 단계에서 메모리를 확보하고 envp를 맵 형태로 변환하여 보관합니다.
          * @param envp 메인 함수에서 전달받은 환경변수
          */
-        Server(char **envp);
+        Server();
 
         /**
          * @brief Client 맵과 serverSocket으로 할당받은 자원회수
@@ -326,6 +326,8 @@ class Server
          * @return epoll 등록 실패 시 RET_ERROR, 그 외 RET_OK
          */
         RetStatus readTimeoutAbort(Epoll &epoll, Client *client);
+
+        bool checkMemoryLimit(Client *client);
 
         std::string buildAccessLog(Client *client, Status statusCode, size_t bodySize) const;
 };

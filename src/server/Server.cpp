@@ -6,7 +6,7 @@
 #include "Handler.hpp"
 #include <cctype>
 
-Server::Server(char **envp) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue() {}
+Server::Server() : serverActive(true), client(8192, NULL), env(), timeOutValue() {}
 
 Server::~Server()
 {
@@ -504,7 +504,7 @@ void Server::checkTimeOutClient(Epoll &epoll, int &index)
             this->inClientVec.erase(this->inClientVec.begin() + index);
             numClient = static_cast<int>(this->inClientVec.size());
         }
-        else if (this->client[fd]->checkAlive())
+        else if (this->client[fd]->checkAlive() || checkMemoryLimit(this->client[fd]))
         {
             if (this->client[fd]->getRunCgi() && cgiTimeoutAbort(epoll, this->client[fd]))
                 index++;
@@ -650,6 +650,30 @@ std::string Server::buildAccessLog(Client *client, Status statusCode, size_t bod
         userAgent = it->second;
     line << "\"" + referer + "\" \"" + userAgent + "\"";
     return line.str();
+}
+
+bool Server::checkMemoryLimit(Client *client)
+{
+    if (!client->getRunCgi())
+        return false;
+    char buf[4096];
+    std::ostringstream path;
+    path << "/proc/" << client->getPid() << "/status";
+    FD statusFile = open(path.str().c_str(), O_RDONLY);
+    if (statusFile < 0)
+        return false;
+    ssize_t n = read(statusFile, buf, sizeof(buf) - 1);
+    close(statusFile);
+    if (n <= 0)
+        return false;
+    buf[n] = '\0';
+    std::string statusContent(buf);
+    size_t pos = statusContent.find("VmRSS:");
+    if (pos == std::string::npos) return false;
+
+    size_t kb = 0;
+    std::istringstream(statusContent.substr(pos + 6)) >> kb;
+    return kb > 65536;
 }
 
 void Server::serverClose()

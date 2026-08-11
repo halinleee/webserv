@@ -9,6 +9,7 @@
 Epoll::Epoll() 
 {
     this->epollFd = epoll_create(8192);
+    fcntl(epollFd, F_SETFD, FD_CLOEXEC);
 }
 
 /**

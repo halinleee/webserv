@@ -14,7 +14,7 @@ static void sigIntHandler(int signum)
     std::cout << "Server Close" << std::endl;
 }
 
-int main(int ac, char **av, char **envp)
+int main(int ac, char **av)
 {
     Config config;
     if (!config.parseConfig(ac, av))
@@ -22,10 +22,10 @@ int main(int ac, char **av, char **envp)
         std::cerr << config.getStatusMessage() << std::endl;
         return 1;
     }
-    Server server(envp);
+    Server server;
     Epoll epoll;
     serverPointer = &(server);
-  
+
     signal(SIGINT, sigIntHandler);
     signal(SIGPIPE, SIG_IGN);
     if (epoll.getEpollFd() == -1)
