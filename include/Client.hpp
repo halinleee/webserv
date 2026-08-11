@@ -304,6 +304,17 @@ class Client
         bool getShouldClose() const;
 
         /**
+         * @brief recv()가 EOF(0)를 반환했을 때, 완료되지 못한 요청이 남아있었는지 확인하는 함수
+         *
+         * 파서가 아직 start-line 이후 단계까지 진행됐거나(REQ_HEADERS/REQ_BODY),
+         * start-line 단계라도 recDq에 미완성 바이트가 남아있다면 클라이언트가 요청을
+         * 다 보내지 않고 연결을 끊은 것으로 판단한다. 순수하게 keep-alive 상태로
+         * 다음 요청을 기다리기만 하던 idle 연결의 정상 종료와 구분하기 위해 사용한다.
+         * @return 미완성 요청이 남아있으면 true
+         */
+        bool hasIncompleteRequest() const;
+
+        /**
          * @brief 이 클라이언트가 속한 리스닝 소켓의 ServerConfig에서 조회한 client_max_body_size를
          * 요청 파서에 반영하는 함수
          * @param length 허용할 최대 body 길이(바이트)

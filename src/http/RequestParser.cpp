@@ -486,3 +486,4 @@ ReqParseResult RequestParser::getState() const
 	return REQ_PARSE_ERROR;
 }
 Request RequestParser::getRequest() const { return parsedReq; }
+bool RequestParser::isIdle() const { return parseState == REQ_STARTLINE; }

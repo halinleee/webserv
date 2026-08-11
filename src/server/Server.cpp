@@ -110,13 +110,11 @@ RetStatus Server::clientLoop(Epoll &epoll, FD currentFd, u_int32_t currentEvent)
         }
         if (currentEvent & EPOLLIN)
         {
-            std::cout << currentFd << "EPOLL_IN" << std::endl;
             if (!clientRequest(epoll, this->client[currentFd]))
                 std::cerr << "clientRequest Error" << std::endl;
         }
         if (currentEvent & EPOLLOUT)
         {
-            std::cout << currentFd << "EPOLL_OUT" << std::endl;
             if (!clientResponse(epoll, this->client[currentFd]))
                 std::cerr << "clientResponse Error" << std::endl;
         }
@@ -141,7 +139,6 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
     }
     if (currentEvent & EPOLLIN || currentEvent & EPOLLHUP)
     {
-        std::cout << "pipe Read in" << std::endl;
         if (!cgiPipeRead(epoll, pipeClient))
         {
             reapCgiChild(pipeClient->getPid());
@@ -157,7 +154,6 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
     }
     if (currentEvent & EPOLLOUT)
     {
-        std::cout << "pipe Write in" << std::endl;
         if (!cgiPipeWrite(epoll, pipeClient))
         {
             reapCgiChild(pipeClient->getPid());
@@ -249,7 +245,6 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
     if (sendStatus == RET_RE) {return RET_OK;}
     if (client->getShouldClose())
     {
-        std::cout << "클라이언트 연결 종료 : Client["<< client->getSocket().getFd() << "]" << std::endl;
         epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client);
         drainSocket(client->getSocket().getFd());
         deleteClient(client->getSocket().getFd());
@@ -273,7 +268,6 @@ RetStatus Server::serverSend(Epoll &epoll, Client *client)
         client->resetForNextRequest();
         return (RET_OK);
     }
-    std::cout << "클라이언트 연결 유지 : Client["<< client->getSocket().getFd() << "]" << std::endl;
     client->addSentOffset(length);
     return (RET_RE);
 }
@@ -327,7 +321,6 @@ RetStatus Server::clientAccept(Epoll &epoll, Socket *socket)
         return RET_ERROR;
     }
     tmpSocket->setTimeStatus(this->timeOutValue.connectionTimeOut);
-    std::cout << "Client " << tmpFd <<"(" << tmpSocket->getAddr().sin_addr.s_addr << ") port " << tmpSocket->getAddr().sin_port << " " << std::endl;
     if (tmpFd >= 8192)
     {
         Client *client = new Client(tmpSocket, this->env);
@@ -363,7 +356,10 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
     }
     else if (length == 0)
     {
-        std::cout << "클라이언트 정상 종료 : Client["<< client->getSocket().getFd() << "]" << std::endl;
+        if (client->hasIncompleteRequest())
+        {
+            return errorHandling(client, epoll, STATUS_BAD_REQUEST, FAIL_CLOSE);
+        }
         epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client);
         this->deleteClient(client->getSocket().getFd());
         return RET_OK;
@@ -371,7 +367,6 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
     else
     {
         received[length] = '\0';
-        std::cout << "클라이언트 연결 : Client["<< client->getSocket().getFd() << "]" << std::endl;
         client->CharDqAppend(length, received);
         client->setMaxBodyLength(config.getClientMaxBodySize());
         ReqParseResult ret = client->onReceive();
@@ -448,7 +443,6 @@ RetStatus Server::cgiRun(Epoll &epoll, Client *client)
 
 RetStatus Server::cgiPipeRead(Epoll &epoll, Client *client)
 {
-    std::cout << "Pipe Read : Client[" << client->getSocket().getFd() << "]" << std::endl;
     int status = client->readCgiPipe();
     if (status == RET_ERROR) //cgi문제로 인한 오류 routing
     {
@@ -474,7 +468,6 @@ RetStatus Server::cgiPipeRead(Epoll &epoll, Client *client)
 
 RetStatus Server::cgiPipeWrite(Epoll &epoll, Client *client)
 {
-    std::cout << "Pipe Write : Client[" << client->getSocket().getFd() << "]" << std::endl;
     int status = client->writeCgiPipe();
     if (status == RET_ERROR)
     {
@@ -513,26 +506,22 @@ void Server::checkTimeOutClient(Epoll &epoll, int &index)
         {
             if (this->client[fd]->getRunCgi() && cgiTimeoutAbort(epoll, this->client[fd]))
             {
-                std::cout << "cgi timeout abort [" << fd << "]" << std::endl;
                 index++;
             }
             else if (!this->client[fd]->response.empty())
             {
                 // write_timeout: 이미 응답을 보내다 멈춘 클라이언트는 쓰기 방향 자체가 막힌 것이므로
                 // 에러 페이지를 새로 만들어 봐야 전달되지 않는다. 재시도 없이 바로 종료한다.
-                std::cout << "write timeout delete [" << fd << "]" << std::endl;
                 epollGuard(epoll, EPOLL_CTL_DEL, fd, 0, this->client[fd]);
                 deleteClient(fd);
                 numClient = static_cast<int>(this->inClientVec.size());
             }
             else if (readTimeoutAbort(epoll, this->client[fd]))
             {
-                std::cout << "read timeout abort [" << fd << "]" << std::endl;
                 index++;
             }
             else
             {
-                std::cout << "timeout delete [" << fd << "]" << std::endl;
                 epollGuard(epoll, EPOLL_CTL_DEL, fd, 0, this->client[fd]);
                 deleteClient(fd);
                 numClient = static_cast<int>(this->inClientVec.size());
