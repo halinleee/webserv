@@ -211,6 +211,8 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
                         if (!allow.empty())
                             allow += ", ";
                         allow += HttpUtils::getMethodName(*it);
+                        if (*it == METHOD_GET)
+                            allow += ", HEAD";
                     }
                     res.headers["Allow"] = allow;
                 }
@@ -234,7 +236,7 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
             }
             res = errPage;
         }
-        response = res.toString(client->getShouldClose());
+        response = res.toString(client->getShouldClose(), client->getRequest().method != METHOD_HEAD);
 
         client->response = response;
     }

@@ -145,7 +145,8 @@ bool RequestParser::parseMethod(const std::string& method)
 	if (method == "GET") { parsedReq.method = METHOD_GET; return true; }
 	if (method == "POST") { parsedReq.method = METHOD_POST; return true; }
 	if (method == "DELETE") { parsedReq.method = METHOD_DELETE; return true; }
-	if (method == "PUT" || method == "HEAD" || method == "PATCH" || 
+	if (method == "HEAD") { parsedReq.method = METHOD_HEAD; return true; }
+	if (method == "PUT" || method == "PATCH" ||
 		method == "TRACE" || method == "OPTIONS" || method == "CONNECT")
 		{ parsedReq.status = STATUS_NOT_IMPLEMENTED; parsedReq.method = METHOD_INVALID; return false; }
 	parsedReq.status = STATUS_BAD_REQUEST;

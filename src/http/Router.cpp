@@ -28,8 +28,11 @@ bool Router::checkRedirect(const LocationConfig& loc, RouteResult& result)
 bool Router::checkMethod(const LocationConfig& loc, HttpMethod method, RouteResult& result)
 {
 	const std::set<HttpMethod>& methods = loc.getMethods();
+	// HEAD는 GET과 동일한 핸들러(Handler::serve)로 처리되므로, GET이 허용된 위치는
+	// HEAD도 암묵적으로 허용한다 (RFC 7231 §4.3.2).
+	HttpMethod effective = (method == METHOD_HEAD) ? METHOD_GET : method;
 
-	if (methods.find(method) != methods.end())
+	if (methods.find(effective) != methods.end())
 		return true;
 
 	result.action = ACTION_ERROR;
