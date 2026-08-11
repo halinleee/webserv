@@ -1,5 +1,6 @@
 #include "LocationConfig.hpp"
 #include "ConfigParseUtils.hpp"
+
 #include <fstream>
 
 bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)

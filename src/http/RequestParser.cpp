@@ -1,6 +1,7 @@
 #include "RequestParser.hpp"
 #include "HttpUtils.hpp"
 #include "type.hpp"
+
 #include <string>
 #include <algorithm>
 #include <sstream>
@@ -121,18 +122,18 @@ bool RequestParser::parseStartline(CharDq& buf)
 {
 	HttpUtils::consumeLeadingCRLF(buf, MAX_LEADING_BLANK_LINES);
 
-	if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
+	if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 
 	size_t crlf = HttpUtils::findCRLF(buf);
 	if (crlf == HttpUtils::npos)
 	{
-		if (buf.size() > MAX_STARTLINE_LENGTH) { statusCode = STATUS_BAD_REQUEST; return true; }
+		if (buf.size() > MAX_STARTLINE_LENGTH) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 		return false;
 	}
-	if (crlf > MAX_STARTLINE_LENGTH) { statusCode = STATUS_BAD_REQUEST; return true; }
+	if (crlf > MAX_STARTLINE_LENGTH) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 	std::string startLine = HttpUtils::extractLine(buf, crlf, 2);
 
-	if (!splitStartline(startLine, tmpReqLine)) { statusCode = STATUS_BAD_REQUEST; return true;	}
+	if (!splitStartline(startLine, tmpReqLine)) { parsedReq.status = STATUS_BAD_REQUEST; return true;	}
 
 	if (!parseMethod(tmpReqLine.method) || !parseURI(tmpReqLine.target) || !parseVersion(tmpReqLine.version))
 		return true;
@@ -146,29 +147,29 @@ bool RequestParser::parseMethod(const std::string& method)
 	if (method == "DELETE") { parsedReq.method = METHOD_DELETE; return true; }
 	if (method == "PUT" || method == "HEAD" || method == "PATCH" || 
 		method == "TRACE" || method == "OPTIONS" || method == "CONNECT")
-		{ statusCode = STATUS_NOT_IMPLEMENTED; parsedReq.method = METHOD_INVALID; return false; }
-	statusCode = STATUS_BAD_REQUEST;
+		{ parsedReq.status = STATUS_NOT_IMPLEMENTED; parsedReq.method = METHOD_INVALID; return false; }
+	parsedReq.status = STATUS_BAD_REQUEST;
 	parsedReq.method = METHOD_INVALID;
 	return false;
 }
 bool RequestParser::parseURI(const std::string& target)
 {
-	if (target.empty() || target[0] != '/') { statusCode = STATUS_BAD_REQUEST; return false; }
-	if (std::count(target.begin(), target.end(), '?') > 1) { statusCode = STATUS_BAD_REQUEST; return false; }
-	if (target.size() > MAX_URI_LENGTH) { statusCode = STATUS_URI_LONG; return false; }
+	if (target.empty() || target[0] != '/') { parsedReq.status = STATUS_BAD_REQUEST; return false; }
+	if (std::count(target.begin(), target.end(), '?') > 1) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
+	if (target.size() > MAX_URI_LENGTH) { parsedReq.status = STATUS_URI_LONG; return false; }
 
 	for(std::string::const_iterator it = target.begin(); it != target.end(); ++it)
 	{
 		unsigned char c = *it;
-		if (c < 32 || c > 126) { statusCode = STATUS_BAD_REQUEST; return false; }
+		if (c < 32 || c > 126) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 	}
-	if (!isValidPercentEncoding(target)) { statusCode = STATUS_BAD_REQUEST; return false; }
+	if (!isValidPercentEncoding(target)) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	std::string path, query, decoded;
-	if (!splitURI(target, path, query)) { statusCode = STATUS_BAD_REQUEST; return false;}
-	if (!percentDecode(path, decoded)) { statusCode = STATUS_BAD_REQUEST; return false; }
+	if (!splitURI(target, path, query)) { parsedReq.status = STATUS_BAD_REQUEST; return false;}
+	if (!percentDecode(path, decoded)) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 	if (HttpUtils::hasConsecutiveSlashes(decoded) || HttpUtils::hasDotSegments(decoded)) 
-		{ statusCode = STATUS_BAD_REQUEST; return false; }
+		{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	parsedReq.path = decoded;
 	if (!query.empty()) parsedReq.query = query; // query decoding 및 파싱은 cgi 책임.
@@ -177,8 +178,8 @@ bool RequestParser::parseURI(const std::string& target)
 bool RequestParser::parseVersion(const std::string& version)
 {
 	if (version != "HTTP/1.0" && version != "HTTP/1.1")
-		{ statusCode = STATUS_BAD_REQUEST; return false; }
-	if (version != "HTTP/1.1") { statusCode = STATUS_HTTP_VERSION; return false; }
+		{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
+	if (version != "HTTP/1.1") { parsedReq.status = STATUS_HTTP_VERSION; return false; }
 
 	return true;
 }
@@ -192,36 +193,39 @@ bool RequestParser::parseHeaders(CharDq& buf)
 		return true;
 	}
 
-	if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
+	if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 
 	size_t crlfcrlf = HttpUtils::findCRLFCRLF(buf);
 	if (crlfcrlf == HttpUtils::npos)
 	{
 		if (buf.size() > MAX_HEADER_SECTION_LENGTH)
-			{ statusCode = STATUS_HEADER_TOO_LARGE; return true; }
+			{ parsedReq.status = STATUS_HEADER_TOO_LARGE; return true; }
 		return false;
 	}
 	if (crlfcrlf > MAX_HEADER_SECTION_LENGTH)
-		{ statusCode = STATUS_HEADER_TOO_LARGE; return true; }
+		{ parsedReq.status = STATUS_HEADER_TOO_LARGE; return true; }
 
 	CharDq headers(buf.begin(), buf.begin() + crlfcrlf + 2);
 	buf.erase(buf.begin(), buf.begin() + crlfcrlf + 4);
 
+	size_t headerCount = 0;
 	while (!headers.empty())
 	{
-		if (HttpUtils::findBareLF(headers) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
+		if (++headerCount > MAX_HEADER_COUNT) { parsedReq.status = STATUS_HEADER_TOO_LARGE; return true; }
+
+		if (HttpUtils::findBareLF(headers) != HttpUtils::npos) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 
 		size_t end = HttpUtils::findCRLF(headers);
-		if (end == HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
+		if (end == HttpUtils::npos) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 
 		std::string line = HttpUtils::extractLine(headers, end, 2);
 		if (line.size() > MAX_HEADER_LINE_LENGTH)
-			{ statusCode = STATUS_HEADER_TOO_LARGE; return true; }
+			{ parsedReq.status = STATUS_HEADER_TOO_LARGE; return true; }
 		if (!line.empty() && (line[0] == ' ' || line[0] == '\t'))
-			{ statusCode = STATUS_BAD_REQUEST; return true; }
+			{ parsedReq.status = STATUS_BAD_REQUEST; return true; }
 
 		std::string key, value;
-		if (!parseKeyValue(line, key, value)) { statusCode = STATUS_BAD_REQUEST; return true; }
+		if (!parseKeyValue(line, key, value)) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 		tmpHeaders[key].push_back(value);
 	}
 	
@@ -232,14 +236,14 @@ bool RequestParser::parseHeaders(CharDq& buf)
 bool RequestParser::validateHeaders()
 {
 	if (tmpHeaders.find("host") == tmpHeaders.end() || tmpHeaders["host"].size() != 1)
-		{ statusCode = STATUS_BAD_REQUEST; return false; }
-	if (!parseHost(tmpHeaders["host"][0])) { statusCode = STATUS_BAD_REQUEST; return false; }
+		{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
+	if (!parseHost(tmpHeaders["host"][0])) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	std::map<std::string, strVec>::iterator clIt = tmpHeaders.find("content-length");
 	std::map<std::string, strVec>::iterator teIt = tmpHeaders.find("transfer-encoding");
 	bool hasCL = clIt != tmpHeaders.end() && !clIt->second.empty();
 	bool hasTE = teIt != tmpHeaders.end() && !teIt->second.empty();
-	if (hasCL && hasTE) { statusCode = STATUS_BAD_REQUEST; return false; }
+	if (hasCL && hasTE) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 	if (hasCL && !validateContentLength(clIt->second)) return false;
 	if (hasTE && !validateTransferEncoding(teIt->second)) return false;
 
@@ -248,7 +252,7 @@ bool RequestParser::validateHeaders()
 bool RequestParser::parseHost(const std::string& raw)
 {
 	if (raw.empty() || raw.find_first_of(" \t") != std::string::npos)
-		{ statusCode = STATUS_BAD_REQUEST; return false; }
+		{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	size_t colon = raw.find(':');
 	if (colon == std::string::npos) 
@@ -257,22 +261,22 @@ bool RequestParser::parseHost(const std::string& raw)
 		parsedReq.port = 80; 
 		return true;
 	}
-	if (raw.find(':', colon + 1) != std::string::npos) { statusCode = STATUS_BAD_REQUEST; return false; }
+	if (raw.find(':', colon + 1) != std::string::npos) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 	
 	std::string host = raw.substr(0, colon);
 	std::string strPort = raw.substr(colon + 1);
-	if (host.empty() || strPort.empty()) { statusCode = STATUS_BAD_REQUEST; return false; }
+	if (host.empty() || strPort.empty()) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	for(size_t i = 0; i < strPort.size(); ++i)
 	{
 		if (!std::isdigit(static_cast<unsigned char>(strPort[i])))
-			{ statusCode = STATUS_BAD_REQUEST; return false; }
+			{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
 	}
 
 	char* end = NULL;
 	long numPort = std::strtol(strPort.c_str(), &end, 10);
 	if (*end != '\0' || numPort < 0 || numPort > 65535)
-		{ statusCode = STATUS_BAD_REQUEST; return false; }
+		{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	parsedReq.host = host;
 	parsedReq.port = static_cast<in_port_t>(numPort);
@@ -280,39 +284,17 @@ bool RequestParser::parseHost(const std::string& raw)
 }
 bool RequestParser::validateContentLength(const strVec& cl)
 {
-	strVec values;
-	std::string tmpStr;
-	
-	for(size_t i = 0; i < cl.size(); ++i)
-	{
-		std::stringstream ss(cl[i]);
-		while (std::getline(ss, tmpStr, ','))
-		{
-			size_t s = tmpStr.find_first_not_of(" \t");
-			size_t e = tmpStr.find_last_not_of(" \t");
-			if (s == std::string::npos) { statusCode = STATUS_BAD_REQUEST; return false; }
-			std::string val = tmpStr.substr(s, e - s + 1);
-			if (val.empty()) { statusCode = STATUS_BAD_REQUEST; return false; }
-			for(size_t j = 0; j < val.size(); ++j)
-			{
-				if (!std::isdigit(static_cast<unsigned char>(val[j])))
-					{ statusCode = STATUS_BAD_REQUEST; return false; }
-			}
-			values.push_back(val);
-		}
-	}
-	if (values.empty()) { statusCode = STATUS_BAD_REQUEST; return false; }
+	if (cl.size() != 1) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
-	for(size_t i = 1; i < values.size(); ++i)
-	{
-		if (values[i] != values[0]) { statusCode = STATUS_BAD_REQUEST; return false; }
-	}
+	const std::string& val = cl[0];
+	if (val.empty() || val.find_first_not_of("0123456789") != std::string::npos)
+		{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	char* end = NULL;
-	unsigned long n = std::strtoul(values[0].c_str(), &end, 10);
-	if (*end != '\0') { statusCode = STATUS_BAD_REQUEST; return false; }
+	unsigned long n = std::strtoul(val.c_str(), &end, 10);
+	if (*end != '\0') { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 	if (n > maxBodyLength)
-		{ statusCode = STATUS_PAYLOAD_TOO_LARGE; return false; }
+		{ parsedReq.status = STATUS_PAYLOAD_TOO_LARGE; return false; }
 	parsedReq.contentLength = static_cast<long long>(n);
 	return true;
 }
@@ -328,20 +310,20 @@ bool RequestParser::validateTransferEncoding(const strVec& te)
 		{
 			size_t s = tmpStr.find_first_not_of(" \t");
 			size_t e = tmpStr.find_last_not_of(" \t");
-			if (s == std::string::npos) { statusCode = STATUS_BAD_REQUEST; return false; }
+			if (s == std::string::npos) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 			std::string val = tmpStr.substr(s, e - s + 1);
-			if (val.empty()) { statusCode = STATUS_BAD_REQUEST; return false; }
+			if (val.empty()) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 			val = HttpUtils::toLower(val);
 			values.push_back(val);
 		}
 	}
-	if (values.empty()) { statusCode = STATUS_BAD_REQUEST; return false; }
+	if (values.empty()) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	for (size_t i = 0; i < values.size(); ++i)
 	{
-		if (values[i] != "chunked") { statusCode = STATUS_NOT_IMPLEMENTED; return false; }
+		if (values[i] != "chunked") { parsedReq.status = STATUS_NOT_IMPLEMENTED; return false; }
 	}
-	if (values.size() > 1) { statusCode = STATUS_BAD_REQUEST; return false; }
+	if (values.size() > 1) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 	parsedReq.isChunked = true;
 	return true;
 }
@@ -384,7 +366,7 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 	{
 		if (inTrailer)
 		{
-			if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
+			if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 
 			size_t trailerEnd = HttpUtils::findCRLF(buf);
 			if (trailerEnd == HttpUtils::npos) return false;
@@ -399,7 +381,7 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 
 		if (chunkRemaining == 0)
 		{
-			if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { statusCode = STATUS_BAD_REQUEST; return true; }
+			if (HttpUtils::findBareLF(buf) != HttpUtils::npos) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 
 			size_t crlf = HttpUtils::findCRLF(buf);
 			if (crlf == HttpUtils::npos) return false;
@@ -412,19 +394,19 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 
 			size_t s = hexStr.find_first_not_of(" \t");
 			size_t e = hexStr.find_last_not_of(" \t");
-			if (s == std::string::npos || hexStr.empty()) { statusCode = STATUS_BAD_REQUEST; return true; }
+			if (s == std::string::npos || hexStr.empty()) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 			hexStr = hexStr.substr(s, e - s + 1);
 
 			for (size_t i = 0; i < hexStr.size(); ++i)
 			{
-				if (!HttpUtils::isHex(hexStr[i])) { statusCode = STATUS_BAD_REQUEST; return true; }
+				if (!HttpUtils::isHex(hexStr[i])) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 			}
 
 			unsigned long long size = 0;
 			for (size_t i = 0; i < hexStr.size(); ++i)
 			{
 				size = size * 16 + static_cast<unsigned long long>(HttpUtils::hexToInt(hexStr[i]));
-				if (size > maxBodyLength) { statusCode = STATUS_PAYLOAD_TOO_LARGE; return true; }
+				if (size > maxBodyLength) { parsedReq.status = STATUS_PAYLOAD_TOO_LARGE; return true; }
 			}
 
 			if (size == 0)
@@ -433,7 +415,7 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 				continue;
 			}
 			if (parsedReq.body.size() + size > maxBodyLength)
-				{ statusCode = STATUS_PAYLOAD_TOO_LARGE; return true; }
+				{ parsedReq.status = STATUS_PAYLOAD_TOO_LARGE; return true; }
 			chunkRemaining = static_cast<size_t>(size);
 		}
 		else
@@ -441,7 +423,7 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 			if (buf.size() < chunkRemaining + 2) return false;
 
 			if (buf[chunkRemaining] != '\r' || buf[chunkRemaining + 1] != '\n')
-    			{ statusCode = STATUS_BAD_REQUEST; return true; }
+    			{ parsedReq.status = STATUS_BAD_REQUEST; return true; }
 			
 			parsedReq.body.insert(parsedReq.body.end(), buf.begin(), buf.begin() + chunkRemaining);
 			buf.erase(buf.begin(), buf.begin() + chunkRemaining + 2);
@@ -452,7 +434,6 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 
 void RequestParser::handleError()
 {
-	parsedReq.status = statusCode;
 	tmpReqLine = ReqLine();
 	tmpHeaders.clear();
 }
@@ -460,7 +441,6 @@ void RequestParser::handleError()
 void RequestParser::clear()
 {
 	parseState = REQ_STARTLINE;
-	statusCode = STATUS_UNDEFINED;
 	tmpReqLine = ReqLine();
 	tmpHeaders.clear();
 	parsedReq = Request();
@@ -468,7 +448,7 @@ void RequestParser::clear()
 	inTrailer = false;
 }
 
-RequestParser::RequestParser() : parseState(REQ_STARTLINE), statusCode(STATUS_UNDEFINED), chunkRemaining(0), inTrailer(false), maxBodyLength(MAX_CLIENT_BODY_LENGTH) {}
+RequestParser::RequestParser() : parseState(REQ_STARTLINE), chunkRemaining(0), inTrailer(false), maxBodyLength(MAX_CLIENT_BODY_LENGTH) {}
 RequestParser::~RequestParser() {}
 
 void RequestParser::setMaxBodyLength(size_t length)
@@ -481,19 +461,19 @@ void RequestParser::parse(CharDq& buf)
 	if (parseState == REQ_STARTLINE)
 	{
 		if (!parseStartline(buf)) return ;
-		if (statusCode != STATUS_UNDEFINED) { parseState = REQ_ERROR; handleError(); return; }
+		if (parsedReq.status != STATUS_UNDEFINED) { parseState = REQ_ERROR; handleError(); return; }
 		parseState = REQ_HEADERS;
 	}
 	if (parseState == REQ_HEADERS)
 	{
 		if (!parseHeaders(buf)) return ;
-		if (statusCode != STATUS_UNDEFINED) { parseState = REQ_ERROR; handleError(); return; }
+		if (parsedReq.status != STATUS_UNDEFINED) { parseState = REQ_ERROR; handleError(); return; }
 		parseState = parsedReq.contentLength == -1 && !parsedReq.isChunked ? REQ_DONE : REQ_BODY;
 	}
 	if (parseState == REQ_BODY)
 	{
 		if (!parseBody(buf)) return ;
-		if (statusCode != STATUS_UNDEFINED) { parseState = REQ_ERROR; handleError(); return; }
+		if (parsedReq.status != STATUS_UNDEFINED) { parseState = REQ_ERROR; handleError(); return; }
 		parseState = REQ_DONE;
 	}
 }

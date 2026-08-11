@@ -233,6 +233,33 @@ static void test_header_section_too_large()
 	CHECK(parser.getRequest().status == STATUS_HEADER_TOO_LARGE);
 }
 
+static void test_header_count_too_many()
+{
+	RequestParser parser;
+	CharDq buf;
+	std::string req = "GET / HTTP/1.1\r\nHost: x\r\n";
+	for (int i = 0; i < 101; ++i) // Host 포함 총 102개 -> MAX_HEADER_COUNT(100) 초과
+		req += "X-Extra: 1\r\n";
+	req += "\r\n";
+	ReqParseResult ret = feedAll(parser, buf, req);
+
+	CHECK(ret == REQ_PARSE_ERROR);
+	CHECK(parser.getRequest().status == STATUS_HEADER_TOO_LARGE);
+}
+
+static void test_header_count_at_limit_ok()
+{
+	RequestParser parser;
+	CharDq buf;
+	std::string req = "GET / HTTP/1.1\r\nHost: x\r\n";
+	for (int i = 0; i < 99; ++i) // Host 포함 총 100개 -> MAX_HEADER_COUNT(100) 이하
+		req += "X-Extra: 1\r\n";
+	req += "\r\n";
+	ReqParseResult ret = feedAll(parser, buf, req);
+
+	CHECK(ret == REQ_PARSE_DONE);
+}
+
 static void test_dot_segment_path_rejected()
 {
 	RequestParser parser;
@@ -377,6 +404,8 @@ int main()
 	RUN(test_missing_host_header);
 	RUN(test_zero_headers_request);
 	RUN(test_header_section_too_large);
+	RUN(test_header_count_too_many);
+	RUN(test_header_count_at_limit_ok);
 	RUN(test_dot_segment_path_rejected);
 	RUN(test_percent_decoding);
 	RUN(test_content_length_and_transfer_encoding_conflict);

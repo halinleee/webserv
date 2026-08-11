@@ -1,9 +1,9 @@
-#include "main.hpp"
-#include "Utils.hpp"
 #include "Server.hpp"
 #include "Epoll.hpp"
 #include "Config.hpp"
-#include "ServerConfig.hpp"
+
+#include <csignal>
+#include <iostream>
 
 Server *serverPointer;
 

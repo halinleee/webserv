@@ -1,5 +1,4 @@
 #include "CgiParser.hpp"
-#include <sstream>
 
 bool isStatusLine(const std::string& line)
 {
@@ -56,7 +55,6 @@ bool cgiParseKeyValue(const std::string& line, std::string& key, std::string& va
 	{
 		unsigned char c = static_cast<unsigned char>(key[i]);
 		if (!HttpUtils::isTchar(c)) return false;
-		key[i] = std::tolower(c);
 	}
 
 	value = line.substr(colon + 1);
@@ -111,6 +109,9 @@ Response CgiParser::parseCgiOutput(const std::string& cgiOutput)
 		else
 			response.headers[key] = value;
 	}
+
+	if (!response.body.empty() && response.headers.find("Content-Type") == response.headers.end())
+		return Response(STATUS_BAD_GATEWAY);
 
 	return response;
 }

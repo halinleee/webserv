@@ -2,6 +2,7 @@
 #define PIPE_HPP
 
 #include "type.hpp"
+
 #include <unistd.h>
 
 /**

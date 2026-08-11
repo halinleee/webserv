@@ -1,10 +1,20 @@
 #include "Server.hpp"
 #include "Pipe.hpp"
-#include "main.hpp"
 #include "Response.hpp"
 #include "Router.hpp"
 #include "Handler.hpp"
+
 #include <cctype>
+#include <csignal>
+#include <iostream>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+namespace
+{
+    const size_t DRAIN_MAX_BYTES = 65536;
+}
 
 Server::Server() : serverActive(true), client(8192, NULL), env(), timeOutValue() {}
 
@@ -134,7 +144,8 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
         {
             reapCgiChild(pipeClient->getPid());
             pipeClient->setRunCgi(false);
-            pipeClient->setStatusCode(STATUS_BAD_GATEWAY);
+            // 요청 자체는 온전히 받은 뒤 upstream(CGI)만 실패한 것이므로 연결은 재사용할 수 있다.
+            pipeClient->fail(STATUS_BAD_GATEWAY, FAIL_KEEP_ALIVE);
             if (!epollGuard(epoll, EPOLL_CTL_MOD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
             {
                 deleteClient(pipeClient->getSocket().getFd());
@@ -148,7 +159,7 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
         {
             reapCgiChild(pipeClient->getPid());
             pipeClient->setRunCgi(false);
-            pipeClient->setStatusCode(STATUS_BAD_GATEWAY);
+            pipeClient->fail(STATUS_BAD_GATEWAY, FAIL_KEEP_ALIVE);
             if (!epollGuard(epoll, EPOLL_CTL_MOD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
             {
                 deleteClient(pipeClient->getSocket().getFd());
@@ -172,45 +183,35 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
         std::string response;
 
         Response res;
-        if (client->getRequest().status != STATUS_UNDEFINED)
-        {
-            res = Response(client->getRequest().status);
-        }
-        else
-        {
-            const RouteResult &route = client->getRouteResult();
+        const RouteResult &route = client->getRouteResult();
 
-            switch (route.action)
-            {
-                case ACTION_STATIC:
-                    res = Handler::serve(route, client->getRequest());
-                    break;
-                case ACTION_REDIRECT:
-                    res = Response(static_cast<Status>(route.redirectCode));
-                    res.headers["Location"] = route.redirectPath;
-                    break;
-                case ACTION_CGI:
-                    if (client->getStatusCode() != 0)
-                        res = Response(static_cast<Status>(client->getStatusCode()));
-                    else
-                        res = client->getCgiResponse();
-                    break;
-                case ACTION_ERROR:
-                default:
-                    res = Response(static_cast<Status>(route.errorCode));
-                    if (route.errorCode == STATUS_METHOD_NOT_ALLOWED)
+        switch (route.action)
+        {
+            case ACTION_STATIC:
+                res = Handler::serve(route, client->getRequest());
+                break;
+            case ACTION_REDIRECT:
+                res = Response(static_cast<Status>(route.redirectCode));
+                res.headers["Location"] = route.redirectPath;
+                break;
+            case ACTION_CGI:
+                res = client->getCgiResponse();
+                break;
+            case ACTION_ERROR:
+            default:
+                res = Response(static_cast<Status>(route.errorCode));
+                if (route.errorCode == STATUS_METHOD_NOT_ALLOWED)
+                {
+                    std::string allow;
+                    for (std::set<HttpMethod>::const_iterator it = route.allowedMethods.begin(); it != route.allowedMethods.end(); ++it)
                     {
-                        std::string allow;
-                        for (std::set<HttpMethod>::const_iterator it = route.allowedMethods.begin(); it != route.allowedMethods.end(); ++it)
-                        {
-                            if (!allow.empty())
-                                allow += ", ";
-                            allow += HttpUtils::getMethodName(*it);
-                        }
-                        res.headers["Allow"] = allow;
+                        if (!allow.empty())
+                            allow += ", ";
+                        allow += HttpUtils::getMethodName(*it);
                     }
-                    break;
-            }
+                    res.headers["Allow"] = allow;
+                }
+                break;
         }
 
         // 에러 상태인데 body가 비어있으면(라우팅/CGI/파싱 에러 등) errorPages 설정을 확인해
@@ -244,6 +245,7 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
     if (client->getShouldClose())
     {
         epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client);
+        drainSocket(client->getSocket().getFd());
         deleteClient(client->getSocket().getFd());
         return RET_OK;
     }
@@ -251,24 +253,21 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
     return RET_OK;
 }
 
-/*
- * @todo 나중에 response가 vector로 변경되면 erase를 하는 로직 추가
- * @todo send한 내용의 길이를 response의 총 길이와 비교하는 로직 추가(if문 분기는 작성완료, length를 더하는 로직 작성)
- */
 RetStatus Server::serverSend(Epoll &epoll, Client *client)
 {
-    ssize_t targetSize = client->response.size();
-    ssize_t length = send(client->getSocket().getFd(), client->response.c_str(), targetSize, 0);
+    size_t offset = client->getSentOffset();
+    ssize_t remaining = client->response.size() - offset;
+    ssize_t length = send(client->getSocket().getFd(), client->response.c_str() + offset, remaining, 0);
     if (length < 0)
         return RET_ERROR;
-    if (length == targetSize)
+    if (length == remaining)
     {
         if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLIN, client))
             return (RET_ERROR);
         client->resetForNextRequest();
         return (RET_OK);
     }
-    client->response = client->response.substr(length);
+    client->addSentOffset(length);
     return (RET_RE);
 }
 
@@ -341,9 +340,6 @@ RetStatus Server::clientAccept(Epoll &epoll, Socket *socket)
     return RET_OK;
 }
 
-/**
- * @todo http요청을 다 받은 후에 flag가 넘어오면 그때 EPOLLOUT을 감지하도록 변경
- */
 RetStatus Server::clientRequest(Epoll &epoll, Client *client)
 {
     unsigned char received[4096];
@@ -377,21 +373,21 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
         RouteResult route = Router::route(config, client->getRequest());
         if (route.action == ACTION_CGI && !client->getRunCgi())
         {
-            bool notFound = false;
-            if (!client->checkRunCgi(config.matchLocation, route.resolvedPath, notFound))
-            {
-                int errorCode = notFound ? STATUS_NOT_FOUND : STATUS_FORBIDDEN;
-                return errorHandling(client, epoll, errorCode);
-            }
+            int errorCode = STATUS_INTERNAL_SERVER_ERROR;
+            if (!client->checkRunCgi(config.matchLocation, route.resolvedPath, errorCode))
+                return errorHandling(client, epoll, errorCode, FAIL_KEEP_ALIVE);
             client->setRouteResult(route);
             if (!cgiRun(epoll, client))
-                return errorHandling(client, epoll, STATUS_INTERNAL_SERVER_ERROR);
+                return errorHandling(client, epoll, STATUS_INTERNAL_SERVER_ERROR, FAIL_KEEP_ALIVE);
             return RET_OK;
         }
         client->setRouteResult(route);
     }
+    else
+        // 파싱이 실패한 요청은 다음 요청의 경계를 신뢰할 수 없으므로 응답 후 연결을 닫는다.
+        return errorHandling(client, epoll, client->getRequest().status, FAIL_CLOSE);
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
-            return errorHandling(client, epoll, STATUS_INTERNAL_SERVER_ERROR);
+            return errorHandling(client, epoll, STATUS_INTERNAL_SERVER_ERROR, FAIL_CLOSE);
     return RET_OK;
 }
 
@@ -440,15 +436,12 @@ RetStatus Server::cgiRun(Epoll &epoll, Client *client)
     return RET_OK;
 }
 
-/**
- * @todo cgi가 분기되어 favicon요청 안 들어오면 그거에 마춰서 코드 수정해야함 (pipe가 잘 닫히는지 확인 및 강제로 read 한번 더 호출해서 강제로 pipe를 제거하는 로직 제거 및 오류 확인)
- */
 RetStatus Server::cgiPipeRead(Epoll &epoll, Client *client)
 {
     int status = client->readCgiPipe();
     if (status == RET_ERROR) //cgi문제로 인한 오류 routing
     {
-        client->setStatusCode(STATUS_BAD_GATEWAY);
+        // 502 확정은 호출자(cgiEventLoop)가 담당한다. 여기서는 파이프 자원만 정리한다.
         client->clearCgiRawOutput();
         FD outFd = client->getPipeFd(OutFlag);
         epollGuard(epoll, EPOLL_CTL_DEL, outFd, EPOLLIN, client);
@@ -473,7 +466,7 @@ RetStatus Server::cgiPipeWrite(Epoll &epoll, Client *client)
     int status = client->writeCgiPipe();
     if (status == RET_ERROR)
     {
-        client->setStatusCode(STATUS_BAD_GATEWAY);
+        // 502 확정은 호출자(cgiEventLoop)가 담당한다. 여기서는 파이프 자원만 정리한다.
         client->clearCgiRawOutput();
         epollGuard(epoll, EPOLL_CTL_DEL, client->getPipeFd(InFlag), EPOLLOUT, client);
         this->pipeToClientMap.erase(client->getPipeFd(InFlag));
@@ -553,6 +546,20 @@ void Server::deleteClient(int deleteFd)
     this->client[deleteFd] = NULL;
 }
 
+void Server::drainSocket(FD fd)
+{
+    char buf[4096];
+    size_t drained = 0;
+
+    while (drained < DRAIN_MAX_BYTES)
+    {
+        ssize_t n = recv(fd, buf, sizeof(buf), 0);
+        if (n <= 0)
+            break;
+        drained += static_cast<size_t>(n);
+    }
+}
+
 void Server::reapCgiChild(pid_t pid)
 {
     if (waitpid(pid, NULL, WNOHANG) == 0)
@@ -568,14 +575,9 @@ bool Server::clientExist(int fd)
     return this->client[fd] != NULL;
 }
 
-RetStatus Server::errorHandling(Client *client, Epoll &epoll, int statusCode)
+RetStatus Server::errorHandling(Client *client, Epoll &epoll, int statusCode, FailMode mode)
 {
-    client->setStatusCode(statusCode);
-    RouteResult route = client->getRouteResult();
-    route.action = ACTION_ERROR;
-    route.errorCode = statusCode;
-    route.allowedMethods.clear();
-    client->setRouteResult(route);
+    client->fail(static_cast<Status>(statusCode), mode);
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
         deleteClient(client->getSocket().getFd());
     return RET_ERROR;
@@ -614,16 +616,17 @@ RetStatus Server::cgiTimeoutAbort(Epoll &epoll, Client *client)
         client->pipeClose(OutFlag);
     }
     client->setRunCgi(false);
-    client->setRequestStatus(STATUS_GATEWAY_TIMEOUT);
     client->clearCgiRawOutput();
+    client->fail(STATUS_GATEWAY_TIMEOUT, FAIL_CLOSE);
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
         return RET_ERROR;
+    client->timeSet(this->timeOutValue.keepAliveTimeout);
     return RET_OK;
 }
 
 RetStatus Server::readTimeoutAbort(Epoll &epoll, Client *client)
 {
-    client->setRequestStatus(STATUS_REQUEST_TIMEOUT);
+    client->fail(STATUS_REQUEST_TIMEOUT, FAIL_CLOSE);
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
         return RET_ERROR;
     client->timeSet(this->timeOutValue.keepAliveTimeout);

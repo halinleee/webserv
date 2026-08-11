@@ -1,8 +1,7 @@
 #include "ConfigParseUtils.hpp"
 #include "HttpUtils.hpp"
-#include <sys/stat.h>
+
 #include <sstream>
-#include <unistd.h>
 #include <cctype>
 
 bool isValidFileName(const std::string &file)

@@ -13,7 +13,7 @@
 class ServerConfig
 {
 	public:
-		static const size_t BODY_SIZE_MAX = 5 * 1024 * 1024;
+		static const size_t BODY_SIZE_MAX = 10 * 1024 * 1024;
 		static const size_t TIME_OUT_MAX = 180;
 	
 	private:

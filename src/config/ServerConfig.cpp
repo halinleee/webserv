@@ -1,6 +1,7 @@
 #include "ServerConfig.hpp"
 #include "ConfigParseUtils.hpp"
 #include "type.hpp"
+
 #include <fstream>
 
 void ServerConfig::setPrefixes(void)
@@ -99,12 +100,19 @@ bool isValidErrorCode(size_t code)
 	switch (code)
 	{
 		case STATUS_BAD_REQUEST:
+		case STATUS_FORBIDDEN:
 		case STATUS_NOT_FOUND:
+		case STATUS_METHOD_NOT_ALLOWED:
+		case STATUS_REQUEST_TIMEOUT:
+		case STATUS_PAYLOAD_TOO_LARGE:
 		case STATUS_URI_LONG:
-		case STATUS_NOT_IMPLEMENTED:
-		case STATUS_HTTP_VERSION:
 		case STATUS_HEADER_TOO_LARGE:
-		case  STATUS_PAYLOAD_TOO_LARGE:
+		case STATUS_INTERNAL_SERVER_ERROR:
+		case STATUS_NOT_IMPLEMENTED:
+		case STATUS_BAD_GATEWAY:
+		case STATUS_SERVICE_UNAVAILABLE:
+		case STATUS_GATEWAY_TIMEOUT:
+		case STATUS_HTTP_VERSION:
 			return true;
 		default:
 			return false;

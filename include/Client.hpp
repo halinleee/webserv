@@ -9,6 +9,7 @@
 #include "CgiParser.hpp"
 #include "Response.hpp"
 #include "type.hpp"
+
 #include <unistd.h>
 #include <iostream>
 #include <sys/wait.h>
@@ -68,13 +69,6 @@ class Client
          */
         Pipe cgiPipe;
         /**
-         * @var statusCode
-         * @brief HTTP 응답을 생성할 때 기준이 되는 상태 코드 (ex: 200, 404, 500)
-         * 
-         * 파싱 중 에러 발생, 파일 없음, 권한 부족 등의 예외 상황 시 적절한 에러 페이지를 응답하기 위해 상태를 기록합니다.
-         */
-        int statusCode;
-        /**
          * @var pid
          * @brief 실행된 CGI 자식 프로세스의 PID
          * 
@@ -118,6 +112,16 @@ class Client
          * 호출되므로, 요청 단계에서 계산한 라우팅 결과를 응답 단계까지 들고 있기 위해 사용합니다.
          */
         RouteResult routeResult;
+
+        /**
+         * @var sentOffset
+         * @brief response 버퍼 중 이미 send()로 전송 완료한 바이트 수
+         *
+         * 논블로킹 소켓에서 send()가 response 전체를 한 번에 다 보내지 못할 때,
+         * 남은 부분을 다시 복사해서 잘라내는 대신 이 오프셋만 전진시켜 다음 EPOLLOUT에서
+         * 이어 보낼 위치를 추적하기 위해 사용합니다.
+         */
+        size_t sentOffset;
 
     public:
         /**
@@ -166,8 +170,14 @@ class Client
 
         /**
          * @brief 이 클라이언트의 cgi가 실행이 가능한지 확인하는 함수
+         *
+         * 인터프리터(cgiPath)와 root/alias는 location 전체에 공통 적용되는 서버 설정값이므로
+         * 접근 실패 시 클라이언트 요청과 무관한 서버 구성 문제로 보고 500을 채운다.
+         * resolvedPath는 이번 요청이 지목한 개별 리소스이므로, errno가 EACCES면 403(권한 없음),
+         * 그 외(주로 ENOENT)면 404(존재하지 않음)로 구분해 채운다.
+         * @param errorCode 실패 시 채워지는 HTTP 상태 코드(500/403/404)
         */
-        bool checkRunCgi(const LocationConfig &config, const std::string &resolvedPath, bool &notFound);
+        bool checkRunCgi(const LocationConfig &config, const std::string &resolvedPath, int &errorCode);
 
         bool getRunCgi();
 
@@ -231,22 +241,16 @@ class Client
         Pipe &getCgiPipe();
 
         /**
-         * @brief 클라이언트의 statuscode를 설정하는 함수
-         * 
-         * 요청 파싱 결과에 따라 200 OK, 400 Bad Request 등 클라이언트의 현재 요청 상태를 기록합니다.
-         */
-        void setStatusCode(int statusCode);
-
-        /**
-         * @brief 요청 파싱이 끝나기 전에 서버가 강제로 요청의 상태를 확정할 때 쓰는 함수
+         * @brief 이 요청의 처리 실패를 확정하는 유일한 진입점
          *
-         * readTimeout 등으로 요청을 끝까지 받지 못한 채 응답을 보내야 할 때 사용합니다.
-         * clientResponse가 STATUS_UNDEFINED 여부로 라우팅 필요 유무를 판단하므로, 이 함수로
-         * request.status를 채워 라우팅 없이 바로 에러 응답이 만들어지도록 하고, 이후 keep-alive를
-         * 이어가지 않도록 shouldClose도 함께 true로 설정합니다.
-         * @param status 확정할 상태 코드 (ex: STATUS_REQUEST_TIMEOUT)
+         * 파싱 에러, 라우팅 에러, CGI 실패, 타임아웃 등 실패의 원인이 무엇이든 이 함수를 거친다.
+         * clientResponse는 routeResult.action/errorCode만 보고 응답을 만들므로 route를
+         * ACTION_ERROR로 확정하고, 405가 아닌 에러에 Allow 헤더가 남지 않도록 allowedMethods도 비운다.
+         * 연결 유지 여부(shouldClose)는 route와 반드시 함께 결정되어야 하는 값이라 같은 함수에서 처리한다.
+         * @param status 응답할 상태 코드 (ex: STATUS_NOT_FOUND)
+         * @param mode 요청 스트림을 신뢰할 수 있으면 FAIL_KEEP_ALIVE, 아니면 FAIL_CLOSE
          */
-        void setRequestStatus(int status);
+        void fail(Status status, FailMode mode);
 
         /**
          * @brief recv로 수신된 데이터를 버퍼(recDq<char> 디큐)에 추가하는 함수
@@ -279,13 +283,6 @@ class Client
          * @details 클라이언트 연결 해제 시 CGI가 여전히 실행 중인지 확인하고 자원을 회수할 때 사용합니다.
          */
         pid_t getPid(void);
-
-        /**
-         * @brief 클라이언트의 statuscode를 반환
-         * @return 클라이언트의 statusCode
-         * @details Response 생성 단계에서 상태 코드를 확인하여 적절한 HTTP 헤더와 본문을 구성할 때 사용합니다.
-         */
-        int getStatusCode();
 
         /**
          * @brief Pipe의 FD를 반환하는 함수
@@ -339,6 +336,27 @@ class Client
          * @return clientResponse에서 ACTION_CGI 분기 처리에 사용할 Response 참조
          */
         const Response &getCgiResponse() const;
+
+        /**
+         * @brief response 버퍼 중 이미 전송 완료한 바이트 수(sentOffset)를 반환하는 함수
+         */
+        size_t getSentOffset() const;
+
+        /**
+         * @brief sentOffset을 length만큼 전진시키는 함수
+         *
+         * serverSend()에서 send()가 일부만 전송했을 때, 다음 EPOLLOUT에서 이어 보낼
+         * 위치를 갱신하기 위해 사용합니다.
+         */
+        void addSentOffset(size_t length);
+
+        /**
+         * @brief sentOffset을 0으로 초기화하는 함수
+         *
+         * 새 response를 빌드해서 대입할 때(clientResponse, clientAccept) 및
+         * resetForNextRequest()에서 호출합니다.
+         */
+        void resetSentOffset();
 };
 
 

@@ -252,11 +252,26 @@ class Server
         
         /**
          * @brief 특정 클라이언트의 연결을 종료하고 자원을 해제하는 함수
-         * 
+         *
          * 요청 처리가 완료되었거나, 타임아웃/에러 발생 시 호출되어 Client 객체를 map에서 제거하고 메모리를 해제합니다.
          * @param deleteFd 삭제할 클라이언트의 소켓 FD
          */
         void deleteClient(int deleteFd);
+
+        /**
+         * @brief close() 직전에 recv 버퍼에 남은 잔여 입력을 소진시키는 함수
+         *
+         * 에러 응답(4xx 등)을 다 보낸 뒤 곧바로 close()하면, 클라이언트가 보낸 데이터가
+         * 아직 커널 recv 버퍼에 남아있을 경우 커널이 정상 FIN 대신 RST를 보내 방금 전송한
+         * 응답이 클라이언트에서 유실될 수 있다. close 직전에 non-blocking recv를
+         * EAGAIN(더 이상 없음) 또는 EOF를 만날 때까지 반복 호출해 버퍼를 비움으로써
+         * 정상적인 FIN 종료가 나가도록 유도한다. 악성/이상 클라이언트가 계속 데이터를
+         * 흘려보내 이 루프가 이벤트 루프를 오래 붙잡는 것을 막기 위해 총 소진 바이트 수에
+         * 상한(DRAIN_MAX_BYTES)을 둔다. 상한을 넘기면 그냥 멈추고 이후 close()가 RST를
+         * 내더라도 감수한다(이미 정상적인 응답 전송은 끝난 뒤이므로 데이터 유실은 없다).
+         * @param fd 드레인할 소켓 FD
+         */
+        void drainSocket(FD fd);
 
         /**
          * @brief 빌드된 클라이언트의 response의 내용을 반환하는 함수
@@ -266,9 +281,10 @@ class Server
         std::string getResponse(void);
 
         /**
-         * @brief error가 발생했을때 client의 statuscode를 수정하고 epollOut을 활성화하는 함수
+         * @brief error가 발생했을때 Client::fail로 에러 응답을 확정하고 epollOut을 활성화하는 함수
+         * @param mode 연결을 재사용해도 되면 FAIL_KEEP_ALIVE, 요청 스트림이 깨졌으면 FAIL_CLOSE
          */
-        RetStatus errorHandling(Client *client, Epoll &eopll, int statusCode);
+        RetStatus errorHandling(Client *client, Epoll &eopll, int statusCode, FailMode mode);
 
         /**
          * @brief epollControl 실패를 한 곳(로그)에서 처리하기 위한 순수 wrapper 함수
@@ -306,10 +322,10 @@ class Server
          *
          * checkTimeOutClient에서 getRunCgi()가 true인 클라이언트가 타임아웃되면 호출된다.
          * 자식 프로세스를 강제 종료/회수하고, 열려 있는 파이프 fd를 epoll/pipeToClientMap에서
-         * 정리한 뒤 request.status를 504(Gateway Timeout)로 설정해(setRequestStatus) clientResponse가
-         * html body가 있는 에러 응답을 만들고 연결을 닫도록 하고, 클라이언트 소켓을 EPOLLOUT으로
-         * 전환한다. CGI는 서버 입장에서 upstream 프로세스이므로, 클라이언트 요청 자체의 지연을
-         * 뜻하는 408이 아니라 504가 맞는 코드다.
+         * 정리한 뒤 Client::fail(504, FAIL_CLOSE)로 에러 응답을 확정하고 클라이언트 소켓을
+         * EPOLLOUT으로 전환한다. 요청을 처리하다 중단된 상태라 연결은 닫는다.
+         * CGI는 서버 입장에서 upstream 프로세스이므로,
+         * 클라이언트 요청 자체의 지연을 뜻하는 408이 아니라 504가 맞는 코드다.
          * @return epoll 등록 실패 시 RET_ERROR, 그 외 RET_OK
          */
         RetStatus cgiTimeoutAbort(Epoll &epoll, Client *client);
@@ -319,10 +335,11 @@ class Server
          *
          * checkTimeOutClient에서 getRunCgi()가 false이고 아직 응답을 보내기 전(response가 비어있는)
          * 클라이언트가 타임아웃되면 호출된다. 요청 파싱이 끝나지 않아 RouteResult가 아직 계산되지
-         * 않았으므로, request.status를 STATUS_REQUEST_TIMEOUT으로 설정해 clientResponse가 라우팅을
-         * 거치지 않고 바로 에러 응답을 만들도록 하고, 클라이언트 소켓을 EPOLLOUT으로 전환한다.
-         * cgiTimeoutAbort와 마찬가지로 keepAliveTimeout으로 데드라인을 다시 미뤄, 408 응답이
-         * 전송되기 전에 checkTimeOutClient가 같은 클라이언트를 매 스윕마다 재호출하는 것을 막는다.
+         * 않았으므로(기본값 action=ACTION_ERROR, errorCode=0), Client::fail(408, FAIL_CLOSE)로
+         * 라우팅을 거치지 않고 바로 408 에러 응답을 만들도록 하고 클라이언트 소켓을 EPOLLOUT으로
+         * 전환한다. 요청을 끝까지 받지 못해 스트림 경계를 신뢰할 수 없으므로 연결은 닫는다.
+         * cgiTimeoutAbort와 마찬가지로 keepAliveTimeout으로 데드라인을 다시 미뤄, 408
+         * 응답이 전송되기 전에 checkTimeOutClient가 같은 클라이언트를 매 스윕마다 재호출하는 것을 막는다.
          * @return epoll 등록 실패 시 RET_ERROR, 그 외 RET_OK
          */
         RetStatus readTimeoutAbort(Epoll &epoll, Client *client);

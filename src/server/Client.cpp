@@ -6,22 +6,22 @@
 Client::Client()
 {
     this->clientSocket = 0;
-    this->statusCode = 0;
     this->runCgi = false;
     this->pid = -1;
     this->shouldClose = false;
     this->listenFd = -1;
+    this->sentOffset = 0;
 }
 
 Client::Client(Socket *socket, EnvMap env)
 {
     this->clientSocket = socket;
-    this->statusCode = 0;
     this->env = env;
     this->runCgi = false;
     this->pid = -1;
     this->shouldClose = false;
     this->listenFd = -1;
+    this->sentOffset = 0;
 }
 
 Client::~Client()
@@ -125,18 +125,17 @@ CharDq &Client::getCharDq(void) { return this->recDq; }
 
 Socket &Client::getSocket() { return *this->clientSocket; }
 
-int Client::getStatusCode() { return this->statusCode; }
-
 Request Client::getRequest() {return this->request; }
 
 void Client::setRunCgi(bool value) { this->runCgi = value; }
 
-void Client::setStatusCode(int statusCode) { this->statusCode = statusCode; }
-
-void Client::setRequestStatus(int status)
+void Client::fail(Status status, FailMode mode)
 {
-    this->request.status = static_cast<Status>(status);
-    this->shouldClose = true;
+    this->routeResult.action = ACTION_ERROR;
+    this->routeResult.errorCode = status;
+    this->routeResult.allowedMethods.clear();
+    if (mode == FAIL_CLOSE)
+        this->shouldClose = true;
 }
 
 void Client::setPid(pid_t pid) { this->pid = pid; }
@@ -149,17 +148,22 @@ bool Client::checkAlive(void) { return this->getSocket().checkTimeOut(); }
 
 void Client::timeSet(time_t addTime) { this->clientSocket->setTimeStatus(addTime); }
 
-bool Client::checkRunCgi(const LocationConfig &config, const std::string &resolvedPath, bool &notFound)
+bool Client::checkRunCgi(const LocationConfig &config, const std::string &resolvedPath, int &errorCode)
 {
-    notFound = false;
     if (access(config.getCgiPath().c_str(), X_OK))
+    {
+        errorCode = STATUS_INTERNAL_SERVER_ERROR;
         return false;
+    }
     const std::string &base = config.getAlias().empty() ? config.getRoot() : config.getAlias();
     if (access(base.c_str(), X_OK))
+    {
+        errorCode = STATUS_INTERNAL_SERVER_ERROR;
         return false;
+    }
     if (access(resolvedPath.c_str(), R_OK))
     {
-        notFound = (errno != EACCES);
+        errorCode = (errno == EACCES) ? STATUS_FORBIDDEN : STATUS_NOT_FOUND;
         return false;
     }
     return true;
@@ -205,10 +209,25 @@ bool Client::getShouldClose() const
 void Client::resetForNextRequest()
 {
     this->request = Request();
-    this->statusCode = 0;
     this->response.clear();
+    this->sentOffset = 0;
     this->cgiRawOutput.clear();
     this->routeResult = RouteResult();
+}
+
+size_t Client::getSentOffset() const
+{
+    return this->sentOffset;
+}
+
+void Client::addSentOffset(size_t length)
+{
+    this->sentOffset += length;
+}
+
+void Client::resetSentOffset()
+{
+    this->sentOffset = 0;
 }
 
 void Client::setRouteResult(const RouteResult &result) { this->routeResult = result; }
