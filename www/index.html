@@ -29,7 +29,11 @@ fetch('/data/posts.json')
             li.innerHTML =
                 (post.image ? '<img class="thumb" src="' + post.image + '">' : '') +
                 '<div><div class="title">' + post.title + '</div>' +
+                '<div class="content">' + (post.content || '') + '</div>' +
                 '<div class="meta">' + (post.date || '') + '</div></div>';
+            li.addEventListener('click', function () {
+                li.classList.toggle('expanded');
+            });
             list.appendChild(li);
         });
     })

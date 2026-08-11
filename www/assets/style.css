@@ -35,7 +35,7 @@ body {
     background-position: center, center, center bottom;
     background-size: auto, auto, cover;
     background-repeat: no-repeat, no-repeat, no-repeat;
-    background-attachment: scroll, scroll, fixed;
+    background-attachment: fixed, fixed, fixed;
     position: relative;
     overflow-x: hidden;
 }
@@ -230,11 +230,32 @@ main {
     background: linear-gradient(90deg, rgba(255,255,255,0.6), transparent);
     border-radius: 10px;
     transition: transform 0.12s ease, background 0.12s ease;
+    cursor: pointer;
 }
 
 .post-list li:hover {
     transform: translateX(4px) scale(1.01);
     background: rgba(255, 205, 60, 0.18);
+}
+
+.post-list li.expanded {
+    align-items: flex-start;
+}
+
+.post-list li.expanded .content {
+    white-space: normal;
+    word-break: break-word;
+    opacity: 1;
+}
+
+.post-list li.expanded .thumb {
+    width: auto;
+    height: auto;
+    max-width: 320px;
+    max-height: 320px;
+    object-fit: contain;
+    background: transparent;
+    border-radius: 12px;
 }
 
 .post-list li::before {
@@ -256,12 +277,23 @@ main {
     object-fit: cover;
     flex-shrink: 0;
     border: 2px solid var(--wood-light);
+    transition: width 0.15s ease, height 0.15s ease, border-radius 0.15s ease;
 }
 
 .post-list .title {
     font-weight: 700;
     font-size: 1.08em;
     color: var(--ink);
+}
+
+.post-list .content {
+    color: var(--ink);
+    font-size: 0.92em;
+    opacity: 0.75;
+    margin: 2px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .post-list .meta {
