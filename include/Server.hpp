@@ -250,11 +250,26 @@ class Server
         
         /**
          * @brief 특정 클라이언트의 연결을 종료하고 자원을 해제하는 함수
-         * 
+         *
          * 요청 처리가 완료되었거나, 타임아웃/에러 발생 시 호출되어 Client 객체를 map에서 제거하고 메모리를 해제합니다.
          * @param deleteFd 삭제할 클라이언트의 소켓 FD
          */
         void deleteClient(int deleteFd);
+
+        /**
+         * @brief close() 직전에 recv 버퍼에 남은 잔여 입력을 소진시키는 함수
+         *
+         * 에러 응답(4xx 등)을 다 보낸 뒤 곧바로 close()하면, 클라이언트가 보낸 데이터가
+         * 아직 커널 recv 버퍼에 남아있을 경우 커널이 정상 FIN 대신 RST를 보내 방금 전송한
+         * 응답이 클라이언트에서 유실될 수 있다. close 직전에 non-blocking recv를
+         * EAGAIN(더 이상 없음) 또는 EOF를 만날 때까지 반복 호출해 버퍼를 비움으로써
+         * 정상적인 FIN 종료가 나가도록 유도한다. 악성/이상 클라이언트가 계속 데이터를
+         * 흘려보내 이 루프가 이벤트 루프를 오래 붙잡는 것을 막기 위해 총 소진 바이트 수에
+         * 상한(DRAIN_MAX_BYTES)을 둔다. 상한을 넘기면 그냥 멈추고 이후 close()가 RST를
+         * 내더라도 감수한다(이미 정상적인 응답 전송은 끝난 뒤이므로 데이터 유실은 없다).
+         * @param fd 드레인할 소켓 FD
+         */
+        void drainSocket(FD fd);
 
         /**
          * @brief 빌드된 클라이언트의 response의 내용을 반환하는 함수

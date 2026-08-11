@@ -10,6 +10,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+namespace
+{
+    const size_t DRAIN_MAX_BYTES = 65536;
+}
+
 Server::Server(char **envp) : serverActive(true), client(8192, NULL), env(envpParsing(envp)), timeOutValue() {}
 
 Server::~Server()
@@ -244,6 +249,7 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
     {
         std::cout << "클라이언트 연결 종료 : Client["<< client->getSocket().getFd() << "]" << std::endl;
         epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client);
+        drainSocket(client->getSocket().getFd());
         deleteClient(client->getSocket().getFd());
         return RET_OK;
     }
@@ -558,6 +564,20 @@ void Server::deleteClient(int deleteFd)
         this->inClientVec.erase(it);
     delete this->client[deleteFd];
     this->client[deleteFd] = NULL;
+}
+
+void Server::drainSocket(FD fd)
+{
+    char buf[4096];
+    size_t drained = 0;
+
+    while (drained < DRAIN_MAX_BYTES)
+    {
+        ssize_t n = recv(fd, buf, sizeof(buf), 0);
+        if (n <= 0)
+            break;
+        drained += static_cast<size_t>(n);
+    }
 }
 
 void Server::reapCgiChild(pid_t pid)

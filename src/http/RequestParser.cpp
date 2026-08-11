@@ -208,8 +208,11 @@ bool RequestParser::parseHeaders(CharDq& buf)
 	CharDq headers(buf.begin(), buf.begin() + crlfcrlf + 2);
 	buf.erase(buf.begin(), buf.begin() + crlfcrlf + 4);
 
+	size_t headerCount = 0;
 	while (!headers.empty())
 	{
+		if (++headerCount > MAX_HEADER_COUNT) { parsedReq.status = STATUS_HEADER_TOO_LARGE; return true; }
+
 		if (HttpUtils::findBareLF(headers) != HttpUtils::npos) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 
 		size_t end = HttpUtils::findCRLF(headers);
@@ -281,36 +284,14 @@ bool RequestParser::parseHost(const std::string& raw)
 }
 bool RequestParser::validateContentLength(const strVec& cl)
 {
-	strVec values;
-	std::string tmpStr;
-	
-	for(size_t i = 0; i < cl.size(); ++i)
-	{
-		std::stringstream ss(cl[i]);
-		while (std::getline(ss, tmpStr, ','))
-		{
-			size_t s = tmpStr.find_first_not_of(" \t");
-			size_t e = tmpStr.find_last_not_of(" \t");
-			if (s == std::string::npos) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
-			std::string val = tmpStr.substr(s, e - s + 1);
-			if (val.empty()) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
-			for(size_t j = 0; j < val.size(); ++j)
-			{
-				if (!std::isdigit(static_cast<unsigned char>(val[j])))
-					{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
-			}
-			values.push_back(val);
-		}
-	}
-	if (values.empty()) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
+	if (cl.size() != 1) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
-	for(size_t i = 1; i < values.size(); ++i)
-	{
-		if (values[i] != values[0]) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
-	}
+	const std::string& val = cl[0];
+	if (val.empty() || val.find_first_not_of("0123456789") != std::string::npos)
+		{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	char* end = NULL;
-	unsigned long n = std::strtoul(values[0].c_str(), &end, 10);
+	unsigned long n = std::strtoul(val.c_str(), &end, 10);
 	if (*end != '\0') { parsedReq.status = STATUS_BAD_REQUEST; return false; }
 	if (n > maxBodyLength)
 		{ parsedReq.status = STATUS_PAYLOAD_TOO_LARGE; return false; }

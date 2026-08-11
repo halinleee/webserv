@@ -11,6 +11,7 @@ const size_t MAX_STARTLINE_LENGTH = 8192;
 const size_t MAX_URI_LENGTH = 4096;
 const size_t MAX_HEADER_LINE_LENGTH = 1024;
 const size_t MAX_HEADER_SECTION_LENGTH = 16 * 1024;
+const size_t MAX_HEADER_COUNT = 100;
 const size_t MAX_CLIENT_BODY_LENGTH = 1000000;
 const size_t MAX_LEADING_BLANK_LINES = 5;
 
