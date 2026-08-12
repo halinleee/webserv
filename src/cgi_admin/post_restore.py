@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Handles POST /cgi-bin/post_restore.py (application/x-www-form-urlencoded, field "id")
 # from www/admin/index.html's restore button: moves the matching post from
-# www/data/trash.json back into www/data/posts.json.
+# www/private/trash.json back into www/data/posts.json.
 import json
 import os
 import sys
@@ -10,7 +10,7 @@ import urllib.parse
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WWW_DIR = os.path.join(PROJECT_ROOT, "www")
 POSTS_JSON = os.path.join(WWW_DIR, "data", "posts.json")
-TRASH_JSON = os.path.join(WWW_DIR, "data", "trash.json")
+TRASH_JSON = os.path.join(WWW_DIR, "private", "trash.json")
 
 
 def send(status_line, body, content_type="application/json"):

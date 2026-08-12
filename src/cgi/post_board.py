@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Handles the multipart/form-data POST from www/upload.html (title, content, image),
+# Handles the multipart/form-data POST from www/public/upload.html (title, content, image),
 # stores the image under www/uploads/ and appends the post to www/data/posts.json,
 # then sends a client redirect (RFC3875 6.2.3) back to the board.
 import json

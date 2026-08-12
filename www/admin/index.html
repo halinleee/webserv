@@ -18,7 +18,7 @@
 <script>
 document.getElementById('board-link').href = '//' + window.location.hostname + ':8080/';
 
-fetch('/data/trash.json')
+fetch('/private/trash.json')
     .then(function (res) { return res.json(); })
     .then(function (posts) {
         var list = document.getElementById('post-list');

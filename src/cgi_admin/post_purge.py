@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Handles DELETE /cgi-bin/post_purge.py (application/x-www-form-urlencoded, field "id")
 # from www/admin/index.html's permanent-delete button: removes the matching
-# post from www/data/trash.json for good and, if no other post (trashed or
+# post from www/private/trash.json for good and, if no other post (trashed or
 # not) still references it, deletes its uploaded image.
 import json
 import os
@@ -12,7 +12,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 WWW_DIR = os.path.join(PROJECT_ROOT, "www")
 UPLOAD_DIR = os.path.join(WWW_DIR, "uploads")
 POSTS_JSON = os.path.join(WWW_DIR, "data", "posts.json")
-TRASH_JSON = os.path.join(WWW_DIR, "data", "trash.json")
+TRASH_JSON = os.path.join(WWW_DIR, "private", "trash.json")
 
 
 def send(status_line, body, content_type="application/json"):

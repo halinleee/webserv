@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Handles DELETE /cgi-bin/post_delete.py (application/x-www-form-urlencoded, field "id")
-# from www/index.html's delete button: moves the matching post from
-# www/data/posts.json into www/data/trash.json (soft delete) so the admin
+# from www/public/index.html's delete button: moves the matching post from
+# www/data/posts.json into www/private/trash.json (soft delete) so the admin
 # board (see src/cgi_admin/post_restore.py) can bring it back later. The
 # uploaded image is kept on disk until the post is purged from the trash.
 import json
@@ -13,7 +13,7 @@ import urllib.parse
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WWW_DIR = os.path.join(PROJECT_ROOT, "www")
 POSTS_JSON = os.path.join(WWW_DIR, "data", "posts.json")
-TRASH_JSON = os.path.join(WWW_DIR, "data", "trash.json")
+TRASH_JSON = os.path.join(WWW_DIR, "private", "trash.json")
 
 
 def send(status_line, body, content_type="application/json"):
