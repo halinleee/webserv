@@ -74,6 +74,34 @@ end
 
 See `webserv.conf` for a complete working example.
 
+#### Server directives
+
+| Directive | Description | Default | Required |
+|---|---|---|---|
+| `server <port>` | Port the server binds to | — | Yes |
+| `listen <interface>` | Interface (IP) to bind to | `INADDR_ANY` (all interfaces) | No |
+| `client_max_body_size <bytes>` | Maximum allowed request body size | `1,000,000` bytes | No |
+| `error_page <code> <path>` | Custom error page per status code | none | No |
+| `connection_timeout <seconds>` | Timeout for the connection itself | `60`s | No |
+| `read_timeout <seconds>` | Timeout for reading a request | `60`s | No |
+| `write_timeout <seconds>` | Timeout for writing a response | `60`s | No |
+| `keep_alive_timeout <seconds>` | How long a keep-alive connection is held open | `75`s | No |
+| `cgi_timeout <seconds>` | Timeout for CGI process execution | `60`s | No |
+
+#### Location directives
+
+| Directive | Description | Default | Required |
+|---|---|---|---|
+| `root <directory>` | Root directory to serve static files from | — | No* |
+| `alias <directory>` | Replaces the matched path with this directory instead of appending to `root` | — | No* |
+| `index <file>` | Default file served for directory requests | none | No |
+| `methods <METHOD ...>` | Allowed HTTP methods | `GET` | No |
+| `autoindex on\|off` | Enable directory listing | `off` | No |
+| `return <code> <location>` | Redirect to the given location with the given status code | none | No |
+| `cgi_ext <extension> <interpreter_path>` | Interpreter to run for a given file extension | none | No |
+
+*One of `root` or `alias` should be set for static/CGI locations.
+
 ## Resources
 
 * [RFC 9110 — HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
