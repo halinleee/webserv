@@ -226,35 +226,6 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 	return false;
 }
 
-
-parseStatus ServerConfig::endSequenceValid(std::ifstream &configFile)
-{
-	std::string nextLine;
-	while (true)
-	{
-		std::streampos nextPos = configFile.tellg();
-		if (!std::getline(configFile, nextLine))
-		{
-			setPrefixes();
-			return PARSE_FILE_END;
-		}
-		if (isBlankLine(nextLine))
-			continue;
-		std::string tmp = nextLine;
-		removeIndent(tmp, '\t');
-		std::vector<std::string> nextToken = ftSplit(tmp, ' ');
-		if (!nextToken.empty() && nextToken[0] == "server")
-		{
-			configFile.clear();
-			configFile.seekg(nextPos);
-			setPrefixes();
-			return PARSE_SERVER_END;
-		}
-		return PARSE_ERROR;
-	}
-}
-
-
 parseStatus ServerConfig::parseServerConfigBlock(std::ifstream &configFile)
 {
 	std::string configLine;
@@ -267,7 +238,7 @@ parseStatus ServerConfig::parseServerConfigBlock(std::ifstream &configFile)
 		int indent = countIndent(configLine);
 		if (indent > 1 || indent == -1)
 		{ 
-			statusMessage = "Config error: indent error\nerror line: " + configLine; 
+			statusMessage = "Config error: indent error";
 			return PARSE_ERROR; 
 		}
 
@@ -283,7 +254,7 @@ parseStatus ServerConfig::parseServerConfigBlock(std::ifstream &configFile)
 
 			if (!parseServerDirective(directiveToken, configFile))
 			{ 
-				statusMessage = "Config error: Invalid server block format\nerror line: " + configLine; 
+				statusMessage = "Config error: Invalid server block format";
 				return PARSE_ERROR; 
 			}
 		}
@@ -297,7 +268,8 @@ parseStatus ServerConfig::parseServerConfigBlock(std::ifstream &configFile)
 					statusMessage = "Config error: location is not defined";
 					return PARSE_ERROR; 
 				}
-				return endSequenceValid(configFile);
+				setPrefixes();
+				return PARSE_SERVER_END;
 				
 			}
 			else

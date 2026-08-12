@@ -55,6 +55,12 @@ parseStatus Config::parseServerBlock(std::ifstream &configFile)
 
 	in_port_t key = static_cast<in_port_t>(num);
 
+    if (servers.find(key) != servers.end())
+    {
+        statusMessage = "Config error: duplicate server port ";
+        return PARSE_ERROR;
+    }
+
 	//server 파싱 시작
 	ServerConfig server;
 	parseStatus result = server.parseServerConfigBlock(configFile);
@@ -89,7 +95,7 @@ bool Config::parseConfig(int argc, char **argv)
 	std::ifstream configFile(configPath.c_str());
 	if (!configFile.is_open())
 	{
-		statusMessage = "Failed to open file: " + configPath;
+		statusMessage = "Config error: Failed to open file: ";
 		return false;
 	}
 
