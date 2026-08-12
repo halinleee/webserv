@@ -56,7 +56,6 @@ bool cgiParseKeyValue(const std::string& line, std::string& key, std::string& va
 	{
 		unsigned char c = static_cast<unsigned char>(key[i]);
 		if (!HttpUtils::isTchar(c)) return false;
-		key[i] = std::tolower(c);
 	}
 
 	value = line.substr(colon + 1);
@@ -105,6 +104,7 @@ Response CgiParser::parseCgiOutput(const std::string& cgiOutput)
 		if (!cgiParseKeyValue(lines[i], key, value))
 			return Response(STATUS_BAD_GATEWAY);
 
+		//같은 이름의 헤더가 여러줄 나올 때 처리(콤마로 구분된 리스트 하나로 합쳐도 의미가 동일해야 한다는 규칙)
 		Response::HeaderMap::iterator it = response.headers.find(key);
 		if (it != response.headers.end())
 			it->second = it->second + ", " + value;

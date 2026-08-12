@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>관리자 - 휴지통</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="ocean-bg" id="oceanBg"></div>
+<header>
+    <a href="/">관리자 - 휴지통</a>
+    <nav><a id="board-link" href="/">게시판으로</a></nav>
+</header>
+<main>
+    <ul class="post-list" id="post-list"></ul>
+    <p class="empty" id="empty-msg" style="display:none;">휴지통이 비어 있습니다.</p>
+</main>
+<script>
+document.getElementById('board-link').href = '//' + window.location.hostname + ':8080/';
+
+fetch('/data/trash.json')
+    .then(function (res) { return res.json(); })
+    .then(function (posts) {
+        var list = document.getElementById('post-list');
+        if (!posts || posts.length === 0) {
+            document.getElementById('empty-msg').style.display = 'block';
+            return;
+        }
+        posts.forEach(function (post) {
+            var li = document.createElement('li');
+            li.innerHTML =
+                (post.image ? '<img class="thumb" src="' + post.image + '">' : '') +
+                '<div><div class="title">' + post.title + '</div>' +
+                '<div class="content">' + (post.content || '') + '</div>' +
+                '<div class="meta">삭제됨: ' + (post.deleted_at || '') + '</div></div>' +
+                '<button type="button" class="btn delete-btn restore-btn">복구</button>' +
+                '<button type="button" class="btn delete-btn purge-btn">완전삭제</button>';
+            li.addEventListener('click', function () {
+                li.classList.toggle('expanded');
+            });
+
+            var restoreBtn = li.querySelector('.restore-btn');
+            restoreBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                restoreBtn.disabled = true;
+                fetch('/cgi-bin/post_restore.py', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'id=' + encodeURIComponent(post.id)
+                })
+                    .then(function (res) {
+                        if (!res.ok) {
+                            throw new Error('restore failed');
+                        }
+                        li.remove();
+                        if (!list.children.length) {
+                            document.getElementById('empty-msg').style.display = 'block';
+                        }
+                    })
+                    .catch(function () {
+                        restoreBtn.disabled = false;
+                        alert('복구에 실패했습니다.');
+                    });
+            });
+
+            var purgeBtn = li.querySelector('.purge-btn');
+            purgeBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (!confirm('완전히 삭제하면 되돌릴 수 없습니다. 계속할까요?')) {
+                    return;
+                }
+                purgeBtn.disabled = true;
+                fetch('/cgi-bin/post_purge.py', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'id=' + encodeURIComponent(post.id)
+                })
+                    .then(function (res) {
+                        if (!res.ok) {
+                            throw new Error('purge failed');
+                        }
+                        li.remove();
+                        if (!list.children.length) {
+                            document.getElementById('empty-msg').style.display = 'block';
+                        }
+                    })
+                    .catch(function () {
+                        purgeBtn.disabled = false;
+                        alert('완전삭제에 실패했습니다.');
+                    });
+            });
+
+            list.appendChild(li);
+        });
+    })
+    .catch(function () {
+        document.getElementById('empty-msg').style.display = 'block';
+    });
+</script>
+<script src="/assets/bubbles.js"></script>
+</body>
+</html>

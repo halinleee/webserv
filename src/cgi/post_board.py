@@ -163,6 +163,7 @@ def main():
             server_error("Failed to save image: %s" % e)
 
     post = {
+        "id": uuid.uuid4().hex,
         "title": escape_html(title),
         "content": escape_html(content),
         "image": image_url,

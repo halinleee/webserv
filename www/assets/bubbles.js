@@ -27,13 +27,6 @@
             wrap.addEventListener('click', function () {
                 window.location.href = '/easter-egg.html';
             });
-
-            var flipCount = 0;
-            wrap.addEventListener('animationiteration', function () {
-                flipCount++;
-                // alternate: 홀수 번째 왕복(오른쪽->왼쪽 구간)일 때만 반전
-                wrap.classList.toggle('facing-left', flipCount % 2 === 1);
-            });
             return;
         }
 
