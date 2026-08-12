@@ -9,7 +9,7 @@
 <div class="ocean-bg" id="oceanBg"></div>
 <header>
     <a href="/">게시판</a>
-    <nav><a href="/upload.html">글쓰기</a></nav>
+    <nav><a href="uploads/upload.html">글쓰기</a></nav>
 </header>
 <main>
     <ul class="post-list" id="post-list"></ul>
@@ -29,7 +29,38 @@ fetch('/data/posts.json')
             li.innerHTML =
                 (post.image ? '<img class="thumb" src="' + post.image + '">' : '') +
                 '<div><div class="title">' + post.title + '</div>' +
-                '<div class="meta">' + (post.date || '') + '</div></div>';
+                '<div class="content">' + (post.content || '') + '</div>' +
+                '<div class="meta">' + (post.date || '') + '</div></div>' +
+                '<button type="button" class="btn delete-btn">아토믹</button>';
+            li.addEventListener('click', function () {
+                li.classList.toggle('expanded');
+            });
+            var deleteBtn = li.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (!confirm('I am atomic')) {
+                    return;
+                }
+                deleteBtn.disabled = true;
+                fetch('/cgi-bin/post_delete.py', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'id=' + encodeURIComponent(post.id)
+                })
+                    .then(function (res) {
+                        if (!res.ok) {
+                            throw new Error('delete failed');
+                        }
+                        li.remove();
+                        if (!list.children.length) {
+                            document.getElementById('empty-msg').style.display = 'block';
+                        }
+                    })
+                    .catch(function () {
+                        deleteBtn.disabled = false;
+                        alert('삭제에 실패했습니다.');
+                    });
+            });
             list.appendChild(li);
         });
     })
