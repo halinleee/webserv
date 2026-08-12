@@ -5,20 +5,20 @@
 
 bool LocationConfig::parseHttpMethod(const std::string &s, HttpMethod &out)
 {
-	if (s == "GET") 
-	{ 
-		out = METHOD_GET; 
-		return true; 
+	if (s == "GET")
+	{
+		out = METHOD_GET;
+		return true;
 	}
-	else if (s == "POST") 
-	{ 
+	else if (s == "POST")
+	{
 		out = METHOD_POST;
-		return true; 
+		return true;
 	}
-	else if (s == "DELETE") 
-	{ 
-		out = METHOD_DELETE; 
-		return true; 
+	else if (s == "DELETE")
+	{
+		out = METHOD_DELETE;
+		return true;
 	}
 	return false;
 }
@@ -47,7 +47,7 @@ bool LocationConfig::parseLocationDir(std::vector<std::string>& token, std::stri
 	{
 		if (token.size() < 2)
 			return false;
-		
+
 		methods.clear();
 		for (size_t i = 1; i < token.size(); ++i)
 		{
@@ -110,7 +110,7 @@ bool LocationConfig::parseLocationDir(std::vector<std::string>& token, std::stri
 
 		if ((prefix[prefix.size() - 1] == '/') != (token[1][token[1].size() - 1] == '/'))
 			return false;
-		
+
 		alias = token[1];
 	}
 
@@ -129,12 +129,12 @@ bool LocationConfig::parseLocationBlock(std::ifstream &configFile, std::string &
 		std::streampos pos = configFile.tellg();
 		if (!std::getline(configFile, line))
 			break;
-		
+
 		if (isBlankLine(line))
 			continue;
-		
+
 		int indent = countIndent(line);
-		
+
 		if (indent == 0 || indent == 1)
 		{
 			configFile.clear();
@@ -143,7 +143,7 @@ bool LocationConfig::parseLocationBlock(std::ifstream &configFile, std::string &
 		}
 		if (indent == -1 || indent != 2)
 			return false;
-		
+
 		removeIndent(line, '\t');
 		std::vector<std::string> token = ftSplit(line, ' ');
 		if (token.empty())
@@ -154,3 +154,4 @@ bool LocationConfig::parseLocationBlock(std::ifstream &configFile, std::string &
 	}
 	return false;
 }
+

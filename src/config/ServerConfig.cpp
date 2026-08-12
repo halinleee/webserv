@@ -31,21 +31,11 @@ bool ServerConfig::matching(const std::string& url)
         size_t prefixLen = prefix.size();
         size_t urlLen = url.size();
 
-        if (urlLen < prefixLen) //url이 prefix보다 짧으면 스킵
+        if (urlLen < prefixLen)
             continue;
-		
-        if (url.compare(0, prefixLen, prefix) != 0) //url의 앞부분이 prefix와 정확히 같지 않으면 스킵
+
+        if (url.compare(0, prefixLen, prefix) != 0)
             continue;
-		/*
-		경계 체크
-		prefix가 '/'로 끝나지 않는 경우(ex: "/bin")에는 "/bin123"과 같은 케이스를 매칭하면 안됨
-		prefix 마지막이 '/'가 아니고 url이 prefix보다 길어서 뒤에 경로가 더 존재하며
-		url[prefix] 길이 뒤에 문자가 '/'가 아니면 "/bin"가 "/bin123"처럼 잘못 매칭되는 상황이므로 스킵
-		ex)
-			url: /cgi_bin/cgi/bin123/abc/files [x]
-			url: /cgi_bin/cgi/bin/abc/files    [o]
-	 		location /cgi_bin/cgi/bin
-		*/
         if (prefix[prefixLen - 1] != '/' && urlLen > prefixLen && url[prefixLen] != '/')
             continue;
 
@@ -81,7 +71,7 @@ bool ServerConfig::parseTimeOut(std::vector<std::string>& token)
 
 	if (num == 0 || num > TIME_OUT_MAX)
 		return false;
-		
+
 	if (token[0] == "connection_timeout")
 		timeConfig.connectionTimeOut = static_cast<std::time_t>(num);
 	else if (token[0] == "read_timeout")
@@ -92,7 +82,7 @@ bool ServerConfig::parseTimeOut(std::vector<std::string>& token)
 		timeConfig.keepAliveTimeout = static_cast<std::time_t>(num);
 	else if (token[0] == "cgi_timeout")
 		timeConfig.cgiTimeout = static_cast<std::time_t>(num);
-	
+
 
 	return true;
 }
@@ -129,11 +119,11 @@ bool ServerConfig::parseErrorPage(std::vector<std::string> &token)
 	size_t num = 0;
 	if (!toInt(token[1], num))
 		return false;
-	
+
 	if (!isValidFileSystemPath(token[2]))
 		return false;
 
-	if(!isValidErrorCode(num)) // 지원하지 않는 코드는 무시하고 파싱은 계속 진행
+	if(!isValidErrorCode(num))
 		return true;
 
 	errorPages[num] = token[2];
@@ -152,7 +142,7 @@ bool ServerConfig::parseBody(const std::vector<std::string> &token)
 
 	if (!toInt(token[1], num))
 		return false;
-	
+
 	if (num == 0 || num > BODY_SIZE_MAX)
 		return false;
 	clientMaxBodySize = num;
@@ -176,7 +166,7 @@ bool ServerConfig::parseListen(std::vector<std::string> &token)
 	std::vector<std::string> octetToken = ftSplit(token[1], '.');
 	if (octetToken.size() != 4)
 		return false;
-	
+
 	size_t octet1, octet2, octet3, octet4;
 
 	if (!toInt(octetToken[0], octet1) || !toInt(octetToken[1], octet2) || !toInt(octetToken[2], octet3) || !toInt(octetToken[3], octet4))
@@ -191,7 +181,7 @@ bool ServerConfig::parseListen(std::vector<std::string> &token)
 }
 
 bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::ifstream &configFile)
-{	
+{
 	if (token[0] == "client_max_body_size")
 		return parseBody(token);
 	else if (token[0] == "listen")
@@ -205,7 +195,7 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 	{
 		if (token.size() != 2 || !isValidNormalizePath(token[1]))
 			return false;
-		
+
 		LocationConfig locConfig;
 		if (!locConfig.parseLocationBlock(configFile, token[1]))
 			return false;
@@ -218,11 +208,11 @@ bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::if
 			return false;
 		if (hasRoot && hasAlias)
 			return false;
-		
-		locations[token[1]] = locConfig; //prefix key값에 value 대입
+
+		locations[token[1]] = locConfig;
 		return true;
 	}
-	
+
 	return false;
 }
 
@@ -237,9 +227,9 @@ parseStatus ServerConfig::parseServerConfigBlock(std::ifstream &configFile)
 
 		int indent = countIndent(configLine);
 		if (indent > 1 || indent == -1)
-		{ 
+		{
 			statusMessage = "Config error: indent error";
-			return PARSE_ERROR; 
+			return PARSE_ERROR;
 		}
 
 		if (indent == 1)
@@ -247,15 +237,15 @@ parseStatus ServerConfig::parseServerConfigBlock(std::ifstream &configFile)
 			removeIndent(configLine, '\t');
 			std::vector<std::string> directiveToken = ftSplit(configLine, ' ');
 			if (directiveToken.empty())
-			{ 
+			{
 				statusMessage = "Config error: Directive token is empty";
-				return PARSE_ERROR; 
+				return PARSE_ERROR;
 			}
 
 			if (!parseServerDirective(directiveToken, configFile))
-			{ 
+			{
 				statusMessage = "Config error: Invalid server block format";
-				return PARSE_ERROR; 
+				return PARSE_ERROR;
 			}
 		}
 
@@ -264,16 +254,16 @@ parseStatus ServerConfig::parseServerConfigBlock(std::ifstream &configFile)
 			if (configLine == "end")
 			{
 				if (locations.empty())
-				{ 
+				{
 					statusMessage = "Config error: location is not defined";
-					return PARSE_ERROR; 
+					return PARSE_ERROR;
 				}
 				setPrefixes();
 				return PARSE_SERVER_END;
-				
+
 			}
 			else
-			{ 
+			{
 				statusMessage = "Config error: Invalid server block format";
 				return PARSE_ERROR;
 			}

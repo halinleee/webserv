@@ -437,3 +437,4 @@ Response Handler::buildErrorPage(Status code, const std::map<size_t, std::string
 	setBody(res, "<html><body><h1>" + codess.str() + " " + res.statusText + "</h1></body></html>", "text/html");
 	return res;
 }
+

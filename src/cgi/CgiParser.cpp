@@ -4,16 +4,13 @@ bool isStatusLine(const std::string& line)
 {
 	if (line.compare(0, 5, "HTTP/") == 0)
 		return true;
-	
+
 	if (line.compare(0, 7, "Status:") == 0 || line.compare(0, 7, "status:") == 0)
 		return true;
 
 	return false;
 }
 
-// Status: 200 OK
-// Status: 404 Not Found
-// HTTP/1.1 200 OK
 bool parseStatusLine(const std::string& lines, Response& response)
 {
 	std::vector<std::string> statusLine = ftSplit(lines, ' ');
@@ -88,7 +85,7 @@ Response CgiParser::parseCgiOutput(const std::string& cgiOutput)
 		if (!lines[i].empty() && lines[i][lines[i].size() - 1] == '\r')
 			lines[i].erase(lines[i].size() - 1);
 	}
-	
+
 	for (size_t i = 0; i < lines.size(); ++i)
 	{
 		std::string key, value;
@@ -103,7 +100,6 @@ Response CgiParser::parseCgiOutput(const std::string& cgiOutput)
 		if (!cgiParseKeyValue(lines[i], key, value))
 			return Response(STATUS_BAD_GATEWAY);
 
-		//같은 이름의 헤더가 여러줄 나올 때 처리(콤마로 구분된 리스트 하나로 합쳐도 의미가 동일해야 한다는 규칙)
 		Response::HeaderMap::iterator it = response.headers.find(key);
 		if (it != response.headers.end())
 			it->second = it->second + ", " + value;
@@ -116,3 +112,4 @@ Response CgiParser::parseCgiOutput(const std::string& cgiOutput)
 
 	return response;
 }
+

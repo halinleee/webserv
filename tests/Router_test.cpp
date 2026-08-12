@@ -1,23 +1,3 @@
-// Router 유닛-통합 테스트 하네스: root/alias 경로 리졸브 검증
-//
-// root와 alias는 location prefix를 다루는 방식이 다르다(nginx와 동일):
-//   - alias: 매칭된 prefix를 잘라내고 alias 경로에 나머지를 붙인다.
-//   - root : prefix를 자르지 않고 요청 경로 전체를 root 경로에 그대로 붙인다.
-// 즉 location /static { root ./www; } 라면 GET /static/a.txt 는
-// ./www/static/a.txt 를 가리킨다(./www/a.txt 가 아님). root 아래에
-// location prefix와 같은 이름의 하위 디렉터리가 실제로 있어야 파일이 보인다.
-//
-// 진짜 conf 파일을 파싱해 ServerConfig/LocationConfig를 만들고
-// Router::route()에 넣어 resolvedPath를 검증한다. 마지막 한 케이스는
-// Handler::serve()까지 연결해 실제 200 응답이 나오는지 end-to-end로 확인한다.
-//
-// 빌드 예시:
-//   c++ -Wall -Wextra -Werror -std=c++98 -I./include
-//       tests/Router_test.cpp
-//       src/http/Router.cpp src/http/Handler.cpp src/http/MultipartParser.cpp src/http/HttpUtils.cpp
-//       src/config/ServerConfig.cpp src/config/LocationConfig.cpp src/utils/ConfigParseUtils.cpp
-//       -o tests/Router_test
-//   ./tests/Router_test
 
 #include "Router.hpp"
 #include "Handler.hpp"
@@ -54,7 +34,7 @@ static void report(const std::string& caseName, bool ok, const std::string& deta
 	}
 }
 
-static std::string g_fixtureRoot; // 테스트 fixture 루트(/tmp/router_test_<pid>)
+static std::string g_fixtureRoot;
 
 static bool writeFile(const std::string& path, const std::string& content)
 {
@@ -79,7 +59,6 @@ static void mkdirp(const std::string& path)
 	mkdir(path.c_str(), 0755);
 }
 
-// conf 텍스트를 파일로 쓰고 파싱해 ServerConfig를 반환한다.
 static bool buildServerConfig(const std::string& body, ServerConfig& out)
 {
 	std::string confPath = g_fixtureRoot + "/test.conf";
@@ -92,7 +71,7 @@ static bool buildServerConfig(const std::string& body, ServerConfig& out)
 		return false;
 
 	std::string first;
-	std::getline(ifs, first); // "server 8080" 라인 소비(ServerConfig는 그 아래부터 파싱)
+	std::getline(ifs, first);
 
 	parseStatus st = out.parseServerConfigBlock(ifs);
 	return st == PARSE_FILE_END || st == PARSE_SERVER_END;
@@ -106,7 +85,6 @@ static Request makeRequest(HttpMethod method, const std::string& path)
 	return req;
 }
 
-// TC1: root는 location prefix를 자르지 않고 요청 경로 전체를 붙인다(nginx와 동일)
 static void test_root_keeps_prefix()
 {
 	std::string root = g_fixtureRoot + "/tc1_root";
@@ -132,7 +110,6 @@ static void test_root_keeps_prefix()
 	report("TC1 root keeps prefix (GET /static/hello.txt -> <root>/static/hello.txt)", ok, d.str());
 }
 
-// TC2: location "/" 은 prefix가 "/" 자체이므로 root와 그냥 이어붙인 것과 동일하게 보인다
 static void test_root_at_slash_prefix()
 {
 	std::string root = g_fixtureRoot + "/tc2_root";
@@ -157,7 +134,6 @@ static void test_root_at_slash_prefix()
 	report("TC2 root at / prefix -> <root>/index.html", ok, d.str());
 }
 
-// TC3: 중첩 prefix에서도 root는 전체 경로를 그대로 붙인다
 static void test_root_nested_prefix()
 {
 	std::string root = g_fixtureRoot + "/tc3_root";
@@ -182,7 +158,6 @@ static void test_root_nested_prefix()
 	report("TC3 root nested prefix (/a/b) -> <root>/a/b/c.txt", ok, d.str());
 }
 
-// TC4: alias는 root와 반대로 prefix를 잘라낸다 (대조군)
 static void test_alias_strips_prefix()
 {
 	std::string aliasDir = g_fixtureRoot + "/tc4_alias";
@@ -207,8 +182,6 @@ static void test_alias_strips_prefix()
 	report("TC4 alias strips prefix (/up/x.txt -> <alias>/x.txt, no /up)", ok, d.str());
 }
 
-// TC5: end-to-end - root 아래에 prefix와 같은 이름의 하위 디렉터리를 실제로 만들어두면
-// Router::route() + Handler::serve() 로 200과 실제 파일 내용이 나온다.
 static void test_root_end_to_end_serves_file()
 {
 	std::string root = g_fixtureRoot + "/tc5_root";
@@ -235,8 +208,6 @@ static void test_root_end_to_end_serves_file()
 	report("TC5 root end-to-end -> 200 + correct body", ok, d.str());
 }
 
-// TC6: 흔한 오설정 함정 문서화 - root 바로 아래에 파일을 두면(하위 디렉터리 없이)
-// prefix가 안 잘리므로 못 찾는다 -> 404. (alias였다면 200이었을 케이스)
 static void test_root_misconfiguration_pitfall_404()
 {
 	std::string root = g_fixtureRoot + "/tc6_root";
@@ -269,12 +240,12 @@ int main()
 	std::cout << "=== Router root/alias resolve test ===\n";
 	std::cout << "fixture root: " << g_fixtureRoot << "\n\n";
 
-	test_root_keeps_prefix();             // TC1
-	test_root_at_slash_prefix();          // TC2
-	test_root_nested_prefix();            // TC3
-	test_alias_strips_prefix();           // TC4
-	test_root_end_to_end_serves_file();   // TC5
-	test_root_misconfiguration_pitfall_404(); // TC6
+	test_root_keeps_prefix();
+	test_root_at_slash_prefix();
+	test_root_nested_prefix();
+	test_alias_strips_prefix();
+	test_root_end_to_end_serves_file();
+	test_root_misconfiguration_pitfall_404();
 
 	std::cout << "\n=== SUMMARY: " << g_pass << " passed, " << g_fail << " failed ===\n";
 	if (g_fail > 0)
@@ -290,3 +261,4 @@ int main()
 
 	return g_fail == 0 ? 0 : 1;
 }
+

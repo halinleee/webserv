@@ -18,21 +18,16 @@ struct RouteResult
 {
 	RouteAction action;
 
-	// STATIC, CGI
 	std::string resolvedPath;
 
-	// STATIC
 	bool autoIndex;
 	std::string index;
 
-	// CGI
 	std::string cgiInterpreter;
 
-	// REDIRECT
 	int redirectCode;
 	std::string redirectPath;
 
-	// ERROR
 	int errorCode;
 	std::set<HttpMethod> allowedMethods;
 

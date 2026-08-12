@@ -68,3 +68,4 @@ FD Pipe::getOutReadFd()  const { return outPipe[0]; }
 
 void Pipe::closeInWrite()  { closeSafely(inPipe[1]); }
 void Pipe::closeOutRead()  { closeSafely(outPipe[0]); }
+

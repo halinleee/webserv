@@ -145,7 +145,6 @@ RetStatus Server::cgiEventLoop(Epoll &epoll, Client *pipeClient, FD currentFd, u
         {
             reapCgiChild(pipeClient->getPid());
             pipeClient->setRunCgi(false);
-            // 요청 자체는 온전히 받은 뒤 upstream(CGI)만 실패한 것이므로 연결은 재사용할 수 있다.
             pipeClient->fail(STATUS_BAD_GATEWAY, FAIL_KEEP_ALIVE);
             if (!epollGuard(epoll, EPOLL_CTL_MOD, pipeClient->getSocket().getFd(), EPOLLOUT, pipeClient))
             {
@@ -175,10 +174,6 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
 {
     client->timeSet(this->timeOutValue.writeTimeout);
 
-    // client->response가 비어있지 않다면 이전 호출에서 send()가 일부만 전송되어
-    // 남은 바이트를 이어 보내야 하는 "이어보내기 모드"이다. 이 경우 라우팅/핸들러/
-    // 에러페이지 생성 로직(중복 실행 시 재업로드, 이중 삭제 등 부작용 발생)을 건너뛰고
-    // 곧바로 serverSend부터 재시도한다.
     if (client->response.empty())
     {
         std::string response;
@@ -217,8 +212,6 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
                 break;
         }
 
-        // 에러 상태인데 body가 비어있으면(라우팅/CGI/파싱 에러 등) errorPages 설정을 확인해
-        // 커스텀 에러 페이지로, 없으면 webserv 기본 에러 페이지로 body를 채운다.
         if (static_cast<int>(res.statusCode) >= 400 && res.body.empty())
         {
             ServerConfig &config = this->configs[client->getListenFd()];
@@ -274,13 +267,6 @@ RetStatus Server::serverSend(Epoll &epoll, Client *client)
     return (RET_RE);
 }
 
-/**
- * @brief 서버 소켓의 바인딩 및 리슨을 설정하는 함수
- *
- * TIME_WAIT 방지를 위해 SO_REUSEADDR를 설정하고 커널에 지정된 포트로 bind를 요청한 후, 클라이언트의 연결을 큐에 쌓기 시작하는 listen()과 논블로킹 설정을 호출합니다.
- * @param serverSocket 설정할 서버 Socket 객체
- * @return Error 발생시 0, 정상 동작시 1반환 (현재 enum을 통해서 type.hpp에 정의)
- */
 RetStatus Server::serverSetting(Socket *serverSocket)
 {
     int flag = 1;
@@ -389,7 +375,6 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
         client->setRouteResult(route);
     }
     else
-        // 파싱이 실패한 요청은 다음 요청의 경계를 신뢰할 수 없으므로 응답 후 연결을 닫는다.
         return errorHandling(client, epoll, client->getRequest().status, FAIL_CLOSE);
     if (!epollGuard(epoll, EPOLL_CTL_MOD, client->getSocket().getFd(), EPOLLOUT, client))
             return errorHandling(client, epoll, STATUS_INTERNAL_SERVER_ERROR, FAIL_CLOSE);
@@ -407,11 +392,10 @@ RetStatus Server::cgiRun(Epoll &epoll, Client *client)
     if (!pipe.init())
         return RET_ERROR;
 
-    // fork는 4개 fd 모두 유효한 상태에서 먼저 실행
     tmpPid = cgi.excute(client, this->env, pipe.getInPipeArr(), pipe.getOutPipeArr());
     if (static_cast<int>(tmpPid) < 0)
     {
-        pipe.detach();  // excute가 fork 실패 시 내부에서 이미 close함
+        pipe.detach();
         return RET_ERROR;
     }
     pipe.closeChildSide();
@@ -444,9 +428,8 @@ RetStatus Server::cgiRun(Epoll &epoll, Client *client)
 RetStatus Server::cgiPipeRead(Epoll &epoll, Client *client)
 {
     int status = client->readCgiPipe();
-    if (status == RET_ERROR) //cgi문제로 인한 오류 routing
+    if (status == RET_ERROR)
     {
-        // 502 확정은 호출자(cgiEventLoop)가 담당한다. 여기서는 파이프 자원만 정리한다.
         client->clearCgiRawOutput();
         FD outFd = client->getPipeFd(OutFlag);
         epollGuard(epoll, EPOLL_CTL_DEL, outFd, EPOLLIN, client);
@@ -471,7 +454,6 @@ RetStatus Server::cgiPipeWrite(Epoll &epoll, Client *client)
     int status = client->writeCgiPipe();
     if (status == RET_ERROR)
     {
-        // 502 확정은 호출자(cgiEventLoop)가 담당한다. 여기서는 파이프 자원만 정리한다.
         client->clearCgiRawOutput();
         epollGuard(epoll, EPOLL_CTL_DEL, client->getPipeFd(InFlag), EPOLLOUT, client);
         this->pipeToClientMap.erase(client->getPipeFd(InFlag));
@@ -647,8 +629,8 @@ std::string Server::buildAccessLog(Client *client, Status statusCode, size_t bod
     line << "HTTP/1.1\" ";
     line << static_cast<int>(statusCode) << " ";
     line << bodySize << " ";
-    
-    
+
+
     std::map<std::string, std::string>::const_iterator it;
     std::string referer = "-";
     if ((it = req.headers.find("referer")) != req.headers.end())
@@ -688,3 +670,4 @@ void Server::serverClose()
 {
     this->serverActive = false;
 }
+

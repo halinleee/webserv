@@ -16,7 +16,7 @@ size_t HttpUtils::findCRLF(const CharDq& buf)
 {
 	if (buf.size() < 2)
 		return (HttpUtils::npos);
-	
+
 	for(size_t i = 0; i + 1 < buf.size(); ++i)
 	{
 		if (buf[i] == '\r' && buf[i + 1] == '\n')

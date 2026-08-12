@@ -27,7 +27,6 @@ Client::Client(Socket *socket, EnvMap env)
 Client::~Client()
 {
     delete this->clientSocket;
-    // cgiPipe 소멸자가 열려있는 fd를 자동으로 닫음
 }
 
 RetStatus Client::writeCgiPipe()
@@ -243,3 +242,4 @@ void Client::setMaxBodyLength(size_t length)
 {
     this->parser.setMaxBodyLength(length);
 }
+

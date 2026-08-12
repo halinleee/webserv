@@ -10,7 +10,7 @@ Cgi::~Cgi() {}
 
 bool Cgi::dupSetting(int *in, int *out)
 {
-    
+
     if (dup2(in[0], STDIN_FILENO) < 0)
         return false;
     if (dup2(out[1], STDOUT_FILENO) < 0)
@@ -41,7 +41,7 @@ pid_t Cgi::excute(Client *client, EnvMap envp, int *in, int *out)
             pipeClose(in);
             pipeClose(out);
             exit (-1);
-        }    
+        }
         std::string path = request.path.substr(this->cgiPrefix.length());
         envAppend(client, envp, request, path);
         env = mapToEnvp(envp);
@@ -129,7 +129,7 @@ void Cgi::pipeClose(int *pipe)
 std::string Cgi::changeHeaderEnvkey(std::string name)
 {
     std::string key = "HTTP_";
-    for (std::string::const_iterator it = name.begin(); it != name.end(); ++it) 
+    for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
     {
         unsigned char c = *it;
         if (!std::isalnum(c))
@@ -139,3 +139,4 @@ std::string Cgi::changeHeaderEnvkey(std::string name)
     }
     return key;
 }
+

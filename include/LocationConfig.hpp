@@ -24,7 +24,7 @@ class LocationConfig
 	private:
 		bool parseHttpMethod(const std::string& s, HttpMethod& out);
 		bool parseLocationDir(std::vector<std::string>& token, std::string &prefix);
-	
+
 	public:
 		bool parseLocationBlock(std::ifstream &configFile, std::string &prefix);
 
@@ -33,7 +33,7 @@ class LocationConfig
 		LocationConfig()
 		{
 			autoIndex = false;
-			methods.insert(METHOD_GET); //메서드 추가할때 clear로 꼭 초기화
+			methods.insert(METHOD_GET);
 			redirectCode = STATUS_UNDEFINED;
 		}
 

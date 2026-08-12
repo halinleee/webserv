@@ -44,7 +44,7 @@ const struct sockaddr_in &Socket::getAddr(void) const { return this->addr; }
 
 bool Socket::checkTimeOut(void) { return this->timeState.timeOut < std::time(NULL); }
 
-Socket::~Socket() 
+Socket::~Socket()
 {
     if (this->socketFd != -1)
         close(this->socketFd);

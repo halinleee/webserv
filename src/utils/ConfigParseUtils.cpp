@@ -44,10 +44,9 @@ static bool normalizeSlashes(std::string &path)
 	return true;
 }
 
-// location prefix, redirect target(return) 등 URL 경로 검증용: 반드시 '/'로 시작해야 함
 bool isValidNormalizePath(std::string &path)
 {
-	if (path.empty() || path[0] != '/')//경로가 '/'로 시작하지 않으면 에러로 처리함
+	if (path.empty() || path[0] != '/')
 		return false;
 
 	if (!normalizeSlashes(path))
@@ -59,7 +58,6 @@ bool isValidNormalizePath(std::string &path)
 	return true;
 }
 
-// root/alias/cgi_ext/error_page 등 파일시스템 경로 검증용: cwd 기준 상대경로("./www/..")도 허용
 bool isValidFileSystemPath(std::string &path)
 {
 	if (path.empty())
@@ -69,10 +67,10 @@ bool isValidFileSystemPath(std::string &path)
 		return false;
 
 	std::string checkTarget = path;
-	if (checkTarget.compare(0, 2, "./") == 0)//맨 앞의 "./"는 트래버설이 아니므로 검사 대상에서 제외
+	if (checkTarget.compare(0, 2, "./") == 0)
 		checkTarget = checkTarget.substr(2);
 
-	if (HttpUtils::hasDotSegments(checkTarget))//나머지 구간에 "."·".." 세그먼트가 있으면 거부(경로 순회 방어)
+	if (HttpUtils::hasDotSegments(checkTarget))
 		return false;
 
 	return true;
@@ -115,9 +113,9 @@ bool isBlankLine(const std::string &line)
 	for(std::string::const_iterator it = line.begin(); it != line.end(); ++it)
 	{
 		if (!std::isspace(static_cast<unsigned char>(*it)))
-			return false; //공백이 아닌 줄
+			return false;
 	}
-	return true;//공백인 줄
+	return true;
 }
 
 

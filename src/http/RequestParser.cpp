@@ -10,8 +10,6 @@
 
 namespace
 {
-	// start-line을 공백 기준으로 method/target/version 3개 토큰으로 분리
-	// CR 포함 또는 길이 초과, 공백 개수가 2개가 아니면 실패
 	bool splitStartline(const std::string& line, ReqLine& req)
 	{
 		if (HttpUtils::hasCR(line) || line.size() > MAX_STARTLINE_LENGTH) return false;
@@ -29,7 +27,6 @@ namespace
 		return true;
 	}
 
-	// '%' 뒤에 16진수 두 자리가 따라오는지만 검증 (디코딩은 percentDecode가 담당)
 	bool isValidPercentEncoding(const std::string& target)
 	{
 		for(size_t i = 0; i < target.size(); ++i)
@@ -44,7 +41,6 @@ namespace
 		return true;
 	}
 
-	// target을 path/query로 분리. fragment('#')가 있으면 거부
 	bool splitURI(const std::string& target, std::string& path, std::string& query)
 	{
 		size_t fragment = target.find('#');
@@ -60,7 +56,6 @@ namespace
 		return true;
 	}
 
-	// 퍼센트 인코딩을 디코딩. 디코딩 결과에 널문자가 있으면 실패
 	bool percentDecode(const std::string& path, std::string& result)
 	{
 		result.reserve(path.size());
@@ -84,7 +79,6 @@ namespace
 		return true;
 	}
 
-	// 헤더 한 줄을 key: value로 분리. key는 소문자로 정규화, value는 앞뒤 공백 trim
 	bool parseKeyValue(const std::string& line, std::string& key, std::string& value)
 	{
 		size_t colon = line.find(':');
@@ -169,11 +163,11 @@ bool RequestParser::parseURI(const std::string& target)
 	std::string path, query, decoded;
 	if (!splitURI(target, path, query)) { parsedReq.status = STATUS_BAD_REQUEST; return false;}
 	if (!percentDecode(path, decoded)) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
-	if (HttpUtils::hasConsecutiveSlashes(decoded) || HttpUtils::hasDotSegments(decoded)) 
+	if (HttpUtils::hasConsecutiveSlashes(decoded) || HttpUtils::hasDotSegments(decoded))
 		{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	parsedReq.path = decoded;
-	if (!query.empty()) parsedReq.query = query; // query decoding 및 파싱은 cgi 책임.
+	if (!query.empty()) parsedReq.query = query;
 	return true;
 }
 bool RequestParser::parseVersion(const std::string& version)
@@ -229,7 +223,7 @@ bool RequestParser::parseHeaders(CharDq& buf)
 		if (!parseKeyValue(line, key, value)) { parsedReq.status = STATUS_BAD_REQUEST; return true; }
 		tmpHeaders[key].push_back(value);
 	}
-	
+
 	if (!validateHeaders()) return true;
 	transferHeaders();
 	return true;
@@ -256,14 +250,14 @@ bool RequestParser::parseHost(const std::string& raw)
 		{ parsedReq.status = STATUS_BAD_REQUEST; return false; }
 
 	size_t colon = raw.find(':');
-	if (colon == std::string::npos) 
+	if (colon == std::string::npos)
 	{
 		parsedReq.host = raw;
-		parsedReq.port = 80; 
+		parsedReq.port = 80;
 		return true;
 	}
 	if (raw.find(':', colon + 1) != std::string::npos) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
-	
+
 	std::string host = raw.substr(0, colon);
 	std::string strPort = raw.substr(colon + 1);
 	if (host.empty() || strPort.empty()) { parsedReq.status = STATUS_BAD_REQUEST; return false; }
@@ -425,7 +419,7 @@ bool RequestParser::parseChunkedBody(CharDq& buf)
 
 			if (buf[chunkRemaining] != '\r' || buf[chunkRemaining + 1] != '\n')
     			{ parsedReq.status = STATUS_BAD_REQUEST; return true; }
-			
+
 			parsedReq.body.insert(parsedReq.body.end(), buf.begin(), buf.begin() + chunkRemaining);
 			buf.erase(buf.begin(), buf.begin() + chunkRemaining + 2);
 			chunkRemaining = 0;
@@ -487,3 +481,4 @@ ReqParseResult RequestParser::getState() const
 }
 Request RequestParser::getRequest() const { return parsedReq; }
 bool RequestParser::isIdle() const { return parseState == REQ_STARTLINE; }
+
