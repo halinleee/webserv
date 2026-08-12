@@ -14,9 +14,10 @@
 namespace
 {
     const size_t DRAIN_MAX_BYTES = 65536;
+    const size_t MAX_CLIENT_FD = 60000;
 }
 
-Server::Server() : serverActive(true), client(60000, NULL), env(), timeOutValue() {}
+Server::Server() : serverActive(true), client(MAX_CLIENT_FD, NULL), env(), timeOutValue() {}
 
 Server::~Server()
 {
@@ -322,7 +323,7 @@ RetStatus Server::clientAccept(Epoll &epoll, Socket *socket)
         return RET_ERROR;
     }
     tmpSocket->setTimeStatus(this->timeOutValue.connectionTimeOut);
-    if (tmpFd >= 8192)
+    if (tmpFd >= (int)MAX_CLIENT_FD)
     {
         Client *client = new Client(tmpSocket, this->env);
         Response res(STATUS_SERVICE_UNAVAILABLE);
