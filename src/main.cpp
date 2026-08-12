@@ -32,7 +32,7 @@ int main(int ac, char **av)
         return -1;
     if (!server.serverAdd(config.getConfig(), epoll))
     {
-        std::cerr << "서버 시작 실패" << std::endl;
+        std::cerr << "Server error: failed to start server" << std::endl;
         return 1;
     }
     server.eventProcess(epoll);
