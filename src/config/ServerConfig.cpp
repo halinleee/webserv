@@ -157,7 +157,6 @@ bool ServerConfig::parseListen(std::vector<std::string> &token)
 	if (token.size() != 2)
 		return false;
 
-	unsigned int  strOctet1, strOctet2, strOctet3, strOctet4;
 	size_t maxIpSize = token[1].size();
 
 	if (maxIpSize > 15)

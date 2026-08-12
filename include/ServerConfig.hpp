@@ -52,7 +52,7 @@ class ServerConfig
 			timeConfig.cgiTimeout = 60;
 		};
 		const size_t& getClientMaxBodySize() const { return clientMaxBodySize; }
-		const uint32_t getListen() const { return listen; }
+		uint32_t getListen() const { return listen; }
 		const std::map<size_t, std::string>& getErrorPages() const { return errorPages; }
 		const std::map<std::string, LocationConfig>& getLocations() const { return locations; }
 		const std::string& getStatusMessage() const { return statusMessage; }
