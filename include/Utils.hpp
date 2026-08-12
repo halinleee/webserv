@@ -2,6 +2,8 @@
 # define UTILS_HPP
 
 #include "type.hpp"
+#include <netinet/in.h>
+#include <string>
 
 /**
  * @brief 특정 파일 디스크립터를 논블로킹(Non-blocking) 모드로 설정하는 함수
@@ -35,5 +37,12 @@ char **mapToEnvp(const EnvMap &env);
  * @details mapToEnvp() 등에서 동적으로 힙(Heap)에 할당한 char** 배열과 그 내부의 각 문자열(char*) 메모리들을 반복문을 통해 안전하게 반납하여 메모리 누수를 방지합니다.
  */
 void freeSplit(char **tmp);
+
+/**
+ * @brief 네트워크 바이트 오더의 in_addr_t를 "a.b.c.d" 형식의 문자열로 변환하는 함수
+ * @param addr 변환할 in_addr_t 값
+ * @return 변환된 IP 문자열
+ */
+std::string ipToString(in_addr_t addr);
 
 #endif

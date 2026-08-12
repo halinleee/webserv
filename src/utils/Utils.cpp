@@ -2,7 +2,9 @@
 
 #include <fcntl.h>
 #include <iostream>
+#include <cstdio>
 #include <cstring>
+#include <arpa/inet.h>
 
 /**
  * @fn EnvMap envpParsing(char **envp)
@@ -92,4 +94,14 @@ void freeSplit(char **tmp)
         i++;
     }
     delete []tmp;
+}
+
+std::string ipToString(in_addr_t addr)
+{
+    uint32_t host = ntohl(addr);
+    char buf[16];
+
+    std::snprintf(buf, sizeof(buf), "%u.%u.%u.%u",
+        (host >> 24) & 0xFF, (host >> 16) & 0xFF, (host >> 8) & 0xFF, host & 0xFF);
+    return std::string(buf);
 }

@@ -87,7 +87,7 @@ void Cgi::envAppend(Client *client, EnvMap &envp, Request request, const std::st
     envp["SERVER_SOFTWARE"] = "webserv/1.0";
     envp["GATEWAY_INTERFACE"] = "CGI/1.1";
     envp["SERVER_NAME"] = request.host;
-    envp["REMOTE_ADDR"] = inet_ntoa(client->getSocket().getAddr().sin_addr);
+    envp["REMOTE_ADDR"] = ipToString(client->getSocket().getAddr().sin_addr.s_addr);
     ss << request.port;
     envp["SERVER_PORT"] = ss.str();
     ss.clear();

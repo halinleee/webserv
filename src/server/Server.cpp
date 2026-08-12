@@ -16,7 +16,7 @@ namespace
     const size_t DRAIN_MAX_BYTES = 65536;
 }
 
-Server::Server() : serverActive(true), client(8192, NULL), env(), timeOutValue() {}
+Server::Server() : serverActive(true), client(60000, NULL), env(), timeOutValue() {}
 
 Server::~Server()
 {
@@ -232,7 +232,7 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
             res = errPage;
         }
         response = res.toString(client->getShouldClose());
-        Logger(LOG_ACCESS, buildAccessLog(client, res.statusCode, res.body.size()), inet_ntoa(client->getSocket().getAddr().sin_addr));
+        Logger(LOG_ACCESS, buildAccessLog(client, res.statusCode, res.body.size()), ipToString(client->getSocket().getAddr().sin_addr.s_addr));
         client->response = response;
     }
     int sendStatus = serverSend(epoll, client);
@@ -676,7 +676,7 @@ bool Server::checkMemoryLimit(Client *client)
 
     size_t kb = 0;
     std::istringstream(statusContent.substr(pos + 6)) >> kb;
-    return kb > 65536;
+    return kb > 655360;
 }
 
 void Server::serverClose()
