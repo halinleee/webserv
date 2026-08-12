@@ -31,7 +31,7 @@ RetStatus Server::serverAdd(in_port_t port, Epoll &epoll, ServerConfig config)
     int socketFd;
     Socket *tmpSocket;
     if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {return RET_ERROR;}
-    tmpSocket = new Socket(socketFd, port);
+    tmpSocket = new Socket(socketFd, config.getListen() ,port);
     this->timeOutValue = config.getTimeConfig();
     if (!serverSetting(tmpSocket)) {return RET_ERROR;}
     if (!epoll.epollControl(EPOLL_CTL_ADD, tmpSocket->getFd(), EPOLLIN))

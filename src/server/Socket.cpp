@@ -13,12 +13,12 @@ Socket::Socket()
     memset(this->addr.sin_zero, 0, sizeof(this->addr.sin_zero));
 }
 
-Socket::Socket(int fd, in_port_t port)
+Socket::Socket(int fd, uint32_t ip, in_port_t port)
 {
     this->socketFd = fd;
     this->addr.sin_family = AF_INET;
     this->addr.sin_port = htons(port);
-    this->addr.sin_addr.s_addr = INADDR_ANY;
+    this->addr.sin_addr.s_addr = ip;
     this->timeState.timeAct = 0;
     this->timeState.timeOut = 0;
     memset(this->addr.sin_zero, 0, sizeof(this->addr.sin_zero));

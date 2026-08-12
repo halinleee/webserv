@@ -53,7 +53,7 @@ class Socket
          * @param port 바인딩한 포트 번호
          * @details Server 클래스에서 새로운 서버 리스닝 소켓을 생성하고 포트와 결합할 때 호출됩니다.
          */
-        Socket(int fd, in_port_t port);
+        Socket(int fd, uint32_t ip, in_port_t port);
 
         /**
          * @brief 파일 디스크립터와 주소 구조체를 인자로 받는 생성자
