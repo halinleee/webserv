@@ -44,7 +44,7 @@ class ServerConfig
 		{
 			clientMaxBodySize = 1000000;
 			listen = INADDR_ANY;
-			statusMessage = "Default Error";
+			statusMessage = "Config error: Default Error";
 			timeConfig.connectionTimeOut = 60;
 			timeConfig.readTimeout = 60;
 			timeConfig.writeTimeout = 60;

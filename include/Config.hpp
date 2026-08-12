@@ -29,7 +29,7 @@ class Config
 	public:
 		Config()
 		{
-			statusMessage = "Default Error";
+			statusMessage = "Config error: Default Error";
 		}
 		const std::map<in_port_t, ServerConfig>& getConfig() const { return servers; }
 		const std::string& getStatusMessage() const { return statusMessage; }
