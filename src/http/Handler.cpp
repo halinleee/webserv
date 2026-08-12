@@ -402,6 +402,7 @@ Response Handler::serve(const RouteResult& route, const Request& req)
 	switch (req.method)
 	{
 		case METHOD_GET: return handleGet(route, req.path);
+		case METHOD_HEAD: return handleGet(route, req.path);
 		case METHOD_POST: return handlePost(route, req);
 		case METHOD_DELETE: return handleDelete(route);
 		default: return Response(STATUS_INTERNAL_SERVER_ERROR);

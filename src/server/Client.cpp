@@ -206,6 +206,11 @@ bool Client::getShouldClose() const
     return shouldClose;
 }
 
+bool Client::hasIncompleteRequest() const
+{
+    return !(parser.isIdle() && recDq.empty());
+}
+
 void Client::resetForNextRequest()
 {
     this->request = Request();

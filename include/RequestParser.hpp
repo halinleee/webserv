@@ -144,6 +144,15 @@ class RequestParser
 
 		ReqParseResult getState() const;
 		Request getRequest() const;
+
+		/**
+		 * @brief 아직 한 바이트도 파싱을 시작하지 않은 상태(다음 요청을 기다리는 중)인지 확인
+		 *
+		 * REQ_STARTLINE은 "완전히 처음 상태"와 "start-line 일부만 받은 상태"를 모두 포함하므로,
+		 * 이 함수만으로는 판단할 수 없고 recv 버퍼가 비어있는지와 함께 확인해야 함.
+		 * @return parseState가 REQ_STARTLINE이면 true
+		 */
+		bool isIdle() const;
 };
 
 #endif

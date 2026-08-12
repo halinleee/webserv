@@ -71,6 +71,7 @@ static std::string methodToString(HttpMethod method)
     switch (method)
     {
         case METHOD_GET: return "GET";
+        case METHOD_HEAD: return "HEAD";
         case METHOD_POST: return "POST";
         case METHOD_DELETE: return "DELETE";
         default: return "";

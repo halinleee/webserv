@@ -143,7 +143,7 @@ bool ServerConfig::parseBody(const std::vector<std::string> &token)
 	if (token.size() != 2)
 		return false;
 
-	if (token[0] != "client_max_body_size")
+	if (token[0] != "client_max_body_size" && token[0] != "max_client")
 		return false;
 
 	size_t num = 0;
@@ -151,18 +151,24 @@ bool ServerConfig::parseBody(const std::vector<std::string> &token)
 	if (!toInt(token[1], num))
 		return false;
 
-	if (num == 0 || num > BODY_SIZE_MAX)
-		return false;
-
-	clientMaxBodySize = num;
-
+	if (token[0] == "client_max_body_size")
+	{
+		if (num == 0 || num > BODY_SIZE_MAX)
+			return false;
+		clientMaxBodySize = num;
+	}
+	else
+	{
+		if (num == 0 || num > CLIENT_MAX)
+			return false;
+		maxClient = num;
+	}
 	return true;
 }
 
-
 bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::ifstream &configFile)
 {	
-	if (token[0] == "client_max_body_size")
+	if (token[0] == "client_max_body_size" || token[0] == "max_client")
 		return parseBody(token);
 	else if (token[0] == "error_page")
 		return parseErrorPage(token);

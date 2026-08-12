@@ -66,7 +66,13 @@ struct Response
 		return std::string(buf);
 	}
 
-	std::string toString(bool shouldClose) const
+	/**
+	 * @brief 응답을 전송용 문자열로 직렬화한다.
+	 * @param includeBody false면 헤더(Content-Length 포함)는 GET과 동일하게 계산하되
+	 *        본문 바이트는 출력에서 제외한다. HEAD 응답은 RFC 7230 §3.3.3에 따라
+	 *        본문을 보내면 안 되므로, HEAD 요청에 대한 응답 생성 시 false로 호출한다.
+	 */
+	std::string toString(bool shouldClose, bool includeBody = true) const
 	{
 		HeaderMap outHeaders = headers;
 
@@ -88,7 +94,9 @@ struct Response
 		oss << "HTTP/1.1 " << static_cast<int>(statusCode) << " " << statusText << "\r\n";
 		for (HeaderMap::const_iterator it = outHeaders.begin(); it != outHeaders.end(); ++it)
 			oss << it->first << ": " << it->second << "\r\n";
-		oss << "\r\n" << body;
+		oss << "\r\n";
+		if (includeBody)
+			oss << body;
 		return oss.str();
 	}
 };
