@@ -9,18 +9,18 @@
 #include <string>
 #include <vector>
 #include <ctime>
+#include <netinet/in.h>
 
 class ServerConfig
 {
 	public:
 		static const size_t BODY_SIZE_MAX = 10 * 1024 * 1024;
 		static const size_t TIME_OUT_MAX = 180;
-		static const size_t CLIENT_MAX = 1024;
 	
 	private:
 		timeValue timeConfig;
 		size_t clientMaxBodySize;
-		size_t maxClient;
+		uint32_t listen;
 		std::map<size_t, std::string> errorPages;
 		std::map<std::string, LocationConfig> locations;
 		std::string statusMessage;
@@ -30,6 +30,7 @@ class ServerConfig
 		void setPrefixes(void);
 		bool parseTimeOut(std::vector<std::string>& token);
 		bool parseErrorPage(std::vector<std::string>& token);
+		bool parseListen(std::vector<std::string> &token);
 		bool parseBody(const std::vector<std::string>& token);
 		bool parseServerDirective(std::vector<std::string>& token, std::ifstream& configFile);
 		parseStatus endSequenceValid(std::ifstream& configFile);
@@ -42,7 +43,7 @@ class ServerConfig
 		ServerConfig()
 		{
 			clientMaxBodySize = 1000000;
-			maxClient = 1024;
+			listen = INADDR_ANY;
 			statusMessage = "Default Error";
 			timeConfig.connectionTimeOut = 60;
 			timeConfig.readTimeout = 60;
@@ -51,7 +52,7 @@ class ServerConfig
 			timeConfig.cgiTimeout = 60;
 		};
 		const size_t& getClientMaxBodySize() const { return clientMaxBodySize; }
-		const size_t& getMaxClient() const { return maxClient; }
+		uint32_t getListen() const { return listen; }
 		const std::map<size_t, std::string>& getErrorPages() const { return errorPages; }
 		const std::map<std::string, LocationConfig>& getLocations() const { return locations; }
 		const std::string& getStatusMessage() const { return statusMessage; }

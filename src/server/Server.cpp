@@ -208,6 +208,8 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
                         if (!allow.empty())
                             allow += ", ";
                         allow += HttpUtils::getMethodName(*it);
+                        if (*it == METHOD_GET)
+                            allow += ", HEAD";
                     }
                     res.headers["Allow"] = allow;
                 }
@@ -231,7 +233,7 @@ RetStatus Server::clientResponse(Epoll &epoll, Client *client)
             }
             res = errPage;
         }
-        response = res.toString(client->getShouldClose());
+        response = res.toString(client->getShouldClose(), client->getRequest().method != METHOD_HEAD);
         Logger(LOG_ACCESS, buildAccessLog(client, res.statusCode, res.body.size()), ipToString(client->getSocket().getAddr().sin_addr.s_addr));
         client->response = response;
     }
@@ -355,6 +357,8 @@ RetStatus Server::clientRequest(Epoll &epoll, Client *client)
     }
     else if (length == 0)
     {
+        if (client->hasIncompleteRequest())
+            return errorHandling(client, epoll, STATUS_BAD_REQUEST, FAIL_CLOSE);
         epollGuard(epoll, EPOLL_CTL_DEL, client->getSocket().getFd(), 0, client);
         this->deleteClient(client->getSocket().getFd());
         return RET_OK;

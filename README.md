@@ -1,3 +1,5 @@
+*This project has been created as part of the 42 curriculum by halee, gajeon, seungsch.*
+
 # webserv
 
 *This project has been created as part of the 42 curriculum by halee, gajeon, seungsch.*

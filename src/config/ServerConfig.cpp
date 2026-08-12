@@ -3,6 +3,8 @@
 #include "type.hpp"
 
 #include <fstream>
+#include <arpa/inet.h>
+#include <algorithm>
 
 void ServerConfig::setPrefixes(void)
 {
@@ -143,40 +145,62 @@ bool ServerConfig::parseBody(const std::vector<std::string> &token)
 	if (token.size() != 2)
 		return false;
 
-	if (token[0] != "client_max_body_size" && token[0] != "max_client")
+	if (token[0] != "client_max_body_size")
 		return false;
 
 	size_t num = 0;
 
 	if (!toInt(token[1], num))
 		return false;
+	
+	if (num == 0 || num > BODY_SIZE_MAX)
+		return false;
+	clientMaxBodySize = num;
 
-	if (token[0] == "client_max_body_size")
-	{
-		if (num == 0 || num > BODY_SIZE_MAX)
-			return false;
-		clientMaxBodySize = num;
-	}
-	else
-	{
-		if (num == 0 || num > CLIENT_MAX)
-			return false;
-		maxClient = num;
-	}
 	return true;
+}
+
+bool ServerConfig::parseListen(std::vector<std::string> &token)
+{
+	if (token.size() != 2)
+		return false;
+
+	size_t maxIpSize = token[1].size();
+
+	if (maxIpSize > 15)
+		return false;
+
+	if (std::count(token[1].begin(), token[1].end(), '.') != 3)
+		return false;
+
+	std::vector<std::string> octetToken = ftSplit(token[1], '.');
+	if (octetToken.size() != 4)
+		return false;
+	
+	size_t octet1, octet2, octet3, octet4;
+
+	if (!toInt(octetToken[0], octet1) || !toInt(octetToken[1], octet2) || !toInt(octetToken[2], octet3) || !toInt(octetToken[3], octet4))
+		return false;
+
+	if (octet1 < 256 && octet2 < 256 && octet3< 256 && octet4 < 256)
+	{
+		listen = htonl((octet1 << 24) | (octet2 << 16) | (octet3 << 8) | octet4);
+		return true;
+	}
+	return false;
 }
 
 bool ServerConfig::parseServerDirective(std::vector<std::string> &token, std::ifstream &configFile)
 {	
-	if (token[0] == "client_max_body_size" || token[0] == "max_client")
+	if (token[0] == "client_max_body_size")
 		return parseBody(token);
+	else if (token[0] == "listen")
+		return parseListen(token);
 	else if (token[0] == "error_page")
 		return parseErrorPage(token);
-
 	else if (token[0] == "connection_timeout" || token[0] == "read_timeout" || token[0] == "write_timeout"
 			|| token[0] == "keep_alive_timeout" || token[0] == "cgi_timeout")
 		return parseTimeOut(token);
-
 	else if (token[0] == "location")
 	{
 		if (token.size() != 2 || !isValidNormalizePath(token[1]))
@@ -253,7 +277,7 @@ parseStatus ServerConfig::parseServerConfigBlock(std::ifstream &configFile)
 			std::vector<std::string> directiveToken = ftSplit(configLine, ' ');
 			if (directiveToken.empty())
 			{ 
-				statusMessage = "Config error: Directive token is empty"; 
+				statusMessage = "Config error: Directive token is empty";
 				return PARSE_ERROR; 
 			}
 

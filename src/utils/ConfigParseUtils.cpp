@@ -146,6 +146,9 @@ bool isNumber(const std::string &s)
 {
 	if (s.empty())
 		return false;
+	size_t size = s.size();
+	if (size != 1 && s[0] == '0')
+		return false;
 	std::string::const_iterator it = s.begin();
 	for (; it != s.end(); ++it)
 	{
